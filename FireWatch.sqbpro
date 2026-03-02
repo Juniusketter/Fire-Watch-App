@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?><sqlb_project><db path="FireWatch.db" readonly="0" foreign_keys="1" case_sensitive_like="0" temp_store="0" wal_autocheckpoint="1000" synchronous="2"/><attached/><window><main_tabs open="structure browser pragmas query" current="3"/></window><tab_structure><column_width id="0" width="300"/><column_width id="1" width="0"/><column_width id="2" width="100"/><column_width id="3" width="1059"/><column_width id="4" width="0"/><expanded_item id="0" parent="1"/><expanded_item id="1" parent="1"/><expanded_item id="2" parent="1"/><expanded_item id="3" parent="1"/></tab_structure><tab_browse><table title=".Browsables" custom_title="0" dock_id="1" table="0,10:Browsables"/><dock_state state="000000ff00000000fd00000001000000020000000000000000fc0100000001fb000000160064006f0063006b00420072006f00770073006500310100000000ffffffff0000011e00ffffff000000000000000000000004000000040000000800000008fc00000000"/><default_encoding codec=""/><browse_table_settings/></tab_browse><tab_sql><sql name="SQL 1*">-- 1. Table for all Fire Extinguishers
+CREATE TABLE Extinguishers (
+    extinguisher_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    address TEXT NOT NULL,
+    building_number TEXT,
+    floor_number INTEGER,
+    room_number TEXT,
+    location_description TEXT,
+    inspection_interval_days INTEGER DEFAULT 30,
+    next_due_date DATE,
+    last_report_id INTEGER -- Keeps only the most recent
+);
+
+-- 2. Table for Users (Admins and Inspectors)
+CREATE TABLE Users (
+    user_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    role TEXT CHECK(role IN ('Admin', 'Inspector', '3rd_Party_Admin', '3rd_Party_Inspector'))
+);
+
+-- 3. Table for Assignments
+CREATE TABLE Assignments (
+    assignment_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    admin_id INTEGER,
+    inspector_id INTEGER,
+    extinguisher_id INTEGER,
+    status TEXT DEFAULT 'Pending',
+    FOREIGN KEY (admin_id) REFERENCES Users(user_id),
+    FOREIGN KEY (inspector_id) REFERENCES Users(user_id),
+    FOREIGN KEY (extinguisher_id) REFERENCES Extinguishers(extinguisher_id)
+);
+
+-- 4. Table for the Latest Reports
+CREATE TABLE Reports (
+    report_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    extinguisher_id INTEGER,
+    inspector_id INTEGER,
+    inspection_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    photo_path TEXT, -- Link to the photo on the device
+    notes TEXT,
+    FOREIGN KEY (extinguisher_id) REFERENCES Extinguishers(extinguisher_id),
+    FOREIGN KEY (inspector_id) REFERENCES Users(user_id)
+);</sql><current_tab id="0"/></tab_sql></sqlb_project>
