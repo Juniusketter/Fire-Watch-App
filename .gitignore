@@ -30,3 +30,7 @@
 *.exe
 *.out
 *.app
+# Qt/CMake temporary build files
+build*/
+*.user
+.cmake/
