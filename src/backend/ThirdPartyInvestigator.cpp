@@ -4,18 +4,18 @@ using namespace std;
 //started by Lilly Bowen on March 4, 2026
 //third party investigator class extends user class
 
-class ThirdPartyInvestigator : public User{
+class ThirdPInv : public User{
     private:
-        string thirdPartyInvestigatorID;
+        string thirdPInvID;
 
     public:
-        string getThirdPartyInvestigatorID() {
-            return thirdPartyInvestigatorID;
+        string getThirdPInvID() {
+            return thirdPInvID;
         }
-        void setThirdPartyInvestigatorID(string id) {
-            thirdPartyInvestigatorID = id;
+        void setThirdPInvID(string id) {
+            thirdPInvID = id;
         }
-        void generateThirdPartyReport(){
+        void generateThirdPReport(){
             //generate report code
             //send report to admin
             cout << "Report generated successfully!" << endl;
