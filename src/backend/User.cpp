@@ -29,7 +29,25 @@ class User{
         }
         
         //UI could also have "forgot password" or "forgot username" areas that can be added if we choose to
-        void login() {}
+        void login() {
+            string u;
+            string p;
+            cout << "Username: ";
+            cin >> u;
+            cout << "Password: ";
+            cin >> p;
+            if(u != username || p != password){
+                cout << "Invalid username or password. Please try again." << endl;
+                login();
+            }
+            else{
+                cout << "Login successful!" << endl;
+                // Redirect to appropriate dashboard based on user type
+            }
+        }
 
-        void logout() {}
+        void logout() {
+            cout << "Logout successful!" << endl;
+            // Redirect to login page
+        }
 }
