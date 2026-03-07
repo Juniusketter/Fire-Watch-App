@@ -4,6 +4,12 @@ using namespace std;
 //started by Lilly Bowen on March 4, 2026
 //third party administrator class extends user class
 
+//added by Lilly on March 7
+//requirements to be tested throughout process:
+//third party admini object is created
+//functional getters & setters
+//ensure generate assignment function works
+
 class ThirdPAdmin : public User{
     private:
         string thirdPAdminID;
