@@ -4,18 +4,24 @@ using namespace std;
 //started by Lilly Bowen on March 4, 2026
 //investigator class extends user class
 
-class Investigator : public User{
+//Added by Lilly on March 7
+//requirements to be tested throughout process:
+//Inv object is created
+//functional getters & setters
+//ensure generate report function works
+
+class Inv : public User{
     private:
-        string investigatorID;
+        string invID;
 
 
     public:
-        string getInvestigatorID() {
-            return investigatorID;
+        string getInvID() {
+            return invID;
         }
 
-        void setInvestigatorID(string id) {
-            investigatorID = id;
+        void setInvID(string id) {
+            invID = id;
         }
 
         void generateReport(){
