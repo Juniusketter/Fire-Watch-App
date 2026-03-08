@@ -1,12 +1,10 @@
 cmake_minimum_required(VERSION 3.19)
 project(Fire-Watch-UI LANGUAGES CXX)
 
-# Qt6 Core, Widgets, AND Sql for SQLite database access
 find_package(Qt6 6.5 REQUIRED COMPONENTS Core Widgets Sql)
 
 qt_standard_project_setup()
 
-# Backend source files
 set(BACKEND_SOURCES
     ../../backend/User.cpp
     ../../backend/Admin.cpp
@@ -15,7 +13,6 @@ set(BACKEND_SOURCES
     ../../backend/ThirdPInv.cpp
 )
 
-# Backend header directory
 include_directories(../../backend)
 
 qt_add_executable(Fire-Watch-UI
@@ -24,6 +21,9 @@ qt_add_executable(Fire-Watch-UI
     mainwindow.cpp
     mainwindow.h
     mainwindow.ui
+    dashboard.cpp
+    dashboard.h
+    dashboard.ui
     ${BACKEND_SOURCES}
 )
 
