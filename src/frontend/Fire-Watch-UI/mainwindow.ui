@@ -27,7 +27,7 @@
      <string>Fire Watch Login</string>
     </property>
    </widget>
-   <widget class="QLineEdit" name="lineEdit">
+   <widget class="QLineEdit" name="usernameLineEdit">
     <property name="geometry">
      <rect>
       <x>270</x>
@@ -40,7 +40,7 @@
      <string>Username</string>
     </property>
    </widget>
-   <widget class="QLineEdit" name="lineEdit_2">
+   <widget class="QLineEdit" name="passwordLineEdit">
     <property name="geometry">
      <rect>
       <x>270</x>
@@ -56,7 +56,7 @@
      <enum>QLineEdit::EchoMode::Password</enum>
     </property>
    </widget>
-   <widget class="QPushButton" name="pushButton">
+   <widget class="QPushButton" name="loginButton">
     <property name="geometry">
      <rect>
       <x>310</x>
