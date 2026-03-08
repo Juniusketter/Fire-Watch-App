@@ -1,28 +1,17 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "dashboard.h"
 
 #include <QApplication>
 #include <QDir>
 #include <QFileInfo>
-#include <QMessageBox>
 #include <QtSql/QSqlDatabase>
 #include <QtSql/QSqlQuery>
 #include <QtSql/QSqlError>
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  Locate FireWatch.db relative to the executable.
-//  The database lives at:  <project_root>/src/database/FireWatch.db
-//
-//  At runtime the .exe is inside:
-//    <project_root>/src/frontend/Fire-Watch-UI/build/.../Fire-Watch-UI.exe
-//  So we walk up 5 levels to reach the project root, then descend into
-//  src/database/FireWatch.db.
-//
-//  If that path doesn't exist we also try the working directory as a fallback.
-// ─────────────────────────────────────────────────────────────────────────────
 static QString findDatabasePath()
 {
-    // Walk up from the executable directory
     QDir dir(QApplication::applicationDirPath());
     for (int i = 0; i < 6; ++i) {
         QString candidate = dir.filePath("src/database/FireWatch.db");
@@ -30,13 +19,10 @@ static QString findDatabasePath()
             return candidate;
         dir.cdUp();
     }
-
-    // Fallback: current working directory
     QString cwd = QDir::currentPath() + "/src/database/FireWatch.db";
     if (QFileInfo::exists(cwd))
         return cwd;
-
-    return QString(); // not found
+    return QString();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -45,17 +31,15 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+    setWindowTitle("FireWatch");
 
-    connect(ui->pushButtonLogin, &QPushButton::clicked,
+    connect(ui->pushButtonLogin,  &QPushButton::clicked,
             this, &MainWindow::onLoginClicked);
-
     connect(ui->lineEditPassword, &QLineEdit::returnPressed,
             this, &MainWindow::onLoginClicked);
-
     connect(ui->lineEditUsername, &QLineEdit::returnPressed,
             this, &MainWindow::onLoginClicked);
 
-    // Open the database once at startup so we're ready for login attempts
     if (!openDatabase()) {
         ui->labelMessage->setStyleSheet("color: red;");
         ui->labelMessage->setText("Warning: could not open FireWatch.db");
@@ -64,44 +48,27 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow()
 {
-    // Close the database connection cleanly
     {
         QSqlDatabase db = QSqlDatabase::database("firewatch");
-        if (db.isOpen())
-            db.close();
+        if (db.isOpen()) db.close();
     }
     QSqlDatabase::removeDatabase("firewatch");
-
     delete ui;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 bool MainWindow::openDatabase()
 {
-    // Avoid opening twice
     if (QSqlDatabase::contains("firewatch")) {
-        QSqlDatabase db = QSqlDatabase::database("firewatch");
-        return db.isOpen();
+        return QSqlDatabase::database("firewatch").isOpen();
     }
 
     QString dbPath = findDatabasePath();
-    if (dbPath.isEmpty()) {
-        qWarning("FireWatch.db not found. Searched from: %s",
-                 qPrintable(QApplication::applicationDirPath()));
-        return false;
-    }
+    if (dbPath.isEmpty()) return false;
 
     QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE", "firewatch");
     db.setDatabaseName(dbPath);
-
-    if (!db.open()) {
-        qWarning("Cannot open database: %s",
-                 qPrintable(db.lastError().text()));
-        return false;
-    }
-
-    qInfo("Database opened: %s", qPrintable(dbPath));
-    return true;
+    return db.open();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -116,16 +83,11 @@ void MainWindow::onLoginClicked()
         return;
     }
 
-    // ── Query FireWatch.db directly ──────────────────────────────────────────
     QSqlDatabase db = QSqlDatabase::database("firewatch");
-    if (!db.isOpen()) {
-        // Try to reopen if something went wrong at startup
-        if (!openDatabase()) {
-            ui->labelMessage->setStyleSheet("color: red;");
-            ui->labelMessage->setText("Database unavailable. Check FireWatch.db path.");
-            return;
-        }
-        db = QSqlDatabase::database("firewatch");
+    if (!db.isOpen() && !openDatabase()) {
+        ui->labelMessage->setStyleSheet("color: red;");
+        ui->labelMessage->setText("Database unavailable. Check FireWatch.db path.");
+        return;
     }
 
     QSqlQuery query(db);
@@ -144,23 +106,16 @@ void MainWindow::onLoginClicked()
     }
 
     if (query.next()) {
-        // ── Login success ────────────────────────────────────────────────────
-        m_userId   = query.value("user_id").toInt();
-        m_username = query.value("username").toString();
-        m_role     = query.value("role").toString();
+        int     userId   = query.value("user_id").toInt();
+        QString uname    = query.value("username").toString();
+        QString role     = query.value("role").toString();
 
-        ui->labelMessage->setStyleSheet("color: green;");
-        ui->labelMessage->setText(
-            "Login successful! Welcome, " + m_username +
-            "  |  Role: " + m_role
-        );
-        ui->lineEditPassword->clear();
-
-        // TODO: open the appropriate dashboard window based on m_role
-        // e.g. if (m_role == "Admin") { AdminDashboard *dash = new AdminDashboard(...); }
+        // Open the Dashboard window and close the login window
+        Dashboard *dash = new Dashboard(userId, uname, role, db);
+        dash->show();
+        this->close();
 
     } else {
-        // ── Login failure ────────────────────────────────────────────────────
         ui->labelMessage->setStyleSheet("color: red;");
         ui->labelMessage->setText("Invalid username or password.");
         ui->lineEditPassword->clear();

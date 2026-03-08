@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Dashboard</class>
+ <widget class="QMainWindow" name="Dashboard">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1000</width>
+    <height>680</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>FireWatch — Dashboard</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="verticalLayout">
+
+    <!-- TOP BAR -->
+    <item>
+     <widget class="QFrame" name="topBar">
+      <property name="frameShape">
+       <enum>QFrame::StyledPanel</enum>
+      </property>
+      <layout class="QHBoxLayout" name="topBarLayout">
+       <item>
+        <widget class="QLabel" name="labelTitle">
+         <property name="text">
+          <string>🔥 FireWatch Dashboard</string>
+         </property>
+         <property name="font">
+          <font><pointsize>14</pointsize><bold>true</bold></font>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer>
+         <property name="orientation"><enum>Qt::Horizontal</enum></property>
+        </spacer>
+       </item>
+       <item>
+        <widget class="QLabel" name="labelWelcome">
+         <property name="text"><string>Welcome</string></property>
+         <property name="font"><font><pointsize>10</pointsize><bold>true</bold></font></property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="labelRole">
+         <property name="text"><string>Role: —</string></property>
+         <property name="font"><font><pointsize>10</pointsize></font></property>
+         <property name="styleSheet"><string>color: #b07d2a;</string></property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="btnRefresh">
+         <property name="text"><string>Refresh</string></property>
+         <property name="minimumSize"><size><width>80</width><height>28</height></size></property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="btnLogout">
+         <property name="text"><string>Logout</string></property>
+         <property name="minimumSize"><size><width>80</width><height>28</height></size></property>
+         <property name="styleSheet"><string>color: #8b2222;</string></property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+
+    <!-- STATS ROW -->
+    <item>
+     <widget class="QFrame" name="statsFrame">
+      <layout class="QHBoxLayout" name="statsLayout">
+
+       <item>
+        <widget class="QFrame" name="frameExt">
+         <property name="frameShape"><enum>QFrame::Box</enum></property>
+         <layout class="QVBoxLayout">
+          <item><widget class="QLabel" name="lblExt"><property name="text"><string>Extinguishers</string></property><property name="alignment"><set>Qt::AlignCenter</set></property></widget></item>
+          <item><widget class="QLabel" name="statExtinguishers"><property name="text"><string>—</string></property><property name="font"><font><pointsize>22</pointsize><bold>true</bold></font></property><property name="alignment"><set>Qt::AlignCenter</set></property></widget></item>
+         </layout>
+        </widget>
+       </item>
+
+       <item>
+        <widget class="QFrame" name="frameAssign">
+         <property name="frameShape"><enum>QFrame::Box</enum></property>
+         <layout class="QVBoxLayout">
+          <item><widget class="QLabel" name="lblAssign"><property name="text"><string>Assignments</string></property><property name="alignment"><set>Qt::AlignCenter</set></property></widget></item>
+          <item><widget class="QLabel" name="statAssignments"><property name="text"><string>—</string></property><property name="font"><font><pointsize>22</pointsize><bold>true</bold></font></property><property name="alignment"><set>Qt::AlignCenter</set></property></widget></item>
+         </layout>
+        </widget>
+       </item>
+
+       <item>
+        <widget class="QFrame" name="frameReports">
+         <property name="frameShape"><enum>QFrame::Box</enum></property>
+         <layout class="QVBoxLayout">
+          <item><widget class="QLabel" name="lblReports"><property name="text"><string>Reports</string></property><property name="alignment"><set>Qt::AlignCenter</set></property></widget></item>
+          <item><widget class="QLabel" name="statReports"><property name="text"><string>—</string></property><property name="font"><font><pointsize>22</pointsize><bold>true</bold></font></property><property name="alignment"><set>Qt::AlignCenter</set></property></widget></item>
+         </layout>
+        </widget>
+       </item>
+
+       <item>
+        <widget class="QFrame" name="frameUsers">
+         <property name="frameShape"><enum>QFrame::Box</enum></property>
+         <layout class="QVBoxLayout">
+          <item><widget class="QLabel" name="lblUsers"><property name="text"><string>Users</string></property><property name="alignment"><set>Qt::AlignCenter</set></property></widget></item>
+          <item><widget class="QLabel" name="statUsers"><property name="text"><string>—</string></property><property name="font"><font><pointsize>22</pointsize><bold>true</bold></font></property><property name="alignment"><set>Qt::AlignCenter</set></property></widget></item>
+         </layout>
+        </widget>
+       </item>
+
+      </layout>
+     </widget>
+    </item>
+
+    <!-- TABS -->
+    <item>
+     <widget class="QTabWidget" name="tabWidget">
+
+      <widget class="QWidget" name="tabExtinguishers">
+       <attribute name="title"><string>Extinguishers</string></attribute>
+       <layout class="QVBoxLayout">
+        <item>
+         <widget class="QTableWidget" name="tableExtinguishers">
+          <property name="alternatingRowColors"><bool>true</bool></property>
+          <property name="selectionBehavior"><enum>QAbstractItemView::SelectRows</enum></property>
+          <property name="editTriggers"><set>QAbstractItemView::NoEditTriggers</set></property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+
+      <widget class="QWidget" name="tabAssignments">
+       <attribute name="title"><string>Assignments</string></attribute>
+       <layout class="QVBoxLayout">
+        <item>
+         <widget class="QTableWidget" name="tableAssignments">
+          <property name="alternatingRowColors"><bool>true</bool></property>
+          <property name="selectionBehavior"><enum>QAbstractItemView::SelectRows</enum></property>
+          <property name="editTriggers"><set>QAbstractItemView::NoEditTriggers</set></property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+
+      <widget class="QWidget" name="tabReports">
+       <attribute name="title"><string>Reports</string></attribute>
+       <layout class="QVBoxLayout">
+        <item>
+         <widget class="QTableWidget" name="tableReports">
+          <property name="alternatingRowColors"><bool>true</bool></property>
+          <property name="selectionBehavior"><enum>QAbstractItemView::SelectRows</enum></property>
+          <property name="editTriggers"><set>QAbstractItemView::NoEditTriggers</set></property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+
+      <widget class="QWidget" name="tabUsers">
+       <attribute name="title"><string>Users</string></attribute>
+       <layout class="QVBoxLayout">
+        <item>
+         <widget class="QTableWidget" name="tableUsers">
+          <property name="alternatingRowColors"><bool>true</bool></property>
+          <property name="selectionBehavior"><enum>QAbstractItemView::SelectRows</enum></property>
+          <property name="editTriggers"><set>QAbstractItemView::NoEditTriggers</set></property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+
+     </widget>
+    </item>
+
+   </layout>
+  </widget>
+
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry"><rect><x>0</x><y>0</y><width>1000</width><height>22</height></rect></property>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
