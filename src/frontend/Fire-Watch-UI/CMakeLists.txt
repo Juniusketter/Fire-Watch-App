@@ -1,30 +1,43 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.19)
+project(Fire-Watch-UI LANGUAGES CXX)
 
-project(Fire-Watch-UI VERSION 0.1 LANGUAGES CXX)
+# Qt6 Core, Widgets, AND Sql for SQLite database access
+find_package(Qt6 6.5 REQUIRED COMPONENTS Core Widgets Sql)
 
-set(CMAKE_AUTOUIC ON)
-set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTORCC ON)
+qt_standard_project_setup()
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-# This grabs the standard widgets and the SQL database tools
-find_package(Qt6 REQUIRED COMPONENTS Widgets Sql)
-
-add_executable(Fire-Watch-UI
-  main.cpp
-  mainwindow.cpp
-  mainwindow.h
-  mainwindow.ui
+# Backend source files
+set(BACKEND_SOURCES
+    ../../backend/User.cpp
+    ../../backend/Admin.cpp
+    ../../backend/Inv.cpp
+    ../../backend/ThirdPAdmin.cpp
+    ../../backend/ThirdPInv.cpp
 )
 
-# This links those tools to your specific app
-target_link_libraries(Fire-Watch-UI PRIVATE Qt6::Widgets Qt6::Sql)
+# Backend header directory
+include_directories(../../backend)
+
+qt_add_executable(Fire-Watch-UI
+    WIN32 MACOSX_BUNDLE
+    main.cpp
+    mainwindow.cpp
+    mainwindow.h
+    mainwindow.ui
+    ${BACKEND_SOURCES}
+)
+
+target_link_libraries(Fire-Watch-UI
+    PRIVATE
+        Qt6::Core
+        Qt6::Widgets
+        Qt6::Sql
+)
 
 include(GNUInstallDirs)
+
 install(TARGETS Fire-Watch-UI
-    BUNDLE DESTINATION .
+    BUNDLE  DESTINATION .
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
