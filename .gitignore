@@ -34,4 +34,3 @@
 build*/
 *.user
 .cmake/
-.vscode/
