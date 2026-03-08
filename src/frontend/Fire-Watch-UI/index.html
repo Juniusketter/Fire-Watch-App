@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FireWatch</title>
+  <style>
+    :root {
+      --beige: #e9dec8;
+      --beige-dark: #d6c4a1;
+      --text: #1f1f1f;
+      --green: #3fa34d;
+      --green-hover: #2e8c3b;
+      --panel: #f6eedf;
+      --shadow: rgba(0, 0, 0, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      min-height: 100vh;
+      font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 15% 15%, #f5ecdc 0%, transparent 35%),
+        radial-gradient(circle at 85% 80%, #e2d2b3 0%, transparent 30%),
+        var(--beige);
+    }
+
+    .page {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .brand-side {
+      padding: 2rem;
+      display: flex;
+      align-items: flex-start;
+      justify-content: flex-start;
+      background: linear-gradient(180deg, var(--beige), var(--beige-dark));
+      border-right: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    .brand {
+      font-size: clamp(2rem, 5vw, 3.75rem);
+      font-weight: 700;
+      letter-spacing: 0.08em;
+    }
+
+    .login-side {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      background: rgba(255, 255, 255, 0.28);
+    }
+
+    .login-card {
+      width: min(400px, 100%);
+      background: var(--panel);
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      border-radius: 14px;
+      padding: 1.5rem;
+      box-shadow: 0 10px 25px var(--shadow);
+    }
+
+    .field {
+      margin-bottom: 1rem;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 0.4rem;
+      font-weight: 600;
+    }
+
+    input {
+      width: 100%;
+      padding: 0.7rem 0.8rem;
+      border-radius: 10px;
+      border: 1px solid #b9a787;
+      background: #fffaf1;
+      color: var(--text);
+      font-size: 1rem;
+    }
+
+    input:focus {
+      outline: 2px solid #bca97f;
+      outline-offset: 2px;
+    }
+
+    button {
+      width: 100%;
+      padding: 0.78rem 1rem;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      background: var(--green);
+      color: #000;
+      transition: background 0.2s ease;
+    }
+
+    button:hover {
+      background: var(--green-hover);
+    }
+
+    .message {
+      margin-top: 0.9rem;
+      min-height: 1.25rem;
+      font-size: 0.95rem;
+    }
+
+    @media (max-width: 850px) {
+      .page {
+        grid-template-columns: 1fr;
+      }
+
+      .brand-side {
+        min-height: 26vh;
+      }
+
+      .login-side {
+        min-height: 74vh;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="brand-side" aria-label="Brand area">
+      <h1 class="brand">FireWatch</h1>
+    </section>
+
+    <section class="login-side" aria-label="Login area">
+      <form class="login-card" id="loginForm">
+        <div class="field">
+          <label for="username">Username</label>
+          <input type="text" id="username" name="username" required />
+        </div>
+
+        <div class="field">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" required />
+        </div>
+
+        <button type="submit">Login</button>
+        <p class="message" id="message" aria-live="polite"></p>
+      </form>
+    </section>
+  </main>
+
+  <script>
+    const form = document.getElementById("loginForm");
+    const message = document.getElementById("message");
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value;
+
+      message.textContent = "Checking login...";
+      message.style.color = "#1f1f1f";
+
+      try {
+        // Front-end call to backend login endpoint.
+        // Backend/database should verify credentials and return a JSON response.
+        const response = await fetch("/api/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, password }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Login failed");
+        }
+
+        const data = await response.json();
+        if (data && data.success) {
+          message.textContent = "Login successful.";
+          message.style.color = "#1f6f2b";
+        } else {
+          message.textContent = "Invalid username or password.";
+          message.style.color = "#8b2222";
+        }
+      } catch (error) {
+        message.textContent = "Unable to reach backend login service.";
+        message.style.color = "#8b2222";
+      }
+    });
+  </script>
+</body>
+</html>
