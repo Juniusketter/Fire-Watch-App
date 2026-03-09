@@ -41,3 +41,9 @@ qrc_*.cpp
 *.obj
 *.exe
 .qtc_clangd/
+# Catch all build folders regardless of name
+build*/
+*-build/
+# Catch specific Qt Creator metadata
+.qtcreator/
+*.user
