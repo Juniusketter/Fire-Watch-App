@@ -24,6 +24,8 @@ qt_add_executable(Fire-Watch-UI
     dashboard.cpp
     dashboard.h
     dashboard.ui
+    extdialog.cpp
+    extdialog.h
     ${BACKEND_SOURCES}
 )
 

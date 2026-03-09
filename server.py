@@ -22,23 +22,27 @@ import os
 
 app = Flask(__name__)
 
-# ── Paths ──────────────────────────────────────────────────────────────────
+# ── Paths ──────────────────────────────────────────────────────────────────────
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH  = os.path.join(BASE_DIR, "src", "database", "FireWatch.db")
 UI_DIR   = os.path.join(BASE_DIR, "src", "frontend", "Fire-Watch-UI")
 
-# ── DB helper ──────────────────────────────────────────────────────────────
+# ── DB helper ──────────────────────────────────────────────────────────────────
 def get_db():
     conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row          # rows behave like dicts
+    conn.row_factory = sqlite3.Row
     return conn
 
-# ── Serve the frontend ─────────────────────────────────────────────────────
+# ── Serve frontend ─────────────────────────────────────────────────────────────
 @app.route("/")
 def index():
     return send_from_directory(UI_DIR, "index.html")
 
-# ── AUTH ───────────────────────────────────────────────────────────────────
+@app.route("/<path:filename>")
+def static_files(filename):
+    return send_from_directory(UI_DIR, filename)
+
+# ── AUTH ───────────────────────────────────────────────────────────────────────
 @app.route("/api/login", methods=["POST"])
 def login():
     data     = request.get_json()
@@ -50,7 +54,8 @@ def login():
 
     with get_db() as conn:
         row = conn.execute(
-            "SELECT user_id, username, role FROM Users WHERE username = ? AND password_hash = ?",
+            "SELECT user_id, username, role FROM Users "
+            "WHERE username = ? AND password_hash = ?",
             (username, password)
         ).fetchone()
 
@@ -63,36 +68,115 @@ def login():
         })
     return jsonify({"success": False, "error": "Invalid username or password"}), 401
 
-# ── EXTINGUISHERS ──────────────────────────────────────────────────────────
+# ── EXTINGUISHERS ──────────────────────────────────────────────────────────────
 @app.route("/api/extinguishers", methods=["GET"])
 def get_extinguishers():
     with get_db() as conn:
         rows = conn.execute("SELECT * FROM Extinguishers").fetchall()
     return jsonify([dict(r) for r in rows])
 
-# ── ASSIGNMENTS ────────────────────────────────────────────────────────────
+@app.route("/api/extinguishers", methods=["POST"])
+def add_extinguisher():
+    d = request.get_json()
+    try:
+        with get_db() as conn:
+            conn.execute(
+                "INSERT INTO Extinguishers "
+                "(address, building_number, floor_number, room_number, "
+                " location_description, inspection_interval_days, next_due_date) "
+                "VALUES (?,?,?,?,?,?,?)",
+                (d.get("address"), d.get("building_number"),
+                 d.get("floor_number", 1), d.get("room_number"),
+                 d.get("location_description"),
+                 d.get("inspection_interval_days", 30),
+                 d.get("next_due_date"))
+            )
+        return jsonify({"success": True}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/extinguishers/<int:ext_id>", methods=["PUT"])
+def update_extinguisher(ext_id):
+    d = request.get_json()
+    try:
+        with get_db() as conn:
+            conn.execute(
+                "UPDATE Extinguishers SET address=?, building_number=?, "
+                "floor_number=?, room_number=?, location_description=?, "
+                "inspection_interval_days=?, next_due_date=? "
+                "WHERE extinguisher_id=?",
+                (d.get("address"), d.get("building_number"),
+                 d.get("floor_number", 1), d.get("room_number"),
+                 d.get("location_description"),
+                 d.get("inspection_interval_days", 30),
+                 d.get("next_due_date"), ext_id)
+            )
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/extinguishers/<int:ext_id>", methods=["DELETE"])
+def delete_extinguisher(ext_id):
+    try:
+        with get_db() as conn:
+            conn.execute("DELETE FROM Reports     WHERE extinguisher_id=?", (ext_id,))
+            conn.execute("DELETE FROM Assignments WHERE extinguisher_id=?", (ext_id,))
+            conn.execute("DELETE FROM Extinguishers WHERE extinguisher_id=?", (ext_id,))
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ── ASSIGNMENTS ────────────────────────────────────────────────────────────────
 @app.route("/api/assignments", methods=["GET"])
 def get_assignments():
+    user_id = request.args.get("user_id")
     with get_db() as conn:
-        rows = conn.execute("SELECT * FROM Assignments").fetchall()
+        if user_id:
+            rows = conn.execute(
+                "SELECT a.assignment_id, u_a.username AS assigned_by, "
+                "a.extinguisher_id, a.status "
+                "FROM Assignments a "
+                "LEFT JOIN Users u_a ON a.admin_id = u_a.user_id "
+                "WHERE a.inspector_id = ?", (user_id,)
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT a.assignment_id, u_a.username AS assigned_by, "
+                "u_i.username AS inspector, a.extinguisher_id, a.status "
+                "FROM Assignments a "
+                "LEFT JOIN Users u_a ON a.admin_id     = u_a.user_id "
+                "LEFT JOIN Users u_i ON a.inspector_id = u_i.user_id"
+            ).fetchall()
     return jsonify([dict(r) for r in rows])
 
-# ── REPORTS ────────────────────────────────────────────────────────────────
+# ── REPORTS ────────────────────────────────────────────────────────────────────
 @app.route("/api/reports", methods=["GET"])
 def get_reports():
+    user_id = request.args.get("user_id")
     with get_db() as conn:
-        rows = conn.execute("SELECT * FROM Reports").fetchall()
+        if user_id:
+            rows = conn.execute(
+                "SELECT report_id, extinguisher_id, inspection_date, notes "
+                "FROM Reports WHERE inspector_id = ?", (user_id,)
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT r.report_id, r.extinguisher_id, "
+                "u.username AS inspector, r.inspection_date, r.notes "
+                "FROM Reports r LEFT JOIN Users u ON r.inspector_id = u.user_id"
+            ).fetchall()
     return jsonify([dict(r) for r in rows])
 
-# ── USERS (Admin only) ─────────────────────────────────────────────────────
+# ── USERS ──────────────────────────────────────────────────────────────────────
 @app.route("/api/users", methods=["GET"])
 def get_users():
     with get_db() as conn:
-        # Never return password hashes to the frontend
-        rows = conn.execute("SELECT user_id, username, role FROM Users").fetchall()
+        rows = conn.execute(
+            "SELECT user_id, username, role FROM Users"
+        ).fetchall()
     return jsonify([dict(r) for r in rows])
 
-# ── SUMMARY STATS ──────────────────────────────────────────────────────────
+# ── STATS ──────────────────────────────────────────────────────────────────────
 @app.route("/api/stats", methods=["GET"])
 def get_stats():
     with get_db() as conn:
@@ -107,7 +191,7 @@ def get_stats():
         "users":         users
     })
 
-# ── START ──────────────────────────────────────────────────────────────────
+# ── START ──────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     print("=" * 50)
     print("  FireWatch Server")
