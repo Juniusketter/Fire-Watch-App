@@ -9,6 +9,8 @@
 #include <QtSql/QSqlRecord>
 
 // ─────────────────────────────────────────────────────────────────────────────
+//  Constructor
+// ─────────────────────────────────────────────────────────────────────────────
 Dashboard::Dashboard(int userId, const QString &username,
                      const QString &role, QSqlDatabase db,
                      QWidget *parent)
@@ -20,30 +22,26 @@ Dashboard::Dashboard(int userId, const QString &username,
     , m_db(db)
 {
     ui->setupUi(this);
-
-    // Window title
     setWindowTitle("FireWatch — Dashboard");
 
-    // Set welcome label
+    // Welcome bar
     ui->labelWelcome->setText("Welcome, " + m_username);
     ui->labelRole->setText("Role: " + m_role);
+
+    // Style the role label colour by role
+    QString roleColour = "#b07d2a";  // default amber (Admin)
+    if (isInv())         roleColour = "#1a6b2e";  // green
+    if (isThirdPAdmin()) roleColour = "#1a4a8a";  // blue
+    if (isThirdPInv())   roleColour = "#5a3080";  // purple
+    ui->labelRole->setStyleSheet("color: " + roleColour + "; font-weight: bold;");
 
     // Wire buttons
     connect(ui->btnLogout,  &QPushButton::clicked, this, &Dashboard::onLogoutClicked);
     connect(ui->btnRefresh, &QPushButton::clicked, this, &Dashboard::onRefreshClicked);
 
-    // Load all data
+    // Build the tab set for this role, then load data
+    setupTabsForRole();
     updateStats();
-    loadExtinguishers();
-    loadAssignments();
-    loadReports();
-
-    // Only show Users tab to Admins
-    if (m_role != "Admin") {
-        ui->tabWidget->removeTab(3); // Users tab is index 3
-    } else {
-        loadUsers();
-    }
 }
 
 Dashboard::~Dashboard()
@@ -52,7 +50,83 @@ Dashboard::~Dashboard()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  Logout — close dashboard, reopen login window
+//  setupTabsForRole  — show/hide tabs and set window title based on role
+//
+//  Tab indices in the .ui file:
+//    0 = Extinguishers
+//    1 = Assignments
+//    2 = Reports
+//    3 = Users
+//
+//  Role matrix:
+//    Admin           → Extinguishers | Assignments | Reports | Users (all users)
+//    Investigator    → Assignments (own) | Reports (own)
+//    ThirdPAdmin     → Assignments (all) | Users (team members only)
+//    ThirdPInv       → Assignments (own) only
+// ─────────────────────────────────────────────────────────────────────────────
+void Dashboard::setupTabsForRole()
+{
+    // Start by loading everything into existing tabs, then hide what
+    // this role shouldn't see.  We remove tabs from highest index first
+    // so indices don't shift during removal.
+
+    if (isAdmin()) {
+        // ── Admin: sees everything ────────────────────────────────────────
+        setWindowTitle("FireWatch — Admin Dashboard");
+        loadExtinguishers();
+        loadAssignments();
+        loadReports();
+        loadUsers();
+        // Rename Users tab to reflect all users
+        ui->tabWidget->setTabText(3, "All Users");
+    }
+    else if (isInv()) {
+        // ── Investigator: own assignments + own reports ───────────────────
+        setWindowTitle("FireWatch — Inspector Dashboard");
+        // Remove Users tab (index 3), then Extinguishers (index 0)
+        ui->tabWidget->removeTab(3); // Users
+        ui->tabWidget->removeTab(0); // Extinguishers
+        // Remaining tabs are now: [0]=Assignments [1]=Reports
+        loadAssignments();  // filtered to m_userId
+        loadReports();      // filtered to m_userId
+        ui->tabWidget->setTabText(0, "My Assignments");
+        ui->tabWidget->setTabText(1, "My Reports");
+    }
+    else if (isThirdPAdmin()) {
+        // ── Third-Party Admin: all assignments + their team ───────────────
+        setWindowTitle("FireWatch — Third-Party Admin Dashboard");
+        // Remove Reports (index 2) and Extinguishers (index 0)
+        ui->tabWidget->removeTab(2); // Reports
+        ui->tabWidget->removeTab(0); // Extinguishers
+        // Remaining tabs: [0]=Assignments [1]=Users
+        loadAssignments();  // all assignments
+        loadUsers();        // team members (ThirdPInv with same company)
+        ui->tabWidget->setTabText(0, "Assignments");
+        ui->tabWidget->setTabText(1, "My Team");
+    }
+    else if (isThirdPInv()) {
+        // ── Third-Party Investigator: own assignments only ────────────────
+        setWindowTitle("FireWatch — Third-Party Inspector Dashboard");
+        // Remove Users (3), Reports (2), Extinguishers (0)
+        ui->tabWidget->removeTab(3); // Users
+        ui->tabWidget->removeTab(2); // Reports
+        ui->tabWidget->removeTab(0); // Extinguishers
+        // Remaining tab: [0]=Assignments
+        loadAssignments();  // filtered to m_userId
+        ui->tabWidget->setTabText(0, "My Assignments");
+    }
+    else {
+        // ── Unknown/fallback: show assignments only (safe default) ────────
+        setWindowTitle("FireWatch — Dashboard");
+        ui->tabWidget->removeTab(3);
+        ui->tabWidget->removeTab(2);
+        ui->tabWidget->removeTab(0);
+        loadAssignments();
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Logout
 // ─────────────────────────────────────────────────────────────────────────────
 void Dashboard::onLogoutClicked()
 {
@@ -62,32 +136,192 @@ void Dashboard::onLogoutClicked()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  Refresh — reload all tables from the database
+//  Refresh — reload data for this role
 // ─────────────────────────────────────────────────────────────────────────────
 void Dashboard::onRefreshClicked()
 {
     updateStats();
-    loadExtinguishers();
-    loadAssignments();
-    loadReports();
-    if (m_role == "Admin") loadUsers();
+
+    if (isAdmin()) {
+        loadExtinguishers();
+        loadAssignments();
+        loadReports();
+        loadUsers();
+    }
+    else if (isInv()) {
+        loadAssignments();
+        loadReports();
+    }
+    else if (isThirdPAdmin()) {
+        loadAssignments();
+        loadUsers();
+    }
+    else if (isThirdPInv()) {
+        loadAssignments();
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  Summary stats at the top
+//  Stats row — counts shown to all roles (scoped where appropriate)
 // ─────────────────────────────────────────────────────────────────────────────
 void Dashboard::updateStats()
 {
-    auto count = [&](const QString &table) -> int {
+    // Helper lambda for COUNT queries
+    auto count = [&](const QString &sql) -> int {
         QSqlQuery q(m_db);
-        q.exec("SELECT COUNT(*) FROM " + table);
+        q.prepare(sql);
+        if (sql.contains(":userId"))
+            q.bindValue(":userId", m_userId);
+        q.exec();
         return q.next() ? q.value(0).toInt() : 0;
     };
 
-    ui->statExtinguishers->setText(QString::number(count("Extinguishers")));
-    ui->statAssignments->setText(QString::number(count("Assignments")));
-    ui->statReports->setText(QString::number(count("Reports")));
-    ui->statUsers->setText(QString::number(count("Users")));
+    if (isAdmin()) {
+        ui->statExtinguishers->setText(QString::number(
+            count("SELECT COUNT(*) FROM Extinguishers")));
+        ui->statAssignments->setText(QString::number(
+            count("SELECT COUNT(*) FROM Assignments")));
+        ui->statReports->setText(QString::number(
+            count("SELECT COUNT(*) FROM Reports")));
+        ui->statUsers->setText(QString::number(
+            count("SELECT COUNT(*) FROM Users")));
+    }
+    else if (isInv()) {
+        // Hide Extinguishers and Users stat boxes — not relevant
+        ui->frameExt->setVisible(false);
+        ui->frameUsers->setVisible(false);
+        ui->statAssignments->setText(QString::number(
+            count("SELECT COUNT(*) FROM Assignments WHERE inspector_id = :userId")));
+        ui->statReports->setText(QString::number(
+            count("SELECT COUNT(*) FROM Reports WHERE inspector_id = :userId")));
+        // Rename stat labels
+        ui->lblAssign->setText("My Assignments");
+        ui->lblReports->setText("My Reports");
+    }
+    else if (isThirdPAdmin()) {
+        ui->frameExt->setVisible(false);
+        ui->frameReports->setVisible(false);
+        ui->statAssignments->setText(QString::number(
+            count("SELECT COUNT(*) FROM Assignments")));
+        ui->statUsers->setText(QString::number(
+            count("SELECT COUNT(*) FROM Users WHERE role = '3rd_Party_Inspector'")));
+        ui->lblAssign->setText("Assignments");
+        ui->lblUsers->setText("Team Members");
+    }
+    else if (isThirdPInv()) {
+        ui->frameExt->setVisible(false);
+        ui->frameReports->setVisible(false);
+        ui->frameUsers->setVisible(false);
+        ui->statAssignments->setText(QString::number(
+            count("SELECT COUNT(*) FROM Assignments WHERE inspector_id = :userId")));
+        ui->lblAssign->setText("My Assignments");
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Data loaders
+// ─────────────────────────────────────────────────────────────────────────────
+
+void Dashboard::loadExtinguishers()
+{
+    // Admin only — full extinguisher list
+    QSqlQuery q(m_db);
+    q.exec("SELECT extinguisher_id, address, building_number, floor_number, "
+           "room_number, location_description, inspection_interval_days, "
+           "next_due_date FROM Extinguishers");
+    fillTable(ui->tableExtinguishers, q);
+
+    if (ui->tableExtinguishers->rowCount() == 0)
+        showEmptyMessage(ui->tableExtinguishers, "No extinguishers in database yet.");
+}
+
+void Dashboard::loadAssignments()
+{
+    QSqlQuery q(m_db);
+
+    if (isAdmin() || isThirdPAdmin()) {
+        // Full assignment list with readable names
+        q.exec("SELECT a.assignment_id, "
+               "u_admin.username AS assigned_by, "
+               "u_insp.username  AS inspector, "
+               "a.extinguisher_id, a.status "
+               "FROM Assignments a "
+               "LEFT JOIN Users u_admin ON a.admin_id    = u_admin.user_id "
+               "LEFT JOIN Users u_insp  ON a.inspector_id = u_insp.user_id");
+    } else {
+        // Investigator or ThirdPInv — own assignments only
+        q.prepare("SELECT a.assignment_id, "
+                  "u_admin.username AS assigned_by, "
+                  "a.extinguisher_id, a.status "
+                  "FROM Assignments a "
+                  "LEFT JOIN Users u_admin ON a.admin_id = u_admin.user_id "
+                  "WHERE a.inspector_id = :userId");
+        q.bindValue(":userId", m_userId);
+        q.exec();
+    }
+
+    fillTable(ui->tableAssignments, q);
+
+    if (ui->tableAssignments->rowCount() == 0) {
+        QString msg = (isAdmin() || isThirdPAdmin())
+            ? "No assignments have been created yet."
+            : "You have no assignments right now.";
+        showEmptyMessage(ui->tableAssignments, msg);
+    }
+}
+
+void Dashboard::loadReports()
+{
+    QSqlQuery q(m_db);
+
+    if (isAdmin()) {
+        // All reports with inspector name
+        q.exec("SELECT r.report_id, r.extinguisher_id, "
+               "u.username AS inspector, "
+               "r.inspection_date, r.notes "
+               "FROM Reports r "
+               "LEFT JOIN Users u ON r.inspector_id = u.user_id");
+    } else {
+        // Investigator — own reports only
+        q.prepare("SELECT report_id, extinguisher_id, "
+                  "inspection_date, notes "
+                  "FROM Reports "
+                  "WHERE inspector_id = :userId");
+        q.bindValue(":userId", m_userId);
+        q.exec();
+    }
+
+    fillTable(ui->tableReports, q);
+
+    if (ui->tableReports->rowCount() == 0) {
+        QString msg = isAdmin()
+            ? "No reports have been submitted yet."
+            : "You have not submitted any reports yet.";
+        showEmptyMessage(ui->tableReports, msg);
+    }
+}
+
+void Dashboard::loadUsers()
+{
+    QSqlQuery q(m_db);
+
+    if (isAdmin()) {
+        // All users — never show password hashes
+        q.exec("SELECT user_id, username, role FROM Users");
+    } else if (isThirdPAdmin()) {
+        // Only ThirdPartyInvestigators (same company — future: filter by company)
+        q.exec("SELECT user_id, username, role FROM Users "
+               "WHERE role = '3rd_Party_Inspector'");
+    }
+
+    fillTable(ui->tableUsers, q);
+
+    if (ui->tableUsers->rowCount() == 0) {
+        QString msg = isAdmin()
+            ? "No users found."
+            : "No team members found.";
+        showEmptyMessage(ui->tableUsers, msg);
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -97,7 +331,6 @@ void Dashboard::fillTable(QTableWidget *table, QSqlQuery &query)
 {
     table->setRowCount(0);
 
-    // Set column headers from query record
     QSqlRecord rec = query.record();
     int colCount = rec.count();
     table->setColumnCount(colCount);
@@ -107,7 +340,6 @@ void Dashboard::fillTable(QTableWidget *table, QSqlQuery &query)
         headers << rec.fieldName(i);
     table->setHorizontalHeaderLabels(headers);
 
-    // Fill rows
     int row = 0;
     while (query.next()) {
         table->insertRow(row);
@@ -127,35 +359,17 @@ void Dashboard::fillTable(QTableWidget *table, QSqlQuery &query)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-void Dashboard::loadExtinguishers()
+//  Show a placeholder message when a table has no rows
+// ─────────────────────────────────────────────────────────────────────────────
+void Dashboard::showEmptyMessage(QTableWidget *table, const QString &message)
 {
-    QSqlQuery q(m_db);
-    q.exec("SELECT extinguisher_id, address, building_number, floor_number, "
-           "room_number, location_description, inspection_interval_days, "
-           "next_due_date FROM Extinguishers");
-    fillTable(ui->tableExtinguishers, q);
-}
-
-void Dashboard::loadAssignments()
-{
-    QSqlQuery q(m_db);
-    q.exec("SELECT assignment_id, admin_id, inspector_id, "
-           "extinguisher_id, status FROM Assignments");
-    fillTable(ui->tableAssignments, q);
-}
-
-void Dashboard::loadReports()
-{
-    QSqlQuery q(m_db);
-    q.exec("SELECT report_id, extinguisher_id, inspector_id, "
-           "inspection_date, notes FROM Reports");
-    fillTable(ui->tableReports, q);
-}
-
-void Dashboard::loadUsers()
-{
-    QSqlQuery q(m_db);
-    // Never show password hashes
-    q.exec("SELECT user_id, username, role FROM Users");
-    fillTable(ui->tableUsers, q);
+    table->setRowCount(1);
+    table->setColumnCount(1);
+    table->setHorizontalHeaderLabels(QStringList() << "Status");
+    QTableWidgetItem *item = new QTableWidgetItem(message);
+    item->setFlags(item->flags() & ~Qt::ItemIsEditable);
+    item->setTextAlignment(Qt::AlignCenter);
+    table->setItem(0, 0, item);
+    table->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    table->verticalHeader()->setVisible(false);
 }
