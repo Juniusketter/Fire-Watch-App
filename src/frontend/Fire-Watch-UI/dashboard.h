@@ -18,7 +18,6 @@ class Dashboard : public QMainWindow
     Q_OBJECT
 
 public:
-    // Called from MainWindow after successful login
     explicit Dashboard(int userId, const QString &username,
                        const QString &role, QSqlDatabase db,
                        QWidget *parent = nullptr);
@@ -31,19 +30,30 @@ private slots:
 private:
     Ui::Dashboard *ui;
 
-    int     m_userId;
-    QString m_username;
-    QString m_role;
+    int      m_userId;
+    QString  m_username;
+    QString  m_role;
     QSqlDatabase m_db;
 
+    // ── Role helpers ──────────────────────────────────────────────────────
+    bool isAdmin()       const { return m_role == "Admin"; }
+    bool isInv()         const { return m_role == "Inspector"; }
+    bool isThirdPAdmin() const { return m_role == "3rd_Party_Admin"; }
+    bool isThirdPInv()   const { return m_role == "3rd_Party_Inspector"; }
+
+    // ── Tab setup (called once in constructor) ────────────────────────────
+    void setupTabsForRole();
+
+    // ── Data loaders ─────────────────────────────────────────────────────
     void loadExtinguishers();
     void loadAssignments();
     void loadReports();
     void loadUsers();
     void updateStats();
 
-    // Helper: populate a QTableWidget from a query
+    // ── Helpers ───────────────────────────────────────────────────────────
     void fillTable(QTableWidget *table, QSqlQuery &query);
+    void showEmptyMessage(QTableWidget *table, const QString &message);
 };
 
 #endif // DASHBOARD_H
