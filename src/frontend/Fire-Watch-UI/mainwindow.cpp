@@ -12,6 +12,10 @@
 // ─────────────────────────────────────────────────────────────────────────────
 static QString findDatabasePath()
 {
+    QString direct = QDir::homePath() +
+                     "/OneDrive/Desktop/Fire-Watch-App/src/database/FireWatch.db";
+    if (QFileInfo::exists(direct)) return direct;
+
     QDir dir(QApplication::applicationDirPath());
     for (int i = 0; i < 6; ++i) {
         QString candidate = dir.filePath("src/database/FireWatch.db");
@@ -19,9 +23,6 @@ static QString findDatabasePath()
             return candidate;
         dir.cdUp();
     }
-    QString cwd = QDir::currentPath() + "/src/database/FireWatch.db";
-    if (QFileInfo::exists(cwd))
-        return cwd;
     return QString();
 }
 

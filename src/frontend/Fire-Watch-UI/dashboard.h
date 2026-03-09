@@ -27,6 +27,11 @@ private slots:
     void onLogoutClicked();
     void onRefreshClicked();
 
+    // ── Admin CRUD slots ──────────────────────────────────────────────────
+    void onAddExtinguisher();
+    void onEditExtinguisher();
+    void onDeleteExtinguisher();
+
 private:
     Ui::Dashboard *ui;
 
@@ -41,8 +46,11 @@ private:
     bool isThirdPAdmin() const { return m_role == "3rd_Party_Admin"; }
     bool isThirdPInv()   const { return m_role == "3rd_Party_Inspector"; }
 
-    // ── Tab setup (called once in constructor) ────────────────────────────
+    // ── Tab setup ─────────────────────────────────────────────────────────
     void setupTabsForRole();
+
+    // ── Admin toolbar ─────────────────────────────────────────────────────
+    void setupExtinguisherToolbar();
 
     // ── Data loaders ─────────────────────────────────────────────────────
     void loadExtinguishers();
@@ -54,6 +62,9 @@ private:
     // ── Helpers ───────────────────────────────────────────────────────────
     void fillTable(QTableWidget *table, QSqlQuery &query);
     void showEmptyMessage(QTableWidget *table, const QString &message);
+
+    // ── Returns extinguisher_id of selected row, -1 if none ──────────────
+    int selectedExtinguisherId() const;
 };
 
 #endif // DASHBOARD_H
