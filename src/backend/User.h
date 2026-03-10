@@ -24,26 +24,22 @@ class User {
         // Virtual destructor for proper polymorphic cleanup
         virtual ~User() {}
 
+        //getters and setters
         void setUsername(string u) {
             username = u;
         }
-
         string getUsername() {
             return username;
         }
-
         void setPassword(string p) {
             password = p;
         }
-
         string getPassword() {
             return password;
         }
-
         void setCompanyName(string c) {
             companyName = c;
         }
-
         string getCompanyName() {
             return companyName;
         }
@@ -53,12 +49,13 @@ class User {
             if (u == username && p == password) {
                 cout << "Login successful! Welcome, " << username << "." << endl;
                 return true;
-            } else {
+            } 
+            else {
                 cout << "Invalid username or password." << endl;
                 return false;
             }
         }
-
+        //logout function
         void logout() {
             cout << "Logout successful! Goodbye, " << username << "." << endl;
         }
