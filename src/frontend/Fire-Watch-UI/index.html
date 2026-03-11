@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
   <title>FireWatch — NFPA Compliance Tracking</title>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
@@ -22,15 +22,23 @@
       --muted:     #6b7280;
       --muted2:    #9ca3af;
       --white:     #ffffff;
+
+      /* Mobile spacing tokens */
+      --pad-mobile: 1rem;
+      --pad-desk:   1.5rem;
+      --topbar-h:   52px;
+      --stats-h:    auto;
+      --tab-h:      44px;
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
-    body {
+    html, body {
       font-family: 'IBM Plex Sans', sans-serif;
       background: var(--bg);
       color: var(--text);
       min-height: 100vh;
+      overflow-x: hidden;
     }
 
     /* ══════════════════════════════════════════════════════ LOGIN */
@@ -52,7 +60,6 @@
       overflow: hidden;
     }
 
-    /* Diagonal accent line */
     .brand-side::before {
       content: '';
       position: absolute;
@@ -70,21 +77,15 @@
       border-radius: 50%;
     }
 
-    .brand-icon {
-      font-size: 2.8rem;
-      margin-bottom: 0.5rem;
-      filter: drop-shadow(0 0 20px rgba(232, 93, 4, 0.5));
-    }
-
+    .brand-icon { font-size: 2.8rem; margin-bottom: 0.5rem; filter: drop-shadow(0 0 20px rgba(232,93,4,0.5)); }
     .brand-name {
       font-family: 'Bebas Neue', sans-serif;
       font-size: 5rem;
       letter-spacing: 0.08em;
       color: var(--orange);
       line-height: 1;
-      text-shadow: 0 0 40px rgba(232, 93, 4, 0.3);
+      text-shadow: 0 0 40px rgba(232,93,4,0.3);
     }
-
     .brand-sub {
       font-family: 'IBM Plex Mono', monospace;
       font-size: 0.7rem;
@@ -93,21 +94,8 @@
       margin-top: 0.6rem;
       text-transform: uppercase;
     }
-
-    .brand-divider {
-      width: 48px;
-      height: 2px;
-      background: var(--orange);
-      margin: 2rem 0;
-    }
-
-    .brand-features {
-      list-style: none;
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
-    }
-
+    .brand-divider { width: 48px; height: 2px; background: var(--orange); margin: 2rem 0; }
+    .brand-features { list-style: none; display: flex; flex-direction: column; gap: 0.75rem; }
     .brand-features li {
       font-family: 'IBM Plex Mono', monospace;
       font-size: 0.72rem;
@@ -117,14 +105,8 @@
       align-items: center;
       gap: 0.6rem;
     }
+    .brand-features li::before { content: '▸'; color: var(--orange); font-size: 0.65rem; }
 
-    .brand-features li::before {
-      content: '▸';
-      color: var(--orange);
-      font-size: 0.65rem;
-    }
-
-    /* Login side */
     .login-side {
       background: var(--bg);
       display: flex;
@@ -133,10 +115,7 @@
       padding: 2rem;
     }
 
-    .login-card {
-      width: min(380px, 100%);
-    }
-
+    .login-card { width: min(380px, 100%); }
     .login-card h2 {
       font-family: 'IBM Plex Mono', monospace;
       font-size: 0.8rem;
@@ -148,10 +127,7 @@
       border-bottom: 1px solid var(--border);
     }
 
-    .field {
-      margin-bottom: 1.25rem;
-    }
-
+    .field { margin-bottom: 1.25rem; }
     .field label {
       display: block;
       font-size: 0.75rem;
@@ -161,7 +137,6 @@
       color: var(--muted2);
       margin-bottom: 0.5rem;
     }
-
     .field input {
       width: 100%;
       padding: 0.75rem 1rem;
@@ -172,12 +147,13 @@
       font-family: 'IBM Plex Mono', monospace;
       font-size: 0.9rem;
       transition: border-color 0.2s;
+      /* Prevent zoom on iOS */
+      font-size: 16px;
     }
-
     .field input:focus {
       outline: none;
       border-color: var(--orange);
-      box-shadow: 0 0 0 3px rgba(232, 93, 4, 0.1);
+      box-shadow: 0 0 0 3px rgba(232,93,4,0.1);
     }
 
     .btn-login {
@@ -195,10 +171,11 @@
       cursor: pointer;
       margin-top: 0.5rem;
       transition: background 0.2s, transform 0.1s;
+      /* Touch-friendly size */
+      min-height: 48px;
     }
-
     .btn-login:hover { background: var(--orange2); }
-    .btn-login:active { transform: scale(0.99); }
+    .btn-login:active { transform: scale(0.99); background: var(--orange2); }
 
     #loginMsg {
       margin-top: 0.85rem;
@@ -206,12 +183,6 @@
       font-family: 'IBM Plex Mono', monospace;
       min-height: 1.2rem;
       color: var(--muted2);
-    }
-
-    @media (max-width: 720px) {
-      #loginPage { grid-template-columns: 1fr; }
-      .brand-side { padding: 2rem; min-height: 40vh; }
-      .brand-name { font-size: 3.5rem; }
     }
 
     /* ══════════════════════════════════════════════════════ DASHBOARD */
@@ -223,14 +194,18 @@
       flex-direction: column;
     }
 
-    /* Topbar */
+    /* ── Topbar ── */
     .topbar {
       background: var(--bg2);
       border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
-      gap: 1rem;
-      padding: 0.65rem 1.5rem;
+      gap: 0.5rem;
+      padding: 0 var(--pad-desk);
+      height: var(--topbar-h);
+      position: sticky;
+      top: 0;
+      z-index: 100;
     }
 
     .topbar-logo {
@@ -239,18 +214,22 @@
       letter-spacing: 0.1em;
       color: var(--orange);
       margin-right: auto;
+      white-space: nowrap;
     }
 
     .topbar-user {
       font-family: 'IBM Plex Mono', monospace;
       font-size: 0.78rem;
       color: var(--muted2);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 160px;
     }
+    .topbar-user strong { color: var(--text); font-weight: 600; }
 
-    .topbar-user strong {
-      color: var(--text);
-      font-weight: 600;
-    }
+    /* Hide user text on small screens, keep role pill */
+    .topbar-user-text { display: inline; }
 
     .role-pill {
       font-family: 'IBM Plex Mono', monospace;
@@ -261,6 +240,7 @@
       padding: 3px 10px;
       border-radius: 3px;
       border: 1px solid currentColor;
+      white-space: nowrap;
     }
 
     .btn-bar {
@@ -274,29 +254,34 @@
       text-transform: uppercase;
       cursor: pointer;
       transition: background 0.15s;
+      white-space: nowrap;
+      min-height: 36px;
     }
-
     .btn-refresh { background: transparent; color: var(--muted2); }
     .btn-refresh:hover { background: var(--bg3); color: var(--text); }
     .btn-logout { background: transparent; color: var(--red); border-color: var(--red); }
-    .btn-logout:hover { background: rgba(193, 18, 31, 0.1); }
+    .btn-logout:hover { background: rgba(193,18,31,0.1); }
 
-    /* Stats row */
+    /* ── Stats row ── */
     .stats-row {
       display: flex;
       gap: 1px;
       background: var(--border);
       border-bottom: 1px solid var(--border);
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      scrollbar-width: none;
     }
+    .stats-row::-webkit-scrollbar { display: none; }
 
     .stat-box {
       flex: 1;
+      min-width: 90px;
       background: var(--bg2);
-      padding: 1rem 1.5rem;
+      padding: 0.85rem 1rem;
       border-top: 3px solid transparent;
       transition: border-color 0.2s;
     }
-
     .stat-box.color-orange { border-top-color: var(--orange); }
     .stat-box.color-teal   { border-top-color: var(--teal); }
     .stat-box.color-blue   { border-top-color: var(--blue); }
@@ -304,32 +289,41 @@
 
     .stat-label {
       font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.65rem;
+      font-size: 0.6rem;
       letter-spacing: 0.18em;
       text-transform: uppercase;
       color: var(--muted);
-      margin-bottom: 0.4rem;
+      margin-bottom: 0.3rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
-
     .stat-val {
       font-family: 'Bebas Neue', sans-serif;
-      font-size: 2.4rem;
+      font-size: 2rem;
       letter-spacing: 0.04em;
       color: var(--text);
       line-height: 1;
     }
 
-    /* Tab bar */
+    /* ── Tab bar ── */
     .tab-bar {
       display: flex;
       gap: 0;
       background: var(--bg2);
       border-bottom: 1px solid var(--border);
-      padding: 0 1.5rem;
+      padding: 0 var(--pad-desk);
+      overflow-x: auto;
+      scrollbar-width: none;
+      position: sticky;
+      top: var(--topbar-h);
+      z-index: 99;
     }
+    .tab-bar::-webkit-scrollbar { display: none; }
 
     .tab-btn {
-      padding: 0.75rem 1.25rem;
+      padding: 0 1.25rem;
+      height: var(--tab-h);
       background: transparent;
       border: none;
       border-bottom: 2px solid transparent;
@@ -341,21 +335,21 @@
       text-transform: uppercase;
       cursor: pointer;
       transition: color 0.15s, border-color 0.15s;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
-
     .tab-btn:hover { color: var(--text); }
     .tab-btn.active { color: var(--orange); border-bottom-color: var(--orange); }
 
-    /* Tab panels */
+    /* ── Tab panels ── */
     .tab-panels {
       flex: 1;
-      padding: 1.25rem 1.5rem;
+      padding: var(--pad-desk);
     }
-
     .panel { display: none; }
     .panel.active { display: block; }
 
-    /* Toolbar */
+    /* ── Toolbar ── */
     .table-toolbar {
       display: flex;
       gap: 8px;
@@ -364,7 +358,7 @@
     }
 
     .btn-crud {
-      padding: 6px 14px;
+      padding: 8px 14px;
       border: 1px solid transparent;
       border-radius: 3px;
       font-family: 'IBM Plex Mono', monospace;
@@ -374,24 +368,28 @@
       text-transform: uppercase;
       cursor: pointer;
       transition: opacity 0.15s;
+      min-height: 40px;
     }
-
     .btn-crud:hover { opacity: 0.85; }
     .btn-add    { background: var(--green);  color: white; border-color: var(--green); }
     .btn-edit   { background: var(--blue);   color: white; border-color: var(--blue); }
     .btn-delete { background: var(--red);    color: white; border-color: var(--red); }
 
-    /* Data table */
-    .data-table {
-      width: 100%;
-      border-collapse: collapse;
-      background: var(--bg2);
+    /* ── Desktop data table ── */
+    .table-scroll-wrap {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
       border: 1px solid var(--border);
       border-radius: 4px;
-      overflow: hidden;
-      font-size: 0.82rem;
     }
 
+    .data-table {
+      width: 100%;
+      min-width: 480px;
+      border-collapse: collapse;
+      background: var(--bg2);
+      font-size: 0.82rem;
+    }
     .data-table thead th {
       background: var(--bg3);
       color: var(--muted2);
@@ -403,8 +401,8 @@
       padding: 0.65rem 1rem;
       text-align: left;
       border-bottom: 1px solid var(--border);
+      white-space: nowrap;
     }
-
     .data-table tbody td {
       padding: 0.65rem 1rem;
       border-bottom: 1px solid var(--border);
@@ -412,10 +410,53 @@
       font-family: 'IBM Plex Mono', monospace;
       font-size: 0.78rem;
     }
-
     .data-table tbody tr:last-child td { border-bottom: none; }
     .data-table tbody tr:hover td { background: var(--bg3); cursor: pointer; }
-    .data-table tbody tr.selected td { background: rgba(232, 93, 4, 0.08); }
+    .data-table tbody tr.selected td { background: rgba(232,93,4,0.08); }
+
+    /* ── Mobile card view (replaces table on small screens) ── */
+    .card-list { display: none; }
+
+    .data-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.9rem 1rem;
+      margin-bottom: 0.6rem;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      position: relative;
+    }
+    .data-card:active { background: var(--bg3); }
+    .data-card.selected {
+      border-color: var(--orange);
+      background: rgba(232,93,4,0.06);
+    }
+    .data-card-primary {
+      font-family: 'IBM Plex Sans', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 0.4rem;
+      padding-right: 2rem;
+    }
+    .data-card-secondary {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--muted2);
+      line-height: 1.6;
+    }
+    .data-card-badge {
+      position: absolute;
+      top: 0.9rem;
+      right: 0.9rem;
+    }
+    .data-card-id {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--muted);
+      margin-bottom: 0.3rem;
+    }
 
     /* Status badges */
     .badge {
@@ -427,10 +468,9 @@
       letter-spacing: 0.1em;
       text-transform: uppercase;
     }
-
-    .badge-pending  { background: rgba(232, 93, 4, 0.15); color: var(--orange); border: 1px solid rgba(232,93,4,0.3); }
-    .badge-complete { background: rgba(13, 148, 136, 0.15); color: var(--teal);  border: 1px solid rgba(13,148,136,0.3); }
-    .badge-default  { background: rgba(107, 114, 128, 0.15); color: var(--muted2); border: 1px solid var(--border); }
+    .badge-pending  { background: rgba(232,93,4,0.15);    color: var(--orange); border: 1px solid rgba(232,93,4,0.3); }
+    .badge-complete { background: rgba(13,148,136,0.15);  color: var(--teal);   border: 1px solid rgba(13,148,136,0.3); }
+    .badge-default  { background: rgba(107,114,128,0.15); color: var(--muted2); border: 1px solid var(--border); }
 
     .empty-msg {
       text-align: center;
@@ -445,22 +485,43 @@
     .modal-overlay {
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.7);
+      background: rgba(0,0,0,0.75);
       display: flex;
-      align-items: center;
+      align-items: flex-end; /* sheet from bottom on mobile */
       justify-content: center;
       z-index: 200;
       backdrop-filter: blur(2px);
+      padding: 0;
     }
 
     .modal-box {
       background: var(--bg2);
       border: 1px solid var(--border);
       border-top: 2px solid var(--orange);
-      border-radius: 4px;
-      padding: 1.75rem;
-      width: min(460px, 94vw);
-      box-shadow: 0 24px 60px rgba(0,0,0,0.6);
+      border-radius: 12px 12px 0 0;
+      padding: 1.75rem var(--pad-mobile);
+      width: 100%;
+      max-height: 92vh;
+      overflow-y: auto;
+      box-shadow: 0 -12px 40px rgba(0,0,0,0.6);
+      /* Slide up animation */
+      animation: slideUp 0.25s ease-out;
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(100%); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+
+    /* Drag handle */
+    .modal-box::before {
+      content: '';
+      display: block;
+      width: 40px;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      margin: 0 auto 1.25rem;
     }
 
     .modal-box h3 {
@@ -471,10 +532,7 @@
       margin-bottom: 1.25rem;
     }
 
-    .form-row {
-      margin-bottom: 1rem;
-    }
-
+    .form-row { margin-bottom: 1rem; }
     .form-row label {
       display: block;
       font-family: 'IBM Plex Mono', monospace;
@@ -485,63 +543,60 @@
       color: var(--muted2);
       margin-bottom: 0.4rem;
     }
-
     .form-row input {
       width: 100%;
-      padding: 0.6rem 0.85rem;
+      padding: 0.7rem 0.85rem;
       background: var(--bg);
       border: 1px solid var(--border);
       border-radius: 3px;
       color: var(--text);
       font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.85rem;
+      font-size: 16px; /* Prevent iOS zoom */
       transition: border-color 0.15s;
     }
-
-    .form-row input:focus {
-      outline: none;
-      border-color: var(--orange);
-    }
+    .form-row input:focus { outline: none; border-color: var(--orange); }
 
     .modal-actions {
       display: flex;
       gap: 8px;
-      justify-content: flex-end;
+      justify-content: stretch;
       margin-top: 1.25rem;
       padding-top: 1rem;
       border-top: 1px solid var(--border);
     }
 
     .btn-save {
-      padding: 7px 20px;
+      flex: 1;
+      padding: 12px 20px;
       background: var(--orange);
       border: none;
       border-radius: 3px;
       color: white;
       font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.75rem;
+      font-size: 0.85rem;
       font-weight: 700;
       letter-spacing: 0.1em;
       text-transform: uppercase;
       cursor: pointer;
+      min-height: 48px;
     }
-
     .btn-save:hover { background: var(--orange2); }
 
     .btn-cancel {
-      padding: 7px 20px;
+      flex: 1;
+      padding: 12px 20px;
       background: transparent;
       border: 1px solid var(--border);
       border-radius: 3px;
       color: var(--muted2);
       font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.75rem;
+      font-size: 0.85rem;
       font-weight: 600;
       letter-spacing: 0.1em;
       text-transform: uppercase;
       cursor: pointer;
+      min-height: 48px;
     }
-
     .btn-cancel:hover { border-color: var(--muted2); color: var(--text); }
 
     .modal-error {
@@ -550,6 +605,93 @@
       font-size: 0.75rem;
       margin-top: 0.5rem;
       min-height: 1rem;
+    }
+
+    /* ══════════════════════════════════════════════════════ RESPONSIVE BREAKPOINTS */
+
+    /* ── Tablet (768px+): Modal centered, not bottom sheet ── */
+    @media (min-width: 768px) {
+      .modal-overlay {
+        align-items: center;
+        padding: 1rem;
+      }
+      .modal-box {
+        border-radius: 4px;
+        width: min(480px, 94vw);
+        max-height: 85vh;
+        animation: fadeIn 0.2s ease-out;
+      }
+      .modal-box::before { display: none; }
+      @keyframes fadeIn {
+        from { opacity: 0; transform: scale(0.97); }
+        to   { opacity: 1; transform: scale(1); }
+      }
+      .modal-actions {
+        justify-content: flex-end;
+      }
+      .btn-save, .btn-cancel {
+        flex: none;
+        padding: 7px 20px;
+        min-height: auto;
+        font-size: 0.75rem;
+      }
+    }
+
+    /* ── Mobile only (<768px) ── */
+    @media (max-width: 767px) {
+      /* Login: stack vertically */
+      #loginPage { grid-template-columns: 1fr; }
+      .brand-side {
+        padding: 1.75rem var(--pad-mobile);
+        min-height: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+      }
+      .brand-name { font-size: 3.5rem; }
+      .brand-features { display: none; }
+      .brand-divider { margin: 1rem 0; }
+
+      /* Topbar */
+      .topbar { padding: 0 var(--pad-mobile); gap: 0.4rem; }
+      .topbar-logo { font-size: 1.3rem; }
+      .topbar-user-text { display: none; } /* Hide "Username · ROLE" text */
+      .role-pill { font-size: 0.62rem; padding: 2px 7px; }
+      .btn-bar { padding: 5px 10px; font-size: 0.68rem; letter-spacing: 0; }
+
+      /* Stats: compact 2x2 grid on very small screens */
+      .stats-row { flex-wrap: wrap; }
+      .stat-box { min-width: calc(50% - 1px); padding: 0.65rem 0.85rem; }
+      .stat-val { font-size: 1.6rem; }
+      .stat-label { font-size: 0.55rem; }
+
+      /* Tabs */
+      .tab-bar { padding: 0 0.5rem; }
+      .tab-btn { padding: 0 0.85rem; font-size: 0.68rem; }
+
+      /* Tab panels */
+      .tab-panels { padding: 0.85rem var(--pad-mobile); }
+
+      /* Toolbar: full width buttons */
+      .table-toolbar { gap: 6px; }
+      .btn-crud { flex: 1; text-align: center; padding: 10px 8px; font-size: 0.68rem; }
+
+      /* Switch to card view on mobile */
+      .table-scroll-wrap { display: none; }
+      .card-list { display: block; }
+    }
+
+    /* ── Small phone (<400px) ── */
+    @media (max-width: 399px) {
+      .brand-name { font-size: 2.8rem; }
+      .stat-box { min-width: 100%; }
+      .stats-row { flex-direction: column; gap: 1px; }
+    }
+
+    /* ── Desktop (1024px+): wider stats ── */
+    @media (min-width: 1024px) {
+      .stat-val { font-size: 2.4rem; }
+      .stat-box { padding: 1rem 1.5rem; }
+      .stat-label { font-size: 0.65rem; }
     }
   </style>
 </head>
@@ -593,30 +735,30 @@
   <div class="topbar">
     <span class="topbar-logo">🔥 FireWatch</span>
     <span class="topbar-user">
-      <strong id="welcomeLabel"></strong>
+      <span class="topbar-user-text"><strong id="welcomeLabel"></strong></span>
     </span>
     <span class="role-pill" id="roleLabel"></span>
-    <button class="btn-bar btn-refresh" id="btnRefresh">↻ Refresh</button>
-    <button class="btn-bar btn-logout" id="btnLogout">Logout</button>
+    <button class="btn-bar btn-refresh" id="btnRefresh" title="Refresh">↻</button>
+    <button class="btn-bar btn-logout"  id="btnLogout">Logout</button>
   </div>
 
   <!-- Stats row -->
   <div class="stats-row" id="statsRow">
     <div class="stat-box color-orange" id="statBoxExt">
       <div class="stat-label" id="statLabelExt">Extinguishers</div>
-      <div class="stat-val" id="statExt">—</div>
+      <div class="stat-val"   id="statExt">—</div>
     </div>
     <div class="stat-box color-teal" id="statBoxAssign">
       <div class="stat-label" id="statLabelAssign">Assignments</div>
-      <div class="stat-val" id="statAssign">—</div>
+      <div class="stat-val"   id="statAssign">—</div>
     </div>
     <div class="stat-box color-blue" id="statBoxReports">
       <div class="stat-label" id="statLabelReports">Reports</div>
-      <div class="stat-val" id="statReports">—</div>
+      <div class="stat-val"   id="statReports">—</div>
     </div>
     <div class="stat-box color-purple" id="statBoxUsers">
       <div class="stat-label" id="statLabelUsers">Users</div>
-      <div class="stat-val" id="statUsers">—</div>
+      <div class="stat-val"   id="statUsers">—</div>
     </div>
   </div>
 
@@ -628,23 +770,29 @@
 
     <div class="panel" id="panelExtinguishers">
       <div class="table-toolbar hidden" id="extToolbar">
-        <button class="btn-crud btn-add"    id="btnAdd">＋ Add Extinguisher</button>
-        <button class="btn-crud btn-edit"   id="btnEdit">✎ Edit Selected</button>
-        <button class="btn-crud btn-delete" id="btnDelete">✕ Delete Selected</button>
+        <button class="btn-crud btn-add"    id="btnAdd">＋ Add</button>
+        <button class="btn-crud btn-edit"   id="btnEdit">✎ Edit</button>
+        <button class="btn-crud btn-delete" id="btnDelete">✕ Delete</button>
       </div>
-      <div id="tableExtWrap"></div>
+      <!-- Desktop table -->
+      <div class="table-scroll-wrap" id="tableExtWrap"></div>
+      <!-- Mobile cards -->
+      <div class="card-list" id="cardExtWrap"></div>
     </div>
 
     <div class="panel" id="panelAssignments">
-      <div id="tableAssignWrap"></div>
+      <div class="table-scroll-wrap" id="tableAssignWrap"></div>
+      <div class="card-list" id="cardAssignWrap"></div>
     </div>
 
     <div class="panel" id="panelReports">
-      <div id="tableReportsWrap"></div>
+      <div class="table-scroll-wrap" id="tableReportsWrap"></div>
+      <div class="card-list" id="cardReportsWrap"></div>
     </div>
 
     <div class="panel" id="panelUsers">
-      <div id="tableUsersWrap"></div>
+      <div class="table-scroll-wrap" id="tableUsersWrap"></div>
+      <div class="card-list" id="cardUsersWrap"></div>
     </div>
 
   </div>
@@ -656,23 +804,23 @@
     <h3 id="modalTitle">Add Extinguisher</h3>
     <div class="form-row">
       <label>Address *</label>
-      <input type="text" id="fAddress" placeholder="e.g. 123 University Avenue" />
+      <input type="text"   id="fAddress"  placeholder="e.g. 123 University Avenue" />
     </div>
     <div class="form-row">
       <label>Building</label>
-      <input type="text" id="fBuilding" placeholder="e.g. Bldg A" />
+      <input type="text"   id="fBuilding" placeholder="e.g. Bldg A" />
     </div>
     <div class="form-row">
       <label>Floor</label>
-      <input type="number" id="fFloor" value="1" min="0" />
+      <input type="number" id="fFloor"    value="1" min="0" />
     </div>
     <div class="form-row">
       <label>Room</label>
-      <input type="text" id="fRoom" placeholder="e.g. 101" />
+      <input type="text"   id="fRoom"     placeholder="e.g. 101" />
     </div>
     <div class="form-row">
       <label>Location Description</label>
-      <input type="text" id="fLocDesc" placeholder="e.g. Near the elevator" />
+      <input type="text"   id="fLocDesc"  placeholder="e.g. Near the elevator" />
     </div>
     <div class="form-row">
       <label>Inspection Interval (days)</label>
@@ -680,7 +828,7 @@
     </div>
     <div class="form-row">
       <label>Next Due Date</label>
-      <input type="date" id="fDueDate" />
+      <input type="date"   id="fDueDate" />
     </div>
     <div class="modal-error" id="modalError"></div>
     <div class="modal-actions">
@@ -692,7 +840,7 @@
 
 <script>
 // ── State ──────────────────────────────────────────────────────────────────────
-let currentUser  = null;
+let currentUser   = null;
 let selectedExtId = null;
 let editingExtId  = null;
 
@@ -706,6 +854,9 @@ const isThirdInv   = () => currentUser?.role === "3rd_Party_Inspector";
 document.getElementById("loginBtn").addEventListener("click", doLogin);
 document.getElementById("password").addEventListener("keydown", e => {
   if (e.key === "Enter") doLogin();
+});
+document.getElementById("username").addEventListener("keydown", e => {
+  if (e.key === "Enter") document.getElementById("password").focus();
 });
 
 async function doLogin() {
@@ -741,11 +892,9 @@ function showDashboard() {
   document.getElementById("loginPage").classList.add("hidden");
   document.getElementById("appPage").classList.remove("hidden");
 
-  // Welcome label
-  const welcome = document.getElementById("welcomeLabel");
-  welcome.textContent = currentUser.username + " · " + currentUser.role.toUpperCase();
+  document.getElementById("welcomeLabel").textContent =
+    currentUser.username + " · " + currentUser.role.toUpperCase();
 
-  // Role pill color
   const rl = document.getElementById("roleLabel");
   rl.textContent = currentUser.role.replace(/_/g, " ");
   const roleColors = {
@@ -771,7 +920,6 @@ function buildTabs() {
   ["panelExtinguishers","panelAssignments","panelReports","panelUsers"]
     .forEach(id => document.getElementById(id).classList.remove("active"));
 
-  // Reset stat boxes
   ["statBoxExt","statBoxAssign","statBoxReports","statBoxUsers"]
     .forEach(id => document.getElementById(id).style.display = "");
 
@@ -806,9 +954,7 @@ function buildTabs() {
     document.getElementById("statLabelUsers").textContent   = "Team Members";
   }
   else if (isThirdInv()) {
-    tabs = [
-      { id: "panelAssignments", label: "My Assignments" },
-    ];
+    tabs = [{ id: "panelAssignments", label: "My Assignments" }];
     ["statBoxExt","statBoxReports","statBoxUsers"]
       .forEach(id => document.getElementById(id).style.display = "none");
     document.getElementById("statLabelAssign").textContent = "My Assignments";
@@ -875,6 +1021,7 @@ async function loadExtinguishers() {
   const cols = ["extinguisher_id","address","building_number","floor_number",
                 "room_number","location_description","inspection_interval_days","next_due_date"];
   renderTable("tableExtWrap", cols, rows, row => { selectedExtId = row.extinguisher_id; });
+  renderCards("cardExtWrap", rows, "extinguisher", row => { selectedExtId = row.extinguisher_id; });
 }
 
 async function loadAssignments() {
@@ -885,6 +1032,7 @@ async function loadAssignments() {
     ? ["assignment_id","assigned_by","inspector","extinguisher_id","status"]
     : ["assignment_id","assigned_by","extinguisher_id","status"];
   renderTable("tableAssignWrap", cols, rows);
+  renderCards("cardAssignWrap", rows, "assignment");
 }
 
 async function loadReports() {
@@ -895,31 +1043,32 @@ async function loadReports() {
     ? ["report_id","extinguisher_id","inspector","inspection_date","notes"]
     : ["report_id","extinguisher_id","inspection_date","notes"];
   renderTable("tableReportsWrap", cols, rows);
+  renderCards("cardReportsWrap", rows, "report");
 }
 
 async function loadUsers() {
   let rows = await fetch("/api/users").then(r=>r.json());
   if (isThirdAdmin()) rows = rows.filter(u => u.role === "3rd_Party_Inspector");
   renderTable("tableUsersWrap", ["user_id","username","role"], rows);
+  renderCards("cardUsersWrap", rows, "user");
 }
 
-// ── Table renderer ────────────────────────────────────────────────────────────
+// ── Desktop Table renderer ─────────────────────────────────────────────────────
+const headerMap = {
+  extinguisher_id: "ID", assignment_id: "ID", report_id: "ID", user_id: "ID",
+  address: "Address", building_number: "Building", floor_number: "Floor",
+  room_number: "Room", location_description: "Location",
+  inspection_interval_days: "Interval", next_due_date: "Due Date",
+  assigned_by: "Assigned By", inspector: "Inspector",
+  status: "Status", inspection_date: "Date", notes: "Notes",
+  username: "Username", role: "Role"
+};
+
 function renderTable(wrapperId, cols, rows, onRowClick) {
   const wrap = document.getElementById(wrapperId);
   if (!rows.length) {
-    wrap.innerHTML = `<p class="empty-msg">[ NO DATA TO DISPLAY ]</p>`;
-    return;
+    wrap.innerHTML = `<p class="empty-msg">[ NO DATA TO DISPLAY ]</p>`; return;
   }
-
-  // Friendly column headers
-  const headerMap = {
-    extinguisher_id: "ID", assignment_id: "ID", report_id: "ID", user_id: "ID",
-    address: "Address", building_number: "Building", floor_number: "Floor",
-    room_number: "Room", location_description: "Location", inspection_interval_days: "Interval",
-    next_due_date: "Due Date", assigned_by: "Assigned By", inspector: "Inspector",
-    status: "Status", inspection_date: "Date", notes: "Notes",
-    username: "Username", role: "Role"
-  };
 
   let html = `<table class="data-table"><thead><tr>`;
   cols.forEach(c => html += `<th>${headerMap[c] || c}</th>`);
@@ -930,14 +1079,7 @@ function renderTable(wrapperId, cols, rows, onRowClick) {
     html += `<tr data-id="${rowId}">`;
     cols.forEach(c => {
       let val = row[c] ?? "—";
-      // Style status badges
-      if (c === "status") {
-        const lower = String(val).toLowerCase();
-        if (lower.includes("pending"))  val = `<span class="badge badge-pending">Pending Inspection</span>`;
-        else if (lower.includes("complete") || lower.includes("done"))
-          val = `<span class="badge badge-complete">Inspection Complete</span>`;
-        else val = `<span class="badge badge-default">${val}</span>`;
-      }
+      if (c === "status") val = statusBadge(val);
       html += `<td>${val}</td>`;
     });
     html += `</tr>`;
@@ -958,8 +1100,82 @@ function renderTable(wrapperId, cols, rows, onRowClick) {
   });
 }
 
+// ── Mobile Card renderer ───────────────────────────────────────────────────────
+function renderCards(wrapperId, rows, type, onCardClick) {
+  const wrap = document.getElementById(wrapperId);
+  if (!rows || !rows.length) {
+    wrap.innerHTML = `<p class="empty-msg">[ NO DATA TO DISPLAY ]</p>`; return;
+  }
+
+  wrap.innerHTML = "";
+
+  rows.forEach(row => {
+    const card = document.createElement("div");
+    card.className = "data-card";
+
+    let primary = "", secondary = "", badge = "", idStr = "";
+
+    if (type === "extinguisher") {
+      idStr   = `EXT-${row.extinguisher_id}`;
+      primary = row.address || "—";
+      secondary = [
+        row.building_number && `Bldg: ${row.building_number}`,
+        row.floor_number    && `Floor: ${row.floor_number}`,
+        row.room_number     && `Room: ${row.room_number}`,
+        row.next_due_date   && `Due: ${row.next_due_date}`,
+      ].filter(Boolean).join("  ·  ");
+    } else if (type === "assignment") {
+      idStr   = `ASSIGN-${row.assignment_id}`;
+      primary = `Ext #${row.extinguisher_id}`;
+      secondary = [
+        row.assigned_by && `By: ${row.assigned_by}`,
+        row.inspector   && `Inspector: ${row.inspector}`,
+      ].filter(Boolean).join("  ·  ");
+      badge = row.status ? statusBadge(row.status) : "";
+    } else if (type === "report") {
+      idStr   = `RPT-${row.report_id}`;
+      primary = `Ext #${row.extinguisher_id}`;
+      secondary = [
+        row.inspector       && `Inspector: ${row.inspector}`,
+        row.inspection_date && `Date: ${row.inspection_date}`,
+        row.notes           && `Notes: ${row.notes}`,
+      ].filter(Boolean).join("  ·  ");
+    } else if (type === "user") {
+      idStr   = `USR-${row.user_id}`;
+      primary = row.username || "—";
+      secondary = `Role: ${(row.role || "—").replace(/_/g, " ")}`;
+    }
+
+    card.innerHTML = `
+      <div class="data-card-id">${idStr}</div>
+      <div class="data-card-primary">${primary}</div>
+      ${secondary ? `<div class="data-card-secondary">${secondary}</div>` : ""}
+      ${badge ? `<div class="data-card-badge">${badge}</div>` : ""}
+    `;
+
+    card.addEventListener("click", () => {
+      wrap.querySelectorAll(".data-card").forEach(c => c.classList.remove("selected"));
+      card.classList.add("selected");
+      if (onCardClick) onCardClick(row);
+    });
+
+    wrap.appendChild(card);
+  });
+}
+
+function statusBadge(val) {
+  const lower = String(val).toLowerCase();
+  if (lower.includes("pending"))
+    return `<span class="badge badge-pending">Pending</span>`;
+  if (lower.includes("complete") || lower.includes("done"))
+    return `<span class="badge badge-complete">Complete</span>`;
+  return `<span class="badge badge-default">${val}</span>`;
+}
+
 // ── Refresh / Logout ──────────────────────────────────────────────────────────
-document.getElementById("btnRefresh").addEventListener("click", () => { loadStats(); loadAllData(); });
+document.getElementById("btnRefresh").addEventListener("click", () => {
+  loadStats(); loadAllData();
+});
 
 document.getElementById("btnLogout").addEventListener("click", () => {
   currentUser = null; selectedExtId = null;
@@ -1021,6 +1237,13 @@ document.getElementById("btnDelete").addEventListener("click", async () => {
 // ── Modal: Cancel / Save ──────────────────────────────────────────────────────
 document.getElementById("modalCancel").addEventListener("click", () => {
   document.getElementById("extModal").classList.add("hidden");
+});
+
+// Close modal when tapping overlay background
+document.getElementById("extModal").addEventListener("click", e => {
+  if (e.target === document.getElementById("extModal")) {
+    document.getElementById("extModal").classList.add("hidden");
+  }
 });
 
 document.getElementById("modalSave").addEventListener("click", async () => {
