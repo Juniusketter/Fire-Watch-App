@@ -32,12 +32,18 @@ private slots:
     void onEditExtinguisher();
     void onDeleteExtinguisher();
 
+    // ── Admin: Generate Assignment ────────────────────────────────────────
+    void onGenerateAssignment();
+
+    // ── Inspector: Generate Report ────────────────────────────────────────
+    void onGenerateReport();
+
 private:
     Ui::Dashboard *ui;
 
-    int      m_userId;
-    QString  m_username;
-    QString  m_role;
+    int          m_userId;
+    QString      m_username;
+    QString      m_role;
     QSqlDatabase m_db;
 
     // ── Role helpers ──────────────────────────────────────────────────────
@@ -51,6 +57,12 @@ private:
 
     // ── Admin toolbar ─────────────────────────────────────────────────────
     void setupExtinguisherToolbar();
+
+    // ── Assignment toolbar (Admin) ────────────────────────────────────────
+    void setupAssignmentToolbar();
+
+    // ── Report toolbar (Inspector) ────────────────────────────────────────
+    void setupReportToolbar();
 
     // ── Data loaders ─────────────────────────────────────────────────────
     void loadExtinguishers();

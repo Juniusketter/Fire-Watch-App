@@ -2,6 +2,8 @@
 #include "ui_dashboard.h"
 #include "mainwindow.h"
 #include "extdialog.h"
+#include "assigndialog.h"
+#include "reportdialog.h"
 
 #include <QHeaderView>
 #include <QMessageBox>
@@ -53,7 +55,8 @@ void Dashboard::setupTabsForRole()
 {
     if (isAdmin()) {
         setWindowTitle("FireWatch — Admin Dashboard");
-        setupExtinguisherToolbar();   // ← Add/Edit/Delete buttons
+        setupExtinguisherToolbar();
+        setupAssignmentToolbar();
         loadExtinguishers();
         loadAssignments();
         loadReports();
@@ -64,6 +67,7 @@ void Dashboard::setupTabsForRole()
         setWindowTitle("FireWatch — Inspector Dashboard");
         ui->tabWidget->removeTab(3);
         ui->tabWidget->removeTab(0);
+        setupReportToolbar();
         loadAssignments();
         loadReports();
         ui->tabWidget->setTabText(0, "My Assignments");
@@ -73,6 +77,7 @@ void Dashboard::setupTabsForRole()
         setWindowTitle("FireWatch — Third-Party Admin Dashboard");
         ui->tabWidget->removeTab(2);
         ui->tabWidget->removeTab(0);
+        setupAssignmentToolbar();
         loadAssignments();
         loadUsers();
         ui->tabWidget->setTabText(0, "Assignments");
@@ -83,6 +88,7 @@ void Dashboard::setupTabsForRole()
         ui->tabWidget->removeTab(3);
         ui->tabWidget->removeTab(2);
         ui->tabWidget->removeTab(0);
+        setupReportToolbar();
         loadAssignments();
         ui->tabWidget->setTabText(0, "My Assignments");
     }
@@ -96,12 +102,11 @@ void Dashboard::setupTabsForRole()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  Admin toolbar — injects Add / Edit / Delete buttons above the table
+//  Admin extinguisher toolbar — Add / Edit / Delete
 // ─────────────────────────────────────────────────────────────────────────────
 void Dashboard::setupExtinguisherToolbar()
 {
-    // Build a small toolbar widget and insert it above tableExtinguishers
-    QWidget    *bar    = new QWidget(this);
+    QWidget     *bar   = new QWidget(this);
     QHBoxLayout *hbox  = new QHBoxLayout(bar);
     hbox->setContentsMargins(0, 4, 0, 4);
     hbox->setSpacing(8);
@@ -126,7 +131,6 @@ void Dashboard::setupExtinguisherToolbar()
     hbox->addWidget(btnDelete);
     hbox->addStretch();
 
-    // Insert toolbar into the Extinguishers tab layout (index 0 in its VBoxLayout)
     QVBoxLayout *tabLayout = qobject_cast<QVBoxLayout*>(
         ui->tabExtinguishers->layout());
     if (tabLayout)
@@ -135,6 +139,73 @@ void Dashboard::setupExtinguisherToolbar()
     connect(btnAdd,    &QPushButton::clicked, this, &Dashboard::onAddExtinguisher);
     connect(btnEdit,   &QPushButton::clicked, this, &Dashboard::onEditExtinguisher);
     connect(btnDelete, &QPushButton::clicked, this, &Dashboard::onDeleteExtinguisher);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Assignment toolbar — Generate Assignment button (Admin / ThirdPAdmin)
+// ─────────────────────────────────────────────────────────────────────────────
+void Dashboard::setupAssignmentToolbar()
+{
+    QWidget     *bar  = new QWidget(this);
+    QHBoxLayout *hbox = new QHBoxLayout(bar);
+    hbox->setContentsMargins(0, 4, 0, 4);
+    hbox->setSpacing(8);
+
+    QPushButton *btnGenerate = new QPushButton("＋ Generate Assignment", bar);
+    btnGenerate->setStyleSheet(
+        "QPushButton { border-radius: 4px; padding: 5px 14px; font-weight: bold;"
+        " background: #1a6b2e; color: white; }"
+        "QPushButton:hover { opacity: 0.85; }");
+
+    hbox->addWidget(btnGenerate);
+    hbox->addStretch();
+
+    // Find the Assignments tab and insert toolbar
+    // Tab index depends on role — use tabWidget to find by name
+    for (int i = 0; i < ui->tabWidget->count(); ++i) {
+        if (ui->tabWidget->tabText(i).contains("Assignment", Qt::CaseInsensitive)) {
+            QVBoxLayout *tabLayout = qobject_cast<QVBoxLayout*>(
+                ui->tabWidget->widget(i)->layout());
+            if (tabLayout)
+                tabLayout->insertWidget(0, bar);
+            break;
+        }
+    }
+
+    connect(btnGenerate, &QPushButton::clicked, this, &Dashboard::onGenerateAssignment);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Report toolbar — Generate Report button (Inspector / ThirdPInv)
+// ─────────────────────────────────────────────────────────────────────────────
+void Dashboard::setupReportToolbar()
+{
+    QWidget     *bar  = new QWidget(this);
+    QHBoxLayout *hbox = new QHBoxLayout(bar);
+    hbox->setContentsMargins(0, 4, 0, 4);
+    hbox->setSpacing(8);
+
+    QPushButton *btnReport = new QPushButton("＋ Submit Report", bar);
+    btnReport->setStyleSheet(
+        "QPushButton { border-radius: 4px; padding: 5px 14px; font-weight: bold;"
+        " background: #1f3864; color: white; }"
+        "QPushButton:hover { opacity: 0.85; }");
+
+    hbox->addWidget(btnReport);
+    hbox->addStretch();
+
+    // Insert into Reports tab
+    for (int i = 0; i < ui->tabWidget->count(); ++i) {
+        if (ui->tabWidget->tabText(i).contains("Report", Qt::CaseInsensitive)) {
+            QVBoxLayout *tabLayout = qobject_cast<QVBoxLayout*>(
+                ui->tabWidget->widget(i)->layout());
+            if (tabLayout)
+                tabLayout->insertWidget(0, bar);
+            break;
+        }
+    }
+
+    connect(btnReport, &QPushButton::clicked, this, &Dashboard::onGenerateReport);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -150,14 +221,14 @@ void Dashboard::onLogoutClicked()
 void Dashboard::onRefreshClicked()
 {
     updateStats();
-    if (isAdmin())       { loadExtinguishers(); loadAssignments(); loadReports(); loadUsers(); }
-    else if (isInv())    { loadAssignments(); loadReports(); }
+    if (isAdmin())            { loadExtinguishers(); loadAssignments(); loadReports(); loadUsers(); }
+    else if (isInv())         { loadAssignments(); loadReports(); }
     else if (isThirdPAdmin()) { loadAssignments(); loadUsers(); }
     else if (isThirdPInv())   { loadAssignments(); }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  CRUD — Add
+//  CRUD — Add Extinguisher
 // ─────────────────────────────────────────────────────────────────────────────
 void Dashboard::onAddExtinguisher()
 {
@@ -180,8 +251,7 @@ void Dashboard::onAddExtinguisher()
     q.bindValue(":due",      dlg.nextDueDate());
 
     if (q.exec()) {
-        QMessageBox::information(this, "Success",
-            "Extinguisher added successfully.");
+        QMessageBox::information(this, "Success", "Extinguisher added successfully.");
         loadExtinguishers();
         updateStats();
     } else {
@@ -191,7 +261,7 @@ void Dashboard::onAddExtinguisher()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  CRUD — Edit
+//  CRUD — Edit Extinguisher
 // ─────────────────────────────────────────────────────────────────────────────
 void Dashboard::onEditExtinguisher()
 {
@@ -202,7 +272,6 @@ void Dashboard::onEditExtinguisher()
         return;
     }
 
-    // Load current values
     QSqlQuery fetch(m_db);
     fetch.prepare("SELECT * FROM Extinguishers WHERE extinguisher_id = :id");
     fetch.bindValue(":id", extId);
@@ -238,8 +307,7 @@ void Dashboard::onEditExtinguisher()
     q.bindValue(":id",       extId);
 
     if (q.exec()) {
-        QMessageBox::information(this, "Success",
-            "Extinguisher updated successfully.");
+        QMessageBox::information(this, "Success", "Extinguisher updated successfully.");
         loadExtinguishers();
     } else {
         QMessageBox::critical(this, "Database Error",
@@ -248,7 +316,7 @@ void Dashboard::onEditExtinguisher()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  CRUD — Delete
+//  CRUD — Delete Extinguisher
 // ─────────────────────────────────────────────────────────────────────────────
 void Dashboard::onDeleteExtinguisher()
 {
@@ -259,7 +327,6 @@ void Dashboard::onDeleteExtinguisher()
         return;
     }
 
-    // Get address for confirmation message
     QSqlQuery fetch(m_db);
     fetch.prepare("SELECT address, building_number, floor_number "
                   "FROM Extinguishers WHERE extinguisher_id = :id");
@@ -277,7 +344,6 @@ void Dashboard::onDeleteExtinguisher()
 
     if (reply != QMessageBox::Yes) return;
 
-    // Delete child records first (foreign keys)
     QSqlQuery delReports(m_db);
     delReports.prepare("DELETE FROM Reports WHERE extinguisher_id = :id");
     delReports.bindValue(":id", extId);
@@ -293,8 +359,7 @@ void Dashboard::onDeleteExtinguisher()
     q.bindValue(":id", extId);
 
     if (q.exec()) {
-        QMessageBox::information(this, "Deleted",
-            "Extinguisher deleted successfully.");
+        QMessageBox::information(this, "Deleted", "Extinguisher deleted successfully.");
         loadExtinguishers();
         updateStats();
     } else {
@@ -304,13 +369,164 @@ void Dashboard::onDeleteExtinguisher()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+//  Generate Assignment — DB-backed (Sprint 2)
+//  Replaces the cin/cout stub in Admin.h with real DB writes
+//  Author: Junius Ketter — Sprint 2
+// ─────────────────────────────────────────────────────────────────────────────
+void Dashboard::onGenerateAssignment()
+{
+    AssignDialog dlg(this);
+
+    // Populate extinguishers dropdown
+    QSqlQuery extQ(m_db);
+    extQ.exec("SELECT extinguisher_id, address, building_number, floor_number "
+              "FROM Extinguishers ORDER BY extinguisher_id");
+    QList<QPair<int,QString>> extList;
+    while (extQ.next()) {
+        QString label = QString("#%1 — %2, %3 Fl.%4")
+            .arg(extQ.value("extinguisher_id").toInt())
+            .arg(extQ.value("address").toString())
+            .arg(extQ.value("building_number").toString())
+            .arg(extQ.value("floor_number").toInt());
+        extList.append({ extQ.value("extinguisher_id").toInt(), label });
+    }
+    dlg.setExtinguishers(extList);
+
+    // Populate inspectors dropdown (Inspector + 3rd_Party_Inspector roles)
+    QSqlQuery invQ(m_db);
+    invQ.exec("SELECT user_id, username, role FROM Users "
+              "WHERE role IN ('Inspector','3rd_Party_Inspector') "
+              "ORDER BY username");
+    QList<QPair<int,QString>> invList;
+    while (invQ.next()) {
+        QString label = invQ.value("username").toString()
+                      + "  [" + invQ.value("role").toString() + "]";
+        invList.append({ invQ.value("user_id").toInt(), label });
+    }
+    dlg.setInspectors(invList);
+
+    if (dlg.exec() != QDialog::Accepted) return;
+
+    // Write assignment to DB
+    QSqlQuery q(m_db);
+    q.prepare(
+        "INSERT INTO Assignments (admin_id, inspector_id, extinguisher_id, status) "
+        "VALUES (:admin, :inspector, :ext, 'Pending Inspection')"
+    );
+    q.bindValue(":admin",    m_userId);
+    q.bindValue(":inspector", dlg.inspectorId());
+    q.bindValue(":ext",       dlg.extinguisherId());
+
+    if (q.exec()) {
+        QMessageBox::information(this, "Assignment Generated",
+            "Assignment created successfully!\n\n"
+            "Inspector has been notified.");
+        loadAssignments();
+        updateStats();
+    } else {
+        QMessageBox::critical(this, "Database Error",
+            "Failed to create assignment:\n" + q.lastError().text());
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Generate Report — DB-backed (Sprint 2)
+//  Replaces the stub in Inv.h with real DB writes
+//  Author: Junius Ketter — Sprint 2
+// ─────────────────────────────────────────────────────────────────────────────
+void Dashboard::onGenerateReport()
+{
+    ReportDialog dlg(this);
+
+    // Populate assignments for this inspector
+    QSqlQuery aQ(m_db);
+    aQ.prepare(
+        "SELECT a.assignment_id, a.extinguisher_id, e.address, e.building_number "
+        "FROM Assignments a "
+        "LEFT JOIN Extinguishers e ON a.extinguisher_id = e.extinguisher_id "
+        "WHERE a.inspector_id = :userId AND a.status != 'Inspection Complete'"
+    );
+    aQ.bindValue(":userId", m_userId);
+    aQ.exec();
+
+    QList<QVariantList> assignList;
+    while (aQ.next()) {
+        QString label = QString("Assignment #%1 — %2, %3")
+            .arg(aQ.value("assignment_id").toInt())
+            .arg(aQ.value("address").toString())
+            .arg(aQ.value("building_number").toString());
+        assignList.append({
+            aQ.value("assignment_id"),
+            label,
+            aQ.value("extinguisher_id")
+        });
+    }
+
+    if (assignList.isEmpty()) {
+        QMessageBox::information(this, "No Assignments",
+            "You have no pending assignments to report on.");
+        return;
+    }
+    dlg.setAssignments(assignList);
+
+    // Populate extinguishers dropdown
+    QSqlQuery extQ(m_db);
+    extQ.exec("SELECT extinguisher_id, address, building_number FROM Extinguishers");
+    QList<QPair<int,QString>> extList;
+    while (extQ.next()) {
+        QString label = QString("#%1 — %2, %3")
+            .arg(extQ.value("extinguisher_id").toInt())
+            .arg(extQ.value("address").toString())
+            .arg(extQ.value("building_number").toString());
+        extList.append({ extQ.value("extinguisher_id").toInt(), label });
+    }
+    dlg.setExtinguishers(extList);
+
+    if (dlg.exec() != QDialog::Accepted) return;
+
+    // Write report to DB
+    QSqlQuery q(m_db);
+    q.prepare(
+        "INSERT INTO Reports (extinguisher_id, inspector_id, inspection_date, notes) "
+        "VALUES (:ext, :inspector, :date, :notes)"
+    );
+    q.bindValue(":ext",       dlg.extinguisherId());
+    q.bindValue(":inspector", m_userId);
+    q.bindValue(":date",      dlg.inspectionDate());
+    q.bindValue(":notes",     dlg.notes());
+
+    if (!q.exec()) {
+        QMessageBox::critical(this, "Database Error",
+            "Failed to submit report:\n" + q.lastError().text());
+        return;
+    }
+
+    // Update assignment status to 'Inspection Complete'
+    QSqlQuery updateQ(m_db);
+    updateQ.prepare(
+        "UPDATE Assignments SET status = 'Inspection Complete' "
+        "WHERE assignment_id = :id"
+    );
+    updateQ.bindValue(":id", dlg.assignmentId());
+    updateQ.exec();
+
+    QMessageBox::information(this, "Report Submitted",
+        "Inspection report submitted successfully!\n\n"
+        "Assignment marked as complete.");
+
+    loadReports();
+    loadAssignments();
+    updateStats();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 //  Helper — get extinguisher_id from selected table row
 // ─────────────────────────────────────────────────────────────────────────────
 int Dashboard::selectedExtinguisherId() const
 {
     int row = ui->tableExtinguishers->currentRow();
     if (row < 0) return -1;
-    QTableWidgetItem *item = ui->tableExtinguishers->item(row, 0); // col 0 = id
+    QTableWidgetItem *item = ui->tableExtinguishers->item(row, 0);
     if (!item) return -1;
     bool ok;
     int id = item->text().toInt(&ok);

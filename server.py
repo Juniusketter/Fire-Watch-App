@@ -149,6 +149,21 @@ def get_assignments():
             ).fetchall()
     return jsonify([dict(r) for r in rows])
 
+# ── CREATE ASSIGNMENT ─────────────────────────────────────────────────────────
+@app.route("/api/assignments", methods=["POST"])
+def create_assignment():
+    d = request.get_json()
+    try:
+        with get_db() as conn:
+            conn.execute(
+                "INSERT INTO Assignments (admin_id, inspector_id, extinguisher_id, status) "
+                "VALUES (?, ?, ?, 'Pending Inspection')",
+                (d.get("admin_id"), d.get("inspector_id"), d.get("extinguisher_id"))
+            )
+        return jsonify({"success": True}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 # ── REPORTS ────────────────────────────────────────────────────────────────────
 @app.route("/api/reports", methods=["GET"])
 def get_reports():
@@ -166,6 +181,29 @@ def get_reports():
                 "FROM Reports r LEFT JOIN Users u ON r.inspector_id = u.user_id"
             ).fetchall()
     return jsonify([dict(r) for r in rows])
+
+# ── CREATE REPORT ─────────────────────────────────────────────────────────────
+@app.route("/api/reports", methods=["POST"])
+def create_report():
+    d = request.get_json()
+    try:
+        with get_db() as conn:
+            conn.execute(
+                "INSERT INTO Reports (extinguisher_id, inspector_id, inspection_date, notes) "
+                "VALUES (?, ?, ?, ?)",
+                (d.get("extinguisher_id"), d.get("inspector_id"),
+                 d.get("inspection_date"), d.get("notes", ""))
+            )
+            # Mark assignment complete
+            if d.get("assignment_id"):
+                conn.execute(
+                    "UPDATE Assignments SET status = 'Inspection Complete' "
+                    "WHERE assignment_id = ?",
+                    (d.get("assignment_id"),)
+                )
+        return jsonify({"success": True}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 # ── USERS ──────────────────────────────────────────────────────────────────────
 @app.route("/api/users", methods=["GET"])
