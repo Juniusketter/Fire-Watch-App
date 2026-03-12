@@ -243,6 +243,9 @@
 
     <!-- Users -->
     <div class="panel" id="panelUsers">
+      <div class="table-toolbar hidden" id="userToolbar">
+        <button class="btn-crud btn-add" id="btnAddUser">＋ Add User</button>
+      </div>
       <div class="table-scroll-wrap" id="tableUsersWrap"></div>
       <div class="card-list" id="cardUsersWrap"></div>
     </div>
@@ -297,7 +300,37 @@
   </div>
 </div>
 
+<!-- ADD USER MODAL (Admin only) -->
+<div class="modal-overlay hidden" id="userModal">
+  <div class="modal-box">
+    <h3>Add New User</h3>
+    <div class="form-row"><label>Username *</label><input type="text" id="uUsername" placeholder="e.g. JSmith" /></div>
+    <div class="form-row"><label>Password *</label><input type="password" id="uPassword" placeholder="Enter password" /></div>
+    <div class="form-row"><label>Confirm Password *</label><input type="password" id="uConfirm" placeholder="Re-enter password" /></div>
+    <div class="form-row">
+      <label>Role *</label>
+      <select id="uRole">
+        <option value="Inspector">Inspector</option>
+        <option value="Admin">Admin</option>
+        <option value="3rd_Party_Admin">3rd Party Admin</option>
+        <option value="3rd_Party_Inspector">3rd Party Inspector</option>
+      </select>
+    </div>
+    <div class="modal-error" id="userModalError"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="userModalCancel">Cancel</button>
+      <button class="btn-save" id="userModalSave">Create User</button>
+    </div>
+  </div>
+</div>
+
 <script>
+// ── SHA-256 helper (matches server hashlib.sha256) ────────────────────────────
+async function sha256(str) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,"0")).join("");
+}
+
 // ── State ──────────────────────────────────────────────────────────────────────
 let currentUser   = null;
 let selectedExtId = null;
@@ -321,7 +354,8 @@ async function doLogin() {
   if (!username || !password) { msg.style.color="#e85d04"; msg.textContent="Please enter both fields."; return; }
   msg.style.color="#6b7280"; msg.textContent="Authenticating...";
   try {
-    const res  = await fetch("/api/login", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({username,password}) });
+    const hashed = await sha256(password);
+    const res  = await fetch("/api/login", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({username, password: hashed}) });
     const data = await res.json();
     if (data.success) { currentUser={user_id:data.user_id,username:data.username,role:data.role}; showDashboard(); }
     else { msg.style.color="#c1121f"; msg.textContent="Invalid username or password."; }
@@ -353,13 +387,14 @@ function buildTabs() {
   ["panelExtinguishers","panelAssignments","panelReports","panelUsers"].forEach(id => document.getElementById(id).classList.remove("active"));
   ["statBoxExt","statBoxAssign","statBoxReports","statBoxUsers"].forEach(id => document.getElementById(id).style.display="");
   // Hide all toolbars first
-  ["extToolbar","assignToolbar","reportToolbar"].forEach(id => document.getElementById(id).classList.add("hidden"));
+  ["extToolbar","assignToolbar","reportToolbar","userToolbar"].forEach(id => document.getElementById(id).classList.add("hidden"));
 
   let tabs = [];
   if (isAdmin()) {
     tabs = [{id:"panelExtinguishers",label:"Extinguishers"},{id:"panelAssignments",label:"Assignments"},{id:"panelReports",label:"Reports"},{id:"panelUsers",label:"All Users"}];
     document.getElementById("extToolbar").classList.remove("hidden");
     document.getElementById("assignToolbar").classList.remove("hidden");
+    document.getElementById("userToolbar").classList.remove("hidden");
   } else if (isInv()) {
     tabs = [{id:"panelAssignments",label:"My Assignments"},{id:"panelReports",label:"My Reports"}];
     document.getElementById("statBoxExt").style.display="none";
@@ -536,7 +571,7 @@ document.getElementById("btnLogout").addEventListener("click",()=>{
   document.getElementById("password").value="";
   document.getElementById("loginMsg").textContent="";
   document.getElementById("tabBar").innerHTML="";
-  ["extToolbar","assignToolbar","reportToolbar"].forEach(id=>document.getElementById(id).classList.add("hidden"));
+  ["extToolbar","assignToolbar","reportToolbar","userToolbar"].forEach(id=>document.getElementById(id).classList.add("hidden"));
 });
 
 // ── CRUD: Add Extinguisher ────────────────────────────────────────────────────
@@ -649,6 +684,44 @@ document.getElementById("reportModalSave").addEventListener("click",async()=>{
   const res=await fetch("/api/reports",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({extinguisher_id:extId,inspector_id:currentUser.user_id,inspection_date:date,notes,assignment_id:assignmentId})});
   if(res.ok){ document.getElementById("reportModal").classList.add("hidden"); loadReports(); loadAssignments(); loadStats(); }
   else document.getElementById("reportModalError").textContent="Error: "+(await res.json()).error;
+});
+// ── Add User (Admin only) ─────────────────────────────────────────────────────
+document.getElementById("btnAddUser").addEventListener("click", () => {
+  ["uUsername","uPassword","uConfirm"].forEach(id => document.getElementById(id).value = "");
+  document.getElementById("uRole").value = "Inspector";
+  document.getElementById("userModalError").textContent = "";
+  document.getElementById("userModal").classList.remove("hidden");
+});
+
+document.getElementById("userModalCancel").addEventListener("click", () => document.getElementById("userModal").classList.add("hidden"));
+document.getElementById("userModal").addEventListener("click", e => { if(e.target === document.getElementById("userModal")) document.getElementById("userModal").classList.add("hidden"); });
+
+document.getElementById("userModalSave").addEventListener("click", async () => {
+  const username = document.getElementById("uUsername").value.trim();
+  const password = document.getElementById("uPassword").value;
+  const confirm  = document.getElementById("uConfirm").value;
+  const role     = document.getElementById("uRole").value;
+  const errEl    = document.getElementById("userModalError");
+
+  if (!username)              { errEl.textContent = "Username is required."; return; }
+  if (!password)              { errEl.textContent = "Password is required."; return; }
+  if (password !== confirm)   { errEl.textContent = "Passwords do not match."; return; }
+  if (password.length < 6)   { errEl.textContent = "Password must be at least 6 characters."; return; }
+
+  const hashed = await sha256(password);
+
+  const res = await fetch("/api/users", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ username, password: hashed, role })
+  });
+
+  if (res.ok) {
+    document.getElementById("userModal").classList.add("hidden");
+    loadUsers(); loadStats();
+  } else {
+    errEl.textContent = "Error: " + (await res.json()).error;
+  }
 });
 </script>
 </body>

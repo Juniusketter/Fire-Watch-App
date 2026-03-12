@@ -19,6 +19,11 @@ Any changes you make to the database will appear live after login.
 from flask import Flask, request, jsonify, send_from_directory
 import sqlite3
 import os
+import hashlib
+
+def hash_password(pw: str) -> str:
+    """SHA-256 hash a password. Matches Qt's QCryptographicHash::Sha256."""
+    return hashlib.sha256(pw.encode()).hexdigest()
 
 app = Flask(__name__)
 
@@ -52,6 +57,7 @@ def login():
     if not username or not password:
         return jsonify({"success": False, "error": "Missing credentials"}), 400
 
+    # Password arrives pre-hashed from client (SHA-256)
     with get_db() as conn:
         row = conn.execute(
             "SELECT user_id, username, role FROM Users "
@@ -213,6 +219,38 @@ def get_users():
             "SELECT user_id, username, role FROM Users"
         ).fetchall()
     return jsonify([dict(r) for r in rows])
+
+# ── CREATE USER ───────────────────────────────────────────────────────────────
+@app.route("/api/users", methods=["POST"])
+def create_user():
+    d = request.get_json()
+    username = (d.get("username") or "").strip()
+    password = (d.get("password") or "").strip()
+    role     = (d.get("role") or "").strip()
+
+    if not username or not password or not role:
+        return jsonify({"error": "Username, password, and role are required."}), 400
+
+    valid_roles = ["Admin", "Inspector", "3rd_Party_Admin", "3rd_Party_Inspector"]
+    if role not in valid_roles:
+        return jsonify({"error": f"Invalid role. Must be one of: {', '.join(valid_roles)}"}), 400
+
+    # Password arrives pre-hashed from client (SHA-256), store as-is
+    try:
+        with get_db() as conn:
+            # Check for duplicate username
+            existing = conn.execute(
+                "SELECT user_id FROM Users WHERE username = ?", (username,)
+            ).fetchone()
+            if existing:
+                return jsonify({"error": "Username already exists."}), 409
+            conn.execute(
+                "INSERT INTO Users (username, password_hash, role) VALUES (?, ?, ?)",
+                (username, password, role)
+            )
+        return jsonify({"success": True}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 # ── STATS ──────────────────────────────────────────────────────────────────────
 @app.route("/api/stats", methods=["GET"])

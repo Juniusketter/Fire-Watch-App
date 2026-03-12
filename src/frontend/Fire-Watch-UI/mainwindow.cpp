@@ -5,6 +5,7 @@
 #include <QApplication>
 #include <QDir>
 #include <QFileInfo>
+#include <QCryptographicHash>
 #include <QtSql/QSqlDatabase>
 #include <QtSql/QSqlQuery>
 #include <QtSql/QSqlError>
@@ -91,6 +92,11 @@ void MainWindow::onLoginClicked()
         return;
     }
 
+    // Hash the password with SHA-256 before comparing against stored hash
+    QString hashedPassword = QString(
+        QCryptographicHash::hash(password.toUtf8(), QCryptographicHash::Sha256).toHex()
+    );
+
     QSqlQuery query(db);
     query.prepare(
         "SELECT user_id, username, role "
@@ -98,7 +104,7 @@ void MainWindow::onLoginClicked()
         "WHERE username = :username AND password_hash = :password"
     );
     query.bindValue(":username", username);
-    query.bindValue(":password", password);
+    query.bindValue(":password", hashedPassword);
 
     if (!query.exec()) {
         ui->labelMessage->setStyleSheet("color: red;");
