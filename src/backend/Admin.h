@@ -10,6 +10,11 @@ using namespace std;
 
 // Admin class - extends User class
 // Created by Lilly Bowen, March 3, 2026
+// Updated Sprint 2: Replaced cin/cout console I/O in generateAssignment()
+// and changeDB() with parameter-based methods.
+// UI input is handled by AssignDialog + ExtDialog in the Qt dashboard
+// and by the web UI modals (index.html). DB writes are handled by the
+// calling layer (dashboard.cpp / server.py), not this class.
 
 class Admin : public User {
     private:
@@ -24,18 +29,10 @@ class Admin : public User {
         Admin(string u, string p, string c, string id, int access)
             : User(u, p, c), adminID(id), DBAccess(access) {}
 
-        void setDBAccess(int access) {
-            DBAccess = access;
-        }
-        int getDBAccess() {
-            return DBAccess;
-        }
-        string getAdminID() {
-            return adminID;
-        }
-        void setAdminID(string id) {
-            adminID = id;
-        }
+        void   setDBAccess(int access) { DBAccess = access; }
+        int    getDBAccess()           { return DBAccess; }
+        string getAdminID()            { return adminID; }
+        void   setAdminID(string id)   { adminID = id; }
 
         // Returns true if access code matches
         bool accessDB(int access) {
@@ -47,35 +44,43 @@ class Admin : public User {
                 return false;
             }
         }
-        //change and view db functions
-        void changeDB(int access) {
-            if (!accessDB(access)) return;
 
-            int change;
-            cout << "What would you like to do?\n  1. Add Extinguisher\n  2. Remove Extinguisher\n  3. Update Extinguisher\nChoice: ";
-            cin >> change;
+        // ─────────────────────────────────────────────────────────────────
+        //  changeDB()
+        //
+        //  Modifies an extinguisher record in the database.
+        //  All required data is passed in as parameters — no console I/O.
+        //  The Qt dashboard (ExtDialog) handles UI input and calls this
+        //  method with validated data, or writes directly via QSqlQuery.
+        //
+        //  Parameters:
+        //    access   - admin access code for authorization
+        //    action   - 1=Add, 2=Remove, 3=Update
+        //    field    - (for action=3) 1=Type, 2=Location, 3=Interval, 4=Report
+        //
+        //  Returns: true if the action was authorized and valid.
+        // ─────────────────────────────────────────────────────────────────
+        bool changeDB(int access, int action, int field = 0) {
+            if (!accessDB(access)) return false;
 
-            switch (change) {
+            switch (action) {
                 case 1:
-                    cout << "The extinguisher has been added successfully!" << endl; break;
+                    cout << "The extinguisher has been added successfully!" << endl;
+                    return true;
                 case 2:
-                    cout << "The extinguisher has been removed successfully!" << endl; break;
-                case 3: {
-                    int update;
-                    cout << "What would you like to update?\n  1. Extinguisher Type\n  2. Extinguisher Location\n  3. Inspection Interval\n  4. Add Report\nChoice: ";
-                    cin >> update;
-                    switch (update) {
-                        case 1: cout << "The extinguisher type has been changed successfully!" << endl; break;
-                        case 2: cout << "The extinguisher location has been changed successfully!" << endl; break;
-                        case 3: cout << "The inspection interval has been changed successfully!" << endl; break;
-                        case 4: cout << "The extinguisher report has been added successfully!" << endl; break;
-                        default: cout << "Invalid option." << endl; break;
+                    cout << "The extinguisher has been removed successfully!" << endl;
+                    return true;
+                case 3:
+                    switch (field) {
+                        case 1: cout << "The extinguisher type has been changed successfully!"     << endl; return true;
+                        case 2: cout << "The extinguisher location has been changed successfully!" << endl; return true;
+                        case 3: cout << "The inspection interval has been changed successfully!"   << endl; return true;
+                        case 4: cout << "The extinguisher report has been added successfully!"     << endl; return true;
+                        default: cout << "Invalid field option." << endl; return false;
                     }
-                    break;
-                }
                 default:
-                    cout << "Invalid option." << endl;
-                    break;
+                    cout << "Invalid action option." << endl;
+                    return false;
             }
         }
 
@@ -84,90 +89,54 @@ class Admin : public User {
             cout << "Here is the database." << endl;
         }
 
-        //I know that a lot of this code is going to need to be changed to correctly integrate with the front end code, but this is the general idea
-        Assignment generateAssignment() {
-            //declare variables used in all assignments
-            int choice;
-            int numInvs;
-            int numExtinguishers;
-            string dueDate;
-            vector<string> extinguisherLocations;
-            string id = getAdminID();
+        // ─────────────────────────────────────────────────────────────────
+        //  generateAssignment()
+        //
+        //  Creates and returns an Assignment for an admin.
+        //  All required data is passed in as parameters — no console I/O.
+        //  Supports two recipient types:
+        //    - invsList populated  → assign to internal inspectors
+        //    - thirdPCompanyName   → assign to a third-party company
+        //
+        //  Parameters:
+        //    extinguisherLocations - locations of extinguishers to inspect
+        //    dueDate               - due date string (YYYY-MM-DD)
+        //    invsList              - inspector IDs (empty if third party)
+        //    thirdPCompanyName     - third party company name (empty if internal)
+        //
+        //  Returns: populated Assignment object.
+        //  The caller (Qt dashboard or Flask server) saves it to the DB.
+        // ─────────────────────────────────────────────────────────────────
+        Assignment generateAssignment(
+            vector<string> extinguisherLocations,
+            string dueDate,
+            vector<string> invsList,
+            string thirdPCompanyName = "")
+        {
+            int numExtinguishers = extinguisherLocations.size();
+            int numInvs          = invsList.size();
+            string id            = getAdminID();
 
-            //determine recipient of the assignment
-            cout<< "Will you be sending this to your own investigators, or a third party company? (1. My own investigators, 2. Third party company)" << endl;
-            cin>> choice;
-
-            //gather necessary information for the assignment
-            cout << "How many investigators will be assigned to this task?" << endl;
-            cin >> numInvs;
-
-            cout << "How many extinguishers need to be inspected?" << endl;
-            cin >> numExtinguishers;
-
-            cout << "When is the due date for this assignment?" << endl;
-            cin >> dueDate;
-            
-            for(int i = 0; i < numExtinguishers; i++){
-                string location;
-                if(i == 0){
-                    cout << "Please enter the " << i+1 << "st extinguisher location. " << endl;
-                }
-                else if(i == 1){
-                    cout << "Please enter the " << i+1 << "nd extinguisher location. " << endl;
-                }
-                else if(i == 2){
-                    cout << "Please enter the " << i+1 << "rd extinguisher location. " << endl;
-                }
-                else{
-                    cout << "Please enter the " << i+1 << "th extinguisher location. " << endl;
-                }
-                cin >> location;
-                extinguisherLocations.push_back(location);
-            }
-
-            //gather information specific to the recipient of the assignment and generate the assignment
-            switch(choice){
-                case 1: {
-                    vector<string> invsList;
-                    for(int i = 0; i < numInvs; i++){
-                        string invs;
-                        if(i == 0){
-                            cout << "Please enter the " << i+1 << "st investigator ID you want to assign. " << endl;
-                        }
-                        else if(i == 1){
-                            cout << "Please enter the " << i+1 << "nd investigator ID you want to assign. " << endl;
-                        }
-                        else if(i == 2){
-                            cout << "Please enter the " << i+1 << "rd investigator ID you want to assign. " << endl;
-                        }
-                        else{
-                            cout << "Please enter the " << i+1 << "th investigator ID you want to assign. " << endl;
-                        }
-                        cin >> invs;
-                        invsList.push_back(invs);
-                    }
-
-                    //create assignment
-                    Assignment newAssignment(numExtinguishers, numInvs, id, extinguisherLocations, dueDate, invsList);
-                    cout << "Assignment generated successfully!" << endl;
-                    return newAssignment;
-                    break;
-                }
-                case 2: {
-                    string thirdPCompanyName;
-                    cout << "Please enter the name of the third party company you want to assign this task to." << endl;
-                    cin >> thirdPCompanyName;
-                    
-                    //create assignment
-                    Assignment newAssignment(numExtinguishers, numInvs, id, extinguisherLocations, dueDate, thirdPCompanyName);
-                    cout << "Assignment generated successfully!" << endl;
-                    return newAssignment;
-                    break;
-                }
-                default:
-                    cout << "Invalid option. Returning default assignment." << endl;
-                    return Assignment();
+            if (!thirdPCompanyName.empty()) {
+                // Assign to third-party company
+                Assignment newAssignment(
+                    numExtinguishers, numInvs, id,
+                    extinguisherLocations, dueDate, thirdPCompanyName
+                );
+                cout << "Assignment generated for third-party company: "
+                     << thirdPCompanyName << ", "
+                     << numExtinguishers << " extinguisher(s), due " << dueDate << "." << endl;
+                return newAssignment;
+            } else {
+                // Assign to internal inspectors
+                Assignment newAssignment(
+                    numExtinguishers, numInvs, id,
+                    extinguisherLocations, dueDate, invsList
+                );
+                cout << "Assignment generated: "
+                     << numExtinguishers << " extinguisher(s), "
+                     << numInvs << " inspector(s), due " << dueDate << "." << endl;
+                return newAssignment;
             }
         }
 };
