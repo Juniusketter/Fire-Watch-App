@@ -38,6 +38,9 @@ private slots:
     // ── Inspector: Generate Report ────────────────────────────────────────
     void onGenerateReport();
 
+    // ── Admin: Add User ───────────────────────────────────────────────────
+    void onAddUser();
+
 private:
     Ui::Dashboard *ui;
 
@@ -63,6 +66,9 @@ private:
 
     // ── Report toolbar (Inspector) ────────────────────────────────────────
     void setupReportToolbar();
+
+    // ── User toolbar (Admin) ──────────────────────────────────────────────
+    void setupUserToolbar();
 
     // ── Data loaders ─────────────────────────────────────────────────────
     void loadExtinguishers();

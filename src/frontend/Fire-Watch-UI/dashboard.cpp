@@ -4,12 +4,14 @@
 #include "extdialog.h"
 #include "assigndialog.h"
 #include "reportdialog.h"
+#include "adduserdialog.h"
 
 #include <QHeaderView>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QHBoxLayout>
 #include <QWidget>
+#include <QCryptographicHash>
 #include <QtSql/QSqlQuery>
 #include <QtSql/QSqlError>
 #include <QtSql/QSqlRecord>
@@ -57,6 +59,7 @@ void Dashboard::setupTabsForRole()
         setWindowTitle("FireWatch — Admin Dashboard");
         setupExtinguisherToolbar();
         setupAssignmentToolbar();
+        setupUserToolbar();
         loadExtinguishers();
         loadAssignments();
         loadReports();
@@ -644,6 +647,88 @@ void Dashboard::loadUsers()
     fillTable(ui->tableUsers, q);
     if (ui->tableUsers->rowCount() == 0)
         showEmptyMessage(ui->tableUsers, isAdmin() ? "No users found." : "No team members found.");
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  User toolbar — Add User button (Admin only)
+// ─────────────────────────────────────────────────────────────────────────────
+void Dashboard::setupUserToolbar()
+{
+    QWidget     *bar  = new QWidget(this);
+    QHBoxLayout *hbox = new QHBoxLayout(bar);
+    hbox->setContentsMargins(0, 4, 0, 4);
+    hbox->setSpacing(8);
+
+    QPushButton *btnAddUser = new QPushButton("＋ Add User", bar);
+    btnAddUser->setStyleSheet(
+        "QPushButton { border-radius: 4px; padding: 5px 14px; font-weight: bold;"
+        " background: #15803d; color: white; }"
+        "QPushButton:hover { opacity: 0.85; }");
+
+    hbox->addWidget(btnAddUser);
+    hbox->addStretch();
+
+    for (int i = 0; i < ui->tabWidget->count(); ++i) {
+        if (ui->tabWidget->tabText(i).contains("User", Qt::CaseInsensitive)) {
+            QVBoxLayout *tabLayout = qobject_cast<QVBoxLayout*>(
+                ui->tabWidget->widget(i)->layout());
+            if (tabLayout)
+                tabLayout->insertWidget(0, bar);
+            break;
+        }
+    }
+
+    connect(btnAddUser, &QPushButton::clicked, this, &Dashboard::onAddUser);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Add User — DB-backed (Sprint 2)
+//  Admin can create new users with hashed passwords
+//  Author: Junius Ketter — Sprint 2
+// ─────────────────────────────────────────────────────────────────────────────
+void Dashboard::onAddUser()
+{
+    AddUserDialog dlg(this);
+    if (dlg.exec() != QDialog::Accepted) return;
+
+    // SHA-256 hash the password (matches Flask's hashlib.sha256)
+    QString hashedPw = QString(
+        QCryptographicHash::hash(
+            dlg.password().toUtf8(),
+            QCryptographicHash::Sha256
+        ).toHex()
+    );
+
+    // Check for duplicate username
+    QSqlQuery checkQ(m_db);
+    checkQ.prepare("SELECT COUNT(*) FROM Users WHERE username = :u");
+    checkQ.bindValue(":u", dlg.username());
+    checkQ.exec();
+    checkQ.next();
+    if (checkQ.value(0).toInt() > 0) {
+        QMessageBox::warning(this, "Duplicate Username",
+            "A user with that username already exists.");
+        return;
+    }
+
+    QSqlQuery q(m_db);
+    q.prepare(
+        "INSERT INTO Users (username, password_hash, role) VALUES (:u, :p, :r)"
+    );
+    q.bindValue(":u", dlg.username());
+    q.bindValue(":p", hashedPw);
+    q.bindValue(":r", dlg.role());
+
+    if (q.exec()) {
+        QMessageBox::information(this, "User Created",
+            QString("User '%1' created successfully with role: %2")
+                .arg(dlg.username()).arg(dlg.role()));
+        loadUsers();
+        updateStats();
+    } else {
+        QMessageBox::critical(this, "Database Error",
+            "Failed to create user:\n" + q.lastError().text());
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
