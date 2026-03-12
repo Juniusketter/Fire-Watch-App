@@ -10,6 +10,10 @@ using namespace std;
 
 // Third Party Admin class - extends User class
 // Created by Lilly Bowen, March 4, 2026
+// Updated Sprint 2: Replaced cin/cout console I/O with parameter-based method.
+// UI input is handled by AssignDialog in the Qt dashboard (dashboard.cpp)
+// and by the Generate Assignment modal in the web UI (index.html).
+// DB write is handled by the calling layer, not this class.
 
 class ThirdPAdmin : public User {
     private:
@@ -23,73 +27,45 @@ class ThirdPAdmin : public User {
         ThirdPAdmin(string u, string p, string c, string id)
             : User(u, p, c), thirdPAdminID(id) {}
 
-        string getThirdPAdminID() {
-            return thirdPAdminID;
-        }
+        string getThirdPAdminID() { return thirdPAdminID; }
+        void   setThirdPAdminID(string id) { thirdPAdminID = id; }
 
-        void setThirdPAdminID(string id) {
-            thirdPAdminID = id;
-        }
+        // ─────────────────────────────────────────────────────────────────
+        //  generateThirdPAssignment()
+        //
+        //  Creates and returns an Assignment for a third-party admin.
+        //  All required data is passed in as parameters — no console I/O.
+        //
+        //  Parameters:
+        //    extinguisherLocations - locations of extinguishers to inspect
+        //    dueDate               - due date string (YYYY-MM-DD)
+        //    invsList              - inspector IDs to assign
+        //
+        //  Returns: populated Assignment object.
+        //  The caller (Qt dashboard or Flask server) saves it to the DB.
+        // ─────────────────────────────────────────────────────────────────
+        Assignment generateThirdPAssignment(
+            vector<string> extinguisherLocations,
+            string dueDate,
+            vector<string> invsList)
+        {
+            int numExtinguishers = extinguisherLocations.size();
+            int numInvs          = invsList.size();
+            string id            = getThirdPAdminID();
 
-        //I know that a lot of this code is going to need to be changed to correctly integrate with the front end code, but this is the general idea
-        Assignment generateThirdPAssignment(){
-            //declare variables used in assignment
-            int choice;
-            int numInvs;
-            int numExtinguishers;
-            string dueDate;
-            vector<string> extinguisherLocations;
-            vector<string> invsList;
-            string id = getThirdPAdminID();
+            Assignment newAssignment(
+                numExtinguishers,
+                numInvs,
+                id,
+                extinguisherLocations,
+                dueDate,
+                invsList
+            );
 
-            //gather necessary information for the assignment
-            cout << "How many investigators will be assigned to this task?" << endl;
-            cin >> numInvs;
+            cout << "Third-party assignment generated: "
+                 << numExtinguishers << " extinguisher(s), "
+                 << numInvs << " inspector(s), due " << dueDate << "." << endl;
 
-            cout << "How many extinguishers need to be inspected?" << endl;
-            cin >> numExtinguishers;
-
-            cout << "When is the due date for this assignment?" << endl;
-            cin >> dueDate;
-
-            for(int i = 0; i < numExtinguishers; i++){
-                string location;
-                if(i == 0){
-                    cout << "Please enter the " << i+1 << "st extinguisher location. " << endl;
-                }
-                else if(i == 1){
-                    cout << "Please enter the " << i+1 << "nd extinguisher location. " << endl;
-                }
-                else if(i == 2){
-                    cout << "Please enter the " << i+1 << "rd extinguisher location. " << endl;
-                }
-                else{
-                    cout << "Please enter the " << i+1 << "th extinguisher location. " << endl;
-                }
-                cin >> location;
-                extinguisherLocations.push_back(location);
-            }
-
-            for(int i = 0; i < numInvs; i++){
-                string invs;
-                if(i == 0){
-                    cout << "Please enter the " << i+1 << "st investigator ID you want to assign. " << endl;
-                }
-                else if(i == 1){
-                    cout << "Please enter the " << i+1 << "nd investigator ID you want to assign. " << endl;
-                }
-                else if(i == 2){
-                    cout << "Please enter the " << i+1 << "rd investigator ID you want to assign. " << endl;
-                }
-                else{
-                    cout << "Please enter the " << i+1 << "th investigator ID you want to assign. " << endl;
-                }
-                cin >> invs;
-                invsList.push_back(invs);
-            }
-            
-            Assignment newAssignment(numExtinguishers, numInvs, id, extinguisherLocations, dueDate, invsList);
-            cout << "Assignment generated successfully!" << endl;
             return newAssignment;
         }
 };
