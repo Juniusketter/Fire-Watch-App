@@ -20,30 +20,3 @@ compile_commands.json
 # OS
 .DS_Store
 Thumbs.db
-# Qt Creator
-*.user
-*.user.*
-*.qtcreator
-.qtcreator/
-CMakeFiles/
-CMakeCache.txt
-cmake_install.cmake
-build-*/
-*.cache-v2
-*.codemodel-v2
-*.cmakeFiles
-moc_*.cpp
-moc_*.h
-ui_*.h
-qrc_*.cpp
-*.moc
-*.o
-*.obj
-*.exe
-.qtc_clangd/
-# Catch all build folders regardless of name
-build*/
-*-build/
-# Catch specific Qt Creator metadata
-.qtcreator/
-*.user
