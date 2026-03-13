@@ -1,29 +1,11 @@
 
-# C++ Starter (CMake + CI)
+# GitHub Actions Workflows
 
-A minimal, cross-platform C++ starter with CMake, GitHub Actions CI, and a basic test placeholder.
+This folder contains a CI workflow that:
+1. Builds the C++ ZIP generator with CMake on Ubuntu/Windows/macOS.
+2. Runs the program to produce `fire-extinguisher-tracking-starter.zip`.
+3. Uploads the ZIP as a build artifact.
+4. Validates JSON schemas against their example payloads using `ajv-cli`.
 
-## Build (local)
-
-```bash
-mkdir -p build && cd build
-cmake -DCMAKE_BUILD_TYPE=Release ..
-cmake --build . -j
-./app  # Windows: .\Debug\app.exe (or .\app.exe if single-config)
-```
-
-## Run (args)
-
-```bash
-./app hello world
-```
-
-## Run tests (placeholder)
-
-Add your test framework (e.g., Catch2, GTest) and a test target in CMake.
-
-## Format (clang-format)
-
-```bash
-clang-format -i src/*.cpp src/*.hpp
-```
+**Default project path** used by the workflow is `fire-extinguisher-tracking-cpp-starter-v2`.
+You can override it when triggering `workflow_dispatch`.
