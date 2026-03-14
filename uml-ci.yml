@@ -1,0 +1,67 @@
+name: UML CI - Generate & Render Mermaid
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  uml:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up CMake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.26.4'
+
+      - name: Build umlgen (C++)
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --config Release --parallel
+
+      - name: Run umlgen (write docs/*.md and docs/*.mmd)
+        run: ./build/umlgen
+
+      - name: Ensure output folders
+        run: mkdir -p docs/uml
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Mermaid CLI
+        run: npm i -g @mermaid-js/mermaid-cli
+
+      - name: Render all .mmd to .svg
+        shell: bash
+        run: |
+          set -e
+          for f in docs/*.mmd; do
+            base=$(basename "$f" .mmd)
+            echo "Rendering $f -> docs/uml/${base}.svg"
+            mmdc -i "$f" -o "docs/uml/${base}.svg" -b transparent
+          done
+
+      - name: Upload SVGs as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: uml-svgs
+          path: docs/uml/*.svg
+
+      - name: Commit SVGs back to repo (push events only)
+        if: github.event_name == 'push'
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add docs/*.md docs/*.mmd docs/uml/*.svg
+          git commit -m "ci: update UML SVGs" || echo "No changes to commit"
+          git push
