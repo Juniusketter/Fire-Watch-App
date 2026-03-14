@@ -93,6 +93,7 @@ void Dashboard::setupTabsForRole()
         ui->tabWidget->removeTab(0);
         setupReportToolbar();
         loadAssignments();
+        loadReports();
         ui->tabWidget->setTabText(0, "My Assignments");
     }
     else {
@@ -413,12 +414,13 @@ void Dashboard::onGenerateAssignment()
     // Write assignment to DB
     QSqlQuery q(m_db);
     q.prepare(
-        "INSERT INTO Assignments (admin_id, inspector_id, extinguisher_id, status) "
-        "VALUES (:admin, :inspector, :ext, 'Pending Inspection')"
+        "INSERT INTO Assignments (admin_id, inspector_id, extinguisher_id, due_date, status) "
+        "VALUES (:admin, :inspector, :ext, :due, 'Pending Inspection')"
     );
     q.bindValue(":admin",    m_userId);
     q.bindValue(":inspector", dlg.inspectorId());
     q.bindValue(":ext",       dlg.extinguisherId());
+    q.bindValue(":due",       dlg.dueDate());
 
     if (q.exec()) {
         QMessageBox::information(this, "Assignment Generated",

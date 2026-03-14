@@ -227,6 +227,7 @@
     <div class="panel" id="panelAssignments">
       <div class="table-toolbar hidden" id="assignToolbar">
         <button class="btn-crud btn-add" id="btnGenerateAssign">＋ Generate Assignment</button>
+        <button class="btn-crud btn-edit" id="btnEditAssign">✎ Edit Selected</button>
       </div>
       <div class="table-scroll-wrap" id="tableAssignWrap"></div>
       <div class="card-list" id="cardAssignWrap"></div>
@@ -271,12 +272,20 @@
   </div>
 </div>
 
-<!-- GENERATE ASSIGNMENT MODAL (Admin / ThirdPAdmin) -->
+<!-- GENERATE / EDIT ASSIGNMENT MODAL (Admin / ThirdPAdmin) -->
 <div class="modal-overlay hidden" id="assignModal">
   <div class="modal-box">
-    <h3>Generate Assignment</h3>
+    <h3 id="assignModalTitle">Generate Assignment</h3>
     <div class="form-row"><label>Extinguisher *</label><select id="aExtinguisher"></select></div>
     <div class="form-row"><label>Inspector *</label><select id="aInspector"></select></div>
+    <div class="form-row"><label>Due Date</label><input type="date" id="aDueDate" /></div>
+    <div class="form-row"><label>Notes</label><textarea id="aNotes" rows="3" placeholder="Optional notes for the inspector..."></textarea></div>
+    <div class="form-row" id="aStatusRow" style="display:none"><label>Status</label>
+      <select id="aStatus">
+        <option value="Pending Inspection">Pending Inspection</option>
+        <option value="Inspection Complete">Inspection Complete</option>
+      </select>
+    </div>
     <div class="modal-error" id="assignModalError"></div>
     <div class="modal-actions">
       <button class="btn-cancel" id="assignModalCancel">Cancel</button>
@@ -335,6 +344,8 @@ async function sha256(str) {
 let currentUser   = null;
 let selectedExtId = null;
 let editingExtId  = null;
+let selectedAssignId = null;
+let editingAssignId  = null;
 
 // ── Role helpers ───────────────────────────────────────────────────────────────
 const isAdmin      = () => currentUser?.role === "Admin";
@@ -478,9 +489,9 @@ async function loadAssignments() {
   let url="/api/assignments";
   if (isInv()||isThirdInv()) url+="?user_id="+currentUser.user_id;
   const rows=await fetch(url).then(r=>r.json());
-  const cols=(isAdmin()||isThirdAdmin())?["assignment_id","assigned_by","inspector","extinguisher_id","status"]:["assignment_id","assigned_by","extinguisher_id","status"];
-  renderTable("tableAssignWrap",cols,rows);
-  renderCards("cardAssignWrap",rows,"assignment");
+  const cols=(isAdmin()||isThirdAdmin())?["assignment_id","assigned_by","inspector","extinguisher_id","due_date","status"]:["assignment_id","assigned_by","extinguisher_id","due_date","status"];
+  renderTable("tableAssignWrap",cols,rows,row=>{ selectedAssignId=row.assignment_id; window._lastAssignRows=rows; });
+  renderCards("cardAssignWrap",rows,"assignment",row=>{ selectedAssignId=row.assignment_id; window._lastAssignRows=rows; });
 }
 
 async function loadReports() {
@@ -500,7 +511,7 @@ async function loadUsers() {
 }
 
 // ── Table renderer ────────────────────────────────────────────────────────────
-const headerMap={extinguisher_id:"ID",assignment_id:"ID",report_id:"ID",user_id:"ID",address:"Address",building_number:"Building",floor_number:"Floor",room_number:"Room",location_description:"Location",inspection_interval_days:"Interval",next_due_date:"Due Date",assigned_by:"Assigned By",inspector:"Inspector",status:"Status",inspection_date:"Date",notes:"Notes",username:"Username",role:"Role"};
+const headerMap={extinguisher_id:"ID",assignment_id:"ID",report_id:"ID",user_id:"ID",address:"Address",building_number:"Building",floor_number:"Floor",room_number:"Room",location_description:"Location",inspection_interval_days:"Interval",next_due_date:"Due Date",due_date:"Due Date",assigned_by:"Assigned By",inspector:"Inspector",status:"Status",inspection_date:"Date",notes:"Notes",username:"Username",role:"Role"};
 
 function renderTable(wrapperId,cols,rows,onRowClick) {
   const wrap=document.getElementById(wrapperId);
@@ -539,7 +550,7 @@ function renderCards(wrapperId,rows,type,onCardClick) {
       secondary=[row.building_number&&`Bldg: ${row.building_number}`,row.floor_number&&`Floor: ${row.floor_number}`,row.room_number&&`Room: ${row.room_number}`,row.next_due_date&&`Due: ${row.next_due_date}`].filter(Boolean).join("  ·  ");
     } else if(type==="assignment"){
       idStr=`ASSIGN-${row.assignment_id}`; primary=`Ext #${row.extinguisher_id}`;
-      secondary=[row.assigned_by&&`By: ${row.assigned_by}`,row.inspector&&`Inspector: ${row.inspector}`].filter(Boolean).join("  ·  ");
+      secondary=[row.assigned_by&&`By: ${row.assigned_by}`,row.inspector&&`Inspector: ${row.inspector}`,row.due_date&&`Due: ${row.due_date}`].filter(Boolean).join("  ·  ");
       badge=row.status?statusBadge(row.status):"";
     } else if(type==="report"){
       idStr=`RPT-${row.report_id}`; primary=`Ext #${row.extinguisher_id}`;
@@ -633,27 +644,106 @@ function clearModal() {
   document.getElementById("modalError").textContent="";
 }
 
-// ── Generate Assignment (Admin / ThirdPAdmin) ─────────────────────────────────
-document.getElementById("btnGenerateAssign").addEventListener("click",async()=>{
-  const exts=await fetch("/api/extinguishers").then(r=>r.json());
-  document.getElementById("aExtinguisher").innerHTML=exts.map(e=>`<option value="${e.extinguisher_id}">#${e.extinguisher_id} — ${e.address}, ${e.building_number} Fl.${e.floor_number}</option>`).join("");
-  const users=await fetch("/api/users").then(r=>r.json());
-  const inspectors=users.filter(u=>u.role==="Inspector"||u.role==="3rd_Party_Inspector");
-  document.getElementById("aInspector").innerHTML=inspectors.map(u=>`<option value="${u.user_id}">${u.username} [${u.role}]</option>`).join("");
-  document.getElementById("assignModalError").textContent="";
+// ── Assignment modal helpers ───────────────────────────────────────────────────
+async function openAssignModal(editRow=null) {
+  editingAssignId = editRow ? editRow.assignment_id : null;
+
+  const exts  = await fetch("/api/extinguishers").then(r=>r.json());
+  const users  = await fetch("/api/users").then(r=>r.json());
+  const inspectors = users.filter(u=>u.role==="Inspector"||u.role==="3rd_Party_Inspector");
+
+  document.getElementById("aExtinguisher").innerHTML = exts.map(e=>
+    `<option value="${e.extinguisher_id}">#${e.extinguisher_id} — ${e.address}, ${e.building_number} Fl.${e.floor_number}</option>`
+  ).join("");
+  document.getElementById("aInspector").innerHTML = inspectors.map(u=>
+    `<option value="${u.user_id}">${u.username} [${u.role}]</option>`
+  ).join("");
+
+  if (editRow) {
+    // Pre-fill for edit
+    document.getElementById("assignModalTitle").textContent = "Edit Assignment";
+    document.getElementById("assignModalSave").textContent  = "Save Changes";
+    document.getElementById("aStatusRow").style.display     = "";
+    // Select matching extinguisher
+    [...document.getElementById("aExtinguisher").options].forEach(o=>{
+      if(parseInt(o.value)===editRow.extinguisher_id) o.selected=true;
+    });
+    // Select matching inspector by username — need to match user_id
+    // inspectors list has user_id; editRow may have inspector username, so find by id if available
+    if (editRow.inspector_id) {
+      [...document.getElementById("aInspector").options].forEach(o=>{
+        if(parseInt(o.value)===editRow.inspector_id) o.selected=true;
+      });
+    }
+    document.getElementById("aDueDate").value  = editRow.due_date || "";
+    document.getElementById("aNotes").value    = editRow.notes    || "";
+    document.getElementById("aStatus").value   = editRow.status   || "Pending Inspection";
+  } else {
+    // Fresh generate
+    document.getElementById("assignModalTitle").textContent = "Generate Assignment";
+    document.getElementById("assignModalSave").textContent  = "Generate";
+    document.getElementById("aStatusRow").style.display     = "none";
+    const d = new Date(); d.setDate(d.getDate()+7);
+    document.getElementById("aDueDate").value = d.toISOString().split("T")[0];
+    document.getElementById("aNotes").value   = "";
+  }
+
+  document.getElementById("assignModalError").textContent = "";
   document.getElementById("assignModal").classList.remove("hidden");
+}
+
+// ── Generate Assignment button ─────────────────────────────────────────────────
+document.getElementById("btnGenerateAssign").addEventListener("click", ()=>openAssignModal(null));
+
+// ── Edit Assignment button ─────────────────────────────────────────────────────
+document.getElementById("btnEditAssign").addEventListener("click", async ()=>{
+  if (!selectedAssignId) { alert("Select an assignment row first."); return; }
+  const rows = window._lastAssignRows || [];
+  let row = rows.find(r=>r.assignment_id===selectedAssignId);
+  if (!row) {
+    // fallback: fetch fresh
+    const all = await fetch("/api/assignments").then(r=>r.json());
+    row = all.find(r=>r.assignment_id===selectedAssignId);
+  }
+  if (!row) { alert("Could not load assignment data."); return; }
+  // Need inspector_id — fetch from full assignments list
+  const full = await fetch("/api/assignments").then(r=>r.json());
+  const fullRow = full.find(r=>r.assignment_id===selectedAssignId);
+  openAssignModal({...row, inspector_id: fullRow?.inspector_id});
 });
 
 document.getElementById("assignModalCancel").addEventListener("click",()=>document.getElementById("assignModal").classList.add("hidden"));
 document.getElementById("assignModal").addEventListener("click",e=>{ if(e.target===document.getElementById("assignModal")) document.getElementById("assignModal").classList.add("hidden"); });
 
 document.getElementById("assignModalSave").addEventListener("click",async()=>{
-  const extId=parseInt(document.getElementById("aExtinguisher").value);
-  const invId=parseInt(document.getElementById("aInspector").value);
-  if(!extId||!invId){ document.getElementById("assignModalError").textContent="Please select both fields."; return; }
-  const res=await fetch("/api/assignments",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({admin_id:currentUser.user_id,inspector_id:invId,extinguisher_id:extId})});
-  if(res.ok){ document.getElementById("assignModal").classList.add("hidden"); loadAssignments(); loadStats(); }
-  else document.getElementById("assignModalError").textContent="Error: "+(await res.json()).error;
+  const extId  = parseInt(document.getElementById("aExtinguisher").value);
+  const invId  = parseInt(document.getElementById("aInspector").value);
+  const due    = document.getElementById("aDueDate").value;
+  const notes  = document.getElementById("aNotes").value.trim();
+  const status = document.getElementById("aStatus").value;
+  const errEl  = document.getElementById("assignModalError");
+
+  if (!extId||!invId) { errEl.textContent="Please select both fields."; return; }
+
+  if (editingAssignId) {
+    // PUT — update existing
+    const res = await fetch("/api/assignments/"+editingAssignId, {
+      method:"PUT",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({inspector_id:invId, extinguisher_id:extId, due_date:due, notes, status})
+    });
+    if (res.ok) { document.getElementById("assignModal").classList.add("hidden"); loadAssignments(); loadStats(); }
+    else errEl.textContent = "Error: "+(await res.json()).error;
+  } else {
+    // POST — create new
+    const res = await fetch("/api/assignments",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({admin_id:currentUser.user_id, inspector_id:invId, extinguisher_id:extId, due_date:due, notes})
+    });
+    if (res.ok) { document.getElementById("assignModal").classList.add("hidden"); loadAssignments(); loadStats(); }
+    else errEl.textContent = "Error: "+(await res.json()).error;
+  }
 });
 
 // ── Submit Report (Inspector / ThirdPInv) ─────────────────────────────────────

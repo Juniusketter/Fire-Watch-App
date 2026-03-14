@@ -137,10 +137,17 @@ def delete_extinguisher(ext_id):
 def get_assignments():
     user_id = request.args.get("user_id")
     with get_db() as conn:
+        # Ensure due_date and notes columns exist (migration guard)
+        existing = [r[1] for r in conn.execute("PRAGMA table_info(Assignments)").fetchall()]
+        if "due_date" not in existing:
+            conn.execute("ALTER TABLE Assignments ADD COLUMN due_date DATE")
+        if "notes" not in existing:
+            conn.execute("ALTER TABLE Assignments ADD COLUMN notes TEXT DEFAULT ''")
+
         if user_id:
             rows = conn.execute(
                 "SELECT a.assignment_id, u_a.username AS assigned_by, "
-                "a.extinguisher_id, a.status "
+                "a.inspector_id, a.extinguisher_id, a.due_date, a.status, a.notes "
                 "FROM Assignments a "
                 "LEFT JOIN Users u_a ON a.admin_id = u_a.user_id "
                 "WHERE a.inspector_id = ?", (user_id,)
@@ -148,7 +155,8 @@ def get_assignments():
         else:
             rows = conn.execute(
                 "SELECT a.assignment_id, u_a.username AS assigned_by, "
-                "u_i.username AS inspector, a.extinguisher_id, a.status "
+                "u_i.username AS inspector, a.inspector_id, "
+                "a.extinguisher_id, a.due_date, a.status, a.notes "
                 "FROM Assignments a "
                 "LEFT JOIN Users u_a ON a.admin_id     = u_a.user_id "
                 "LEFT JOIN Users u_i ON a.inspector_id = u_i.user_id"
@@ -162,11 +170,29 @@ def create_assignment():
     try:
         with get_db() as conn:
             conn.execute(
-                "INSERT INTO Assignments (admin_id, inspector_id, extinguisher_id, status) "
-                "VALUES (?, ?, ?, 'Pending Inspection')",
-                (d.get("admin_id"), d.get("inspector_id"), d.get("extinguisher_id"))
+                "INSERT INTO Assignments (admin_id, inspector_id, extinguisher_id, due_date, notes, status) "
+                "VALUES (?, ?, ?, ?, ?, 'Pending Inspection')",
+                (d.get("admin_id"), d.get("inspector_id"), d.get("extinguisher_id"),
+                 d.get("due_date", ""), d.get("notes", ""))
             )
         return jsonify({"success": True}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ── UPDATE ASSIGNMENT ─────────────────────────────────────────────────────────
+@app.route("/api/assignments/<int:assign_id>", methods=["PUT"])
+def update_assignment(assign_id):
+    d = request.get_json()
+    try:
+        with get_db() as conn:
+            conn.execute(
+                "UPDATE Assignments SET inspector_id=?, extinguisher_id=?, "
+                "due_date=?, notes=?, status=? WHERE assignment_id=?",
+                (d.get("inspector_id"), d.get("extinguisher_id"),
+                 d.get("due_date", ""), d.get("notes", ""),
+                 d.get("status", "Pending Inspection"), assign_id)
+            )
+        return jsonify({"success": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
