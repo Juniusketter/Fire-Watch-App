@@ -1,0 +1,80 @@
+
+name: CI - Build C++ & Validate Schemas
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      project-path:
+        description: 'Relative path to the C++ project root'
+        required: false
+        default: 'fire-extinguisher-tracking-cpp-starter-v2'
+
+jobs:
+  build-and-test:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    env:
+      PROJECT_PATH: ${{ github.event.inputs.project-path || 'fire-extinguisher-tracking-cpp-starter-v2' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Show tree (debug)
+        run: |
+          ls -la
+          echo "PROJECT_PATH=$PROJECT_PATH"
+
+      - name: Set up CMake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.26.4'
+
+      - name: Configure (CMake)
+        run: |
+          cmake -S "$PROJECT_PATH" -B "$PROJECT_PATH/build" -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build (CMake)
+        run: |
+          cmake --build "$PROJECT_PATH/build" --config Release --parallel
+
+      - name: Run zip generator
+        run: |
+          if [ "${{ runner.os }}" = "Windows" ]; then             "$PROJECT_PATH\build\Release\zipgen.exe";           elif [ "${{ runner.os }}" = "macOS" ]; then             "$PROJECT_PATH/build/zipgen";           else             "$PROJECT_PATH/build/zipgen";           fi
+
+      - name: Upload generated ZIP artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fire-extinguisher-tracking-starter-${{ runner.os }}
+          path: |
+            ${{ github.workspace }}/fire-extinguisher-tracking-starter.zip
+          if-no-files-found: warn
+
+      - name: Set up Node for schema validation
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install AJV CLI
+        run: |
+          npm install -g ajv-cli ajv-formats
+
+      - name: Validate Assignment schema/example
+        run: |
+          ajv validate -s "$PROJECT_PATH/schemas/assignment.schema.json" -d "$PROJECT_PATH/examples/assignment.example.json"
+
+      - name: Validate Extinguisher schema/example
+        run: |
+          if [ -f "$PROJECT_PATH/schemas/extinguisher.schema.json" ]; then             ajv validate -s "$PROJECT_PATH/schemas/extinguisher.schema.json" -d "$PROJECT_PATH/examples/extinguisher.example.json";           else             echo "Extinguisher schema not present, skipping";           fi
+
+      - name: Validate Report schema/example
+        run: |
+          if [ -f "$PROJECT_PATH/schemas/report.schema.json" ]; then             ajv validate -s "$PROJECT_PATH/schemas/report.schema.json" -d "$PROJECT_PATH/examples/report.example.json";           else             echo "Report schema not present, skipping";           fi

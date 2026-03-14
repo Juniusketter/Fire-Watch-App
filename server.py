@@ -19,26 +19,21 @@ Any changes you make to the database will appear live after login.
 from flask import Flask, request, jsonify, send_from_directory
 import sqlite3
 import os
-import hashlib
-
-def hash_password(pw: str) -> str:
-    """SHA-256 hash a password. Matches Qt's QCryptographicHash::Sha256."""
-    return hashlib.sha256(pw.encode()).hexdigest()
 
 app = Flask(__name__)
 
-# ── Paths ──────────────────────────────────────────────────────────────────────
+# ── Paths ──────────────────────────────────────────────────────────────────
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH  = os.path.join(BASE_DIR, "src", "database", "FireWatch.db")
 UI_DIR   = os.path.join(BASE_DIR, "src", "frontend", "Fire-Watch-UI")
 
-# ── DB helper ──────────────────────────────────────────────────────────────────
+# ── DB helper ──────────────────────────────────────────────────────────────
 def get_db():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
-# ── Serve frontend ─────────────────────────────────────────────────────────────
+# ── Serve the frontend ─────────────────────────────────────────────────────
 @app.route("/")
 def index():
     return send_from_directory(UI_DIR, "index.html")
@@ -47,7 +42,7 @@ def index():
 def static_files(filename):
     return send_from_directory(UI_DIR, filename)
 
-# ── AUTH ───────────────────────────────────────────────────────────────────────
+# ── AUTH ───────────────────────────────────────────────────────────────────
 @app.route("/api/login", methods=["POST"])
 def login():
     data     = request.get_json()
@@ -60,8 +55,7 @@ def login():
     # Password arrives pre-hashed from client (SHA-256)
     with get_db() as conn:
         row = conn.execute(
-            "SELECT user_id, username, role FROM Users "
-            "WHERE username = ? AND password_hash = ?",
+            "SELECT user_id, username, role FROM Users WHERE username = ? AND password_hash = ?",
             (username, password)
         ).fetchone()
 
@@ -74,7 +68,7 @@ def login():
         })
     return jsonify({"success": False, "error": "Invalid username or password"}), 401
 
-# ── EXTINGUISHERS ──────────────────────────────────────────────────────────────
+# ── EXTINGUISHERS ──────────────────────────────────────────────────────────
 @app.route("/api/extinguishers", methods=["GET"])
 def get_extinguishers():
     with get_db() as conn:
@@ -132,12 +126,12 @@ def delete_extinguisher(ext_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# ── ASSIGNMENTS ────────────────────────────────────────────────────────────────
+# ── ASSIGNMENTS ────────────────────────────────────────────────────────────
 @app.route("/api/assignments", methods=["GET"])
 def get_assignments():
     user_id = request.args.get("user_id")
     with get_db() as conn:
-        # Ensure due_date and notes columns exist (migration guard)
+        # Migration guard — add columns if missing
         existing = [r[1] for r in conn.execute("PRAGMA table_info(Assignments)").fetchall()]
         if "due_date" not in existing:
             conn.execute("ALTER TABLE Assignments ADD COLUMN due_date DATE")
@@ -163,7 +157,6 @@ def get_assignments():
             ).fetchall()
     return jsonify([dict(r) for r in rows])
 
-# ── CREATE ASSIGNMENT ─────────────────────────────────────────────────────────
 @app.route("/api/assignments", methods=["POST"])
 def create_assignment():
     d = request.get_json()
@@ -179,7 +172,6 @@ def create_assignment():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# ── UPDATE ASSIGNMENT ─────────────────────────────────────────────────────────
 @app.route("/api/assignments/<int:assign_id>", methods=["PUT"])
 def update_assignment(assign_id):
     d = request.get_json()
@@ -196,7 +188,7 @@ def update_assignment(assign_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# ── REPORTS ────────────────────────────────────────────────────────────────────
+# ── REPORTS ────────────────────────────────────────────────────────────────
 @app.route("/api/reports", methods=["GET"])
 def get_reports():
     user_id = request.args.get("user_id")
@@ -214,7 +206,6 @@ def get_reports():
             ).fetchall()
     return jsonify([dict(r) for r in rows])
 
-# ── CREATE REPORT ─────────────────────────────────────────────────────────────
 @app.route("/api/reports", methods=["POST"])
 def create_report():
     d = request.get_json()
@@ -226,7 +217,6 @@ def create_report():
                 (d.get("extinguisher_id"), d.get("inspector_id"),
                  d.get("inspection_date"), d.get("notes", ""))
             )
-            # Mark assignment complete
             if d.get("assignment_id"):
                 conn.execute(
                     "UPDATE Assignments SET status = 'Inspection Complete' "
@@ -237,16 +227,13 @@ def create_report():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# ── USERS ──────────────────────────────────────────────────────────────────────
+# ── USERS ──────────────────────────────────────────────────────────────────
 @app.route("/api/users", methods=["GET"])
 def get_users():
     with get_db() as conn:
-        rows = conn.execute(
-            "SELECT user_id, username, role FROM Users"
-        ).fetchall()
+        rows = conn.execute("SELECT user_id, username, role FROM Users").fetchall()
     return jsonify([dict(r) for r in rows])
 
-# ── CREATE USER ───────────────────────────────────────────────────────────────
 @app.route("/api/users", methods=["POST"])
 def create_user():
     d = request.get_json()
@@ -257,14 +244,8 @@ def create_user():
     if not username or not password or not role:
         return jsonify({"error": "Username, password, and role are required."}), 400
 
-    valid_roles = ["Admin", "Inspector", "3rd_Party_Admin", "3rd_Party_Inspector"]
-    if role not in valid_roles:
-        return jsonify({"error": f"Invalid role. Must be one of: {', '.join(valid_roles)}"}), 400
-
-    # Password arrives pre-hashed from client (SHA-256), store as-is
     try:
         with get_db() as conn:
-            # Check for duplicate username
             existing = conn.execute(
                 "SELECT user_id FROM Users WHERE username = ?", (username,)
             ).fetchone()
@@ -278,7 +259,7 @@ def create_user():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# ── STATS ──────────────────────────────────────────────────────────────────────
+# ── SUMMARY STATS ──────────────────────────────────────────────────────────
 @app.route("/api/stats", methods=["GET"])
 def get_stats():
     with get_db() as conn:
@@ -293,7 +274,7 @@ def get_stats():
         "users":         users
     })
 
-# ── START ──────────────────────────────────────────────────────────────────────
+# ── START ──────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     print("=" * 50)
     print("  FireWatch Server")
