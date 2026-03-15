@@ -44,6 +44,10 @@
     .hidden{display:none!important;}
     #appPage{min-height:100vh;display:flex;flex-direction:column;}
     .topbar{background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:0.5rem;padding:0 var(--pad-desk);height:var(--topbar-h);position:sticky;top:0;z-index:100;}
+    .last-updated{font-family:'IBM Plex Mono',monospace;font-size:0.65rem;color:var(--muted);white-space:nowrap;transition:color 0.4s;}
+    .last-updated.fresh{color:var(--teal);}
+    .tab-notif{display:inline-block;background:var(--orange);color:white;font-size:0.6rem;font-weight:700;border-radius:10px;padding:1px 6px;margin-left:5px;vertical-align:middle;animation:popIn 0.3s ease-out;}
+    @keyframes popIn{from{transform:scale(0);opacity:0;}to{transform:scale(1);opacity:1;}}
     .topbar-logo{font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:0.1em;color:var(--orange);margin-right:auto;white-space:nowrap;}
     .topbar-user{font-family:'IBM Plex Mono',monospace;font-size:0.78rem;color:var(--muted2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px;}
     .topbar-user strong{color:var(--text);font-weight:600;}
@@ -198,6 +202,7 @@
     <span class="topbar-logo">🔥 FireWatch</span>
     <span class="topbar-user"><span class="topbar-user-text"><strong id="welcomeLabel"></strong></span></span>
     <span class="role-pill" id="roleLabel"></span>
+    <span class="last-updated" id="lastUpdated"></span>
     <button class="btn-bar btn-refresh" id="btnRefresh" title="Refresh">↻</button>
     <button class="btn-bar btn-logout" id="btnLogout">Logout</button>
   </div>
@@ -389,6 +394,8 @@ function showDashboard() {
   const rc = roleColors[currentUser.role] || {color:"#9ca3af",border:"rgba(156,163,175,0.4)"};
   rl.style.color=rc.color; rl.style.borderColor=rc.border;
   buildTabs(); loadStats(); loadAllData();
+  captureBaseline();
+  startPolling();
 }
 
 // ── Build tabs by role ────────────────────────────────────────────────────────
@@ -573,8 +580,10 @@ function statusBadge(val) {
 }
 
 // ── Refresh / Logout ──────────────────────────────────────────────────────────
-document.getElementById("btnRefresh").addEventListener("click",()=>{ loadStats(); loadAllData(); });
+document.getElementById("btnRefresh").addEventListener("click",()=>{ clearAllBadges(); loadStats(); loadAllData(); updateTimestamp(); });
 document.getElementById("btnLogout").addEventListener("click",()=>{
+  stopPolling();
+  clearAllBadges();
   currentUser=null; selectedExtId=null;
   document.getElementById("appPage").classList.add("hidden");
   document.getElementById("loginPage").classList.remove("hidden");
@@ -813,6 +822,133 @@ document.getElementById("userModalSave").addEventListener("click", async () => {
     errEl.textContent = "Error: " + (await res.json()).error;
   }
 });
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  PHASE 1 — Auto-polling (refreshes data every 45 seconds automatically)
+// ══════════════════════════════════════════════════════════════════════════════
+
+let _pollTimer       = null;   // holds the setInterval ID
+let _prevAssignCount = null;   // tracks assignment count for badge detection
+let _prevReportCount = null;   // tracks report count for badge detection
+
+// Update the "last updated" timestamp in the topbar
+function updateTimestamp() {
+  const el = document.getElementById("lastUpdated");
+  if (!el) return;
+  const now  = new Date();
+  const h    = now.getHours().toString().padStart(2,"0");
+  const m    = now.getMinutes().toString().padStart(2,"0");
+  const s    = now.getSeconds().toString().padStart(2,"0");
+  el.textContent = `↻ ${h}:${m}:${s}`;
+  el.classList.add("fresh");
+  setTimeout(() => el.classList.remove("fresh"), 2000);
+}
+
+// Silent background refresh — updates data without any loading flash
+async function silentRefresh() {
+  if (!currentUser) return;
+  try {
+    const prevAssign = _prevAssignCount;
+    const prevReport = _prevReportCount;
+
+    // Fetch stats once — reuse for both display update AND badge check
+    const stats = await fetch("/api/stats").then(r=>r.json());
+
+    // For inspectors fetch their personal counts
+    let newAssignCount, newReportCount;
+    if (isInv() || isThirdInv()) {
+      const [a, rep] = await Promise.all([
+        fetch("/api/assignments?user_id=" + currentUser.user_id).then(r=>r.json()),
+        fetch("/api/reports?user_id="     + currentUser.user_id).then(r=>r.json())
+      ]);
+      newAssignCount = a.length;
+      newReportCount = rep.length;
+    } else {
+      newAssignCount = stats.assignments;
+      newReportCount = stats.reports;
+    }
+
+    // Reload table data
+    await loadAllData();
+    updateTimestamp();
+
+    // Phase 2 — badge check using already-fetched counts, no extra requests
+    if (prevAssign !== null && newAssignCount > prevAssign)
+      badgeTab("Assignment", newAssignCount - prevAssign);
+    if (prevReport !== null && newReportCount > prevReport && isAdmin())
+      badgeTab("Report", newReportCount - prevReport);
+
+    // Update baseline
+    _prevAssignCount = newAssignCount;
+    _prevReportCount = newReportCount;
+
+  } catch(e) {
+    console.warn("Auto-refresh error:", e);
+  }
+}
+
+// Start polling when user logs in
+function startPolling() {
+  stopPolling();
+  updateTimestamp();
+  _pollTimer = setInterval(silentRefresh, 5000); // every 5 seconds
+}
+
+// Stop polling on logout
+function stopPolling() {
+  if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
+  _prevAssignCount = null;
+  _prevReportCount = null;
+  const el = document.getElementById("lastUpdated");
+  if (el) el.textContent = "";
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  PHASE 2 — Notification badges on tabs when new data arrives
+// ══════════════════════════════════════════════════════════════════════════════
+
+// Capture baseline counts right after login
+async function captureBaseline() {
+  try {
+    if (isInv() || isThirdInv()) {
+      const [a, r] = await Promise.all([
+        fetch("/api/assignments?user_id=" + currentUser.user_id).then(r=>r.json()),
+        fetch("/api/reports?user_id="     + currentUser.user_id).then(r=>r.json())
+      ]);
+      _prevAssignCount = a.length;
+      _prevReportCount = r.length;
+    } else {
+      const stats = await fetch("/api/stats").then(r=>r.json());
+      _prevAssignCount = stats.assignments;
+      _prevReportCount = stats.reports;
+    }
+  } catch(e) { console.warn("Baseline capture error:", e); }
+}
+
+// Add or update a badge on the matching tab button
+function badgeTab(keyword, count) {
+  const tabBar = document.getElementById("tabBar");
+  if (!tabBar) return;
+  tabBar.querySelectorAll(".tab-btn").forEach(btn => {
+    if (btn.textContent.replace(/\s+/g,"").toLowerCase().includes(keyword.toLowerCase())) {
+      const existing = btn.querySelector(".tab-notif");
+      if (existing) existing.remove();
+      const badge = document.createElement("span");
+      badge.className = "tab-notif";
+      badge.textContent = "+" + count + " NEW";
+      btn.appendChild(badge);
+      btn.addEventListener("click", () => {
+        const b = btn.querySelector(".tab-notif");
+        if (b) b.remove();
+      }, { once: true });
+    }
+  });
+}
+
+// Clear all badges (used on manual refresh)
+function clearAllBadges() {
+  document.querySelectorAll(".tab-notif").forEach(b => b.remove());
+}
 </script>
 </body>
 </html>
