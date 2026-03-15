@@ -1,0 +1,9 @@
+
+# ---- Add to your root CMakeLists.txt ----
+# find_package(SQLite3 REQUIRED)
+# add_library(search_service src/search/SearchService.cpp)
+# target_include_directories(search_service PUBLIC src ${SQLite3_INCLUDE_DIRS})
+# target_link_libraries(search_service PUBLIC ${SQLite3_LIBRARIES})
+#
+# add_executable(search_ext_tests tests/search/search_extinguisher_tests.cpp)
+# target_link_libraries(search_ext_tests PRIVATE search_service ${SQLite3_LIBRARIES})
