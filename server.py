@@ -250,6 +250,41 @@ def get_users():
         ).fetchall()
     return jsonify([dict(r) for r in rows])
 
+# ── USER PREFERENCES ──────────────────────────────────────────────────────────
+@app.route("/api/users/<int:user_id>/preferences", methods=["GET"])
+def get_preferences(user_id):
+    import json
+    with get_db() as conn:
+        existing = [r[1] for r in conn.execute("PRAGMA table_info(Users)").fetchall()]
+        if "preferences" not in existing:
+            conn.execute("ALTER TABLE Users ADD COLUMN preferences TEXT DEFAULT '{}'")
+        row = conn.execute(
+            "SELECT preferences FROM Users WHERE user_id = ?", (user_id,)
+        ).fetchone()
+    if row and row["preferences"]:
+        try:
+            return jsonify(json.loads(row["preferences"]))
+        except:
+            return jsonify({})
+    return jsonify({})
+
+@app.route("/api/users/<int:user_id>/preferences", methods=["PUT"])
+def save_preferences(user_id):
+    import json
+    prefs = request.get_json()
+    try:
+        with get_db() as conn:
+            existing = [r[1] for r in conn.execute("PRAGMA table_info(Users)").fetchall()]
+            if "preferences" not in existing:
+                conn.execute("ALTER TABLE Users ADD COLUMN preferences TEXT DEFAULT '{}'")
+            conn.execute(
+                "UPDATE Users SET preferences = ? WHERE user_id = ?",
+                (json.dumps(prefs), user_id)
+            )
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 # ── CREATE USER ───────────────────────────────────────────────────────────────
 @app.route("/api/users", methods=["POST"])
 def create_user():
