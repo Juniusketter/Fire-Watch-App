@@ -342,6 +342,86 @@ def create_user():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# ── NOTIFICATIONS ─────────────────────────────────────────────────────────────
+@app.route("/api/notifications", methods=["GET"])
+def get_notifications():
+    from datetime import datetime, timedelta
+    user_id = request.args.get("user_id")
+    role    = request.args.get("role", "")
+    since   = (datetime.utcnow() - timedelta(hours=24)).strftime("%Y-%m-%d %H:%M:%S")
+    notifs  = []
+
+    with get_db() as conn:
+        # ── New assignments ────────────────────────────────────────────────
+        if role in ("Admin", "3rd_Party_Admin"):
+            rows = conn.execute(
+                "SELECT a.assignment_id, u_i.username AS inspector, a.extinguisher_id, a.due_date "
+                "FROM Assignments a LEFT JOIN Users u_i ON a.inspector_id = u_i.user_id "
+                "ORDER BY a.assignment_id DESC LIMIT 10"
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT a.assignment_id, u_a.username AS admin, a.extinguisher_id, a.due_date "
+                "FROM Assignments a LEFT JOIN Users u_a ON a.admin_id = u_a.user_id "
+                "WHERE a.inspector_id = ? ORDER BY a.assignment_id DESC LIMIT 10", (user_id,)
+            ).fetchall()
+        for r in rows:
+            msg = (f"Assignment #{r['assignment_id']} created for {r['inspector'] or 'Inspector'} — Ext #{r['extinguisher_id']}"
+                   if role in ("Admin","3rd_Party_Admin")
+                   else f"New assignment: Ext #{r['extinguisher_id']} assigned to you")
+            notifs.append({"id": f"assign_new_{r['assignment_id']}", "type": "assignment_created",
+                           "message": msg, "timestamp": r['due_date'] or since})
+
+        # ── Completed assignments ──────────────────────────────────────────
+        if role in ("Admin", "3rd_Party_Admin"):
+            completed = conn.execute(
+                "SELECT a.assignment_id, u_i.username AS inspector, a.extinguisher_id "
+                "FROM Assignments a LEFT JOIN Users u_i ON a.inspector_id = u_i.user_id "
+                "WHERE a.status = 'Inspection Complete' ORDER BY a.assignment_id DESC LIMIT 5"
+            ).fetchall()
+        else:
+            completed = conn.execute(
+                "SELECT a.assignment_id, a.extinguisher_id FROM Assignments a "
+                "WHERE a.status = 'Inspection Complete' AND a.inspector_id = ? "
+                "ORDER BY a.assignment_id DESC LIMIT 5", (user_id,)
+            ).fetchall()
+        for r in completed:
+            notifs.append({"id": f"assign_complete_{r['assignment_id']}", "type": "assignment_complete",
+                           "message": f"Assignment #{r['assignment_id']} marked complete — Ext #{r['extinguisher_id']}",
+                           "timestamp": since})
+
+        # ── Reports submitted ──────────────────────────────────────────────
+        if role in ("Admin", "3rd_Party_Admin"):
+            reports = conn.execute(
+                "SELECT r.report_id, u.username AS inspector, r.extinguisher_id, r.inspection_date "
+                "FROM Reports r LEFT JOIN Users u ON r.inspector_id = u.user_id "
+                "ORDER BY r.report_id DESC LIMIT 10"
+            ).fetchall()
+        else:
+            reports = conn.execute(
+                "SELECT r.report_id, r.extinguisher_id, r.inspection_date FROM Reports r "
+                "WHERE r.inspector_id = ? ORDER BY r.report_id DESC LIMIT 10", (user_id,)
+            ).fetchall()
+        for r in reports:
+            notifs.append({"id": f"report_{r['report_id']}", "type": "report_submitted",
+                           "message": f"Inspection report #{r['report_id']} submitted for Ext #{r['extinguisher_id']}",
+                           "timestamp": r['inspection_date'] or since})
+
+        # ── Overdue extinguishers ──────────────────────────────────────────
+        today = datetime.utcnow().strftime("%Y-%m-%d")
+        overdue = conn.execute(
+            "SELECT extinguisher_id, address, next_due_date FROM Extinguishers "
+            "WHERE next_due_date IS NOT NULL AND next_due_date < ? "
+            "ORDER BY next_due_date ASC LIMIT 10", (today,)
+        ).fetchall()
+        for r in overdue:
+            notifs.append({"id": f"overdue_{r['extinguisher_id']}", "type": "overdue",
+                           "message": f"Ext #{r['extinguisher_id']} at {r['address']} overdue since {r['next_due_date']}",
+                           "timestamp": r['next_due_date']})
+
+    notifs.sort(key=lambda x: x.get("timestamp",""), reverse=True)
+    return jsonify(notifs)
+
 # ── STATS ──────────────────────────────────────────────────────────────────────
 @app.route("/api/stats", methods=["GET"])
 def get_stats():

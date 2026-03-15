@@ -50,6 +50,26 @@
     .sidebar-item:hover{background:var(--bg3);color:var(--text);}
     .sidebar-item.active{background:var(--bg3);color:var(--orange);border-right:2px solid var(--orange);}
     .sidebar-item .si-icon{font-size:1rem;width:20px;text-align:center;}
+    .notif-badge{background:var(--red);color:white;font-size:0.6rem;font-weight:700;border-radius:10px;padding:1px 6px;margin-left:auto;font-family:'IBM Plex Mono',monospace;}
+    .notif-badge.hidden{display:none;}
+
+    /* ── NOTIFICATIONS ──────────────────────────────────────── */
+    .notif-list{padding:var(--pad-desk);}
+    .notif-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;}
+    .notif-title{font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:0.08em;color:var(--text);}
+    .notif-clear{font-family:'IBM Plex Mono',monospace;font-size:0.7rem;color:var(--muted2);background:none;border:1px solid var(--border);border-radius:3px;padding:4px 10px;cursor:pointer;}
+    .notif-clear:hover{color:var(--text);border-color:var(--muted);}
+    .notif-item{display:flex;gap:0.85rem;align-items:flex-start;background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:0.85rem 1rem;margin-bottom:0.6rem;transition:border-color 0.15s;position:relative;}
+    .notif-item.unread{border-left:3px solid var(--orange);}
+    .notif-item.unread-complete{border-left:3px solid var(--teal);}
+    .notif-item.unread-report{border-left:3px solid var(--blue);}
+    .notif-item.unread-overdue{border-left:3px solid var(--red);}
+    .notif-icon{font-size:1.25rem;flex-shrink:0;margin-top:1px;}
+    .notif-body{flex:1;min-width:0;}
+    .notif-text{font-family:'IBM Plex Sans',sans-serif;font-size:0.88rem;color:var(--text);font-weight:500;}
+    .notif-time{font-family:'IBM Plex Mono',monospace;font-size:0.68rem;color:var(--muted);margin-top:3px;}
+    .notif-dot{width:8px;height:8px;border-radius:50%;background:var(--orange);flex-shrink:0;margin-top:6px;}
+    .notif-empty{text-align:center;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:0.8rem;padding:3rem;letter-spacing:0.05em;}
     .sidebar-footer{padding:0.75rem 1rem;border-top:1px solid var(--border);}
     .sidebar-toggle{display:none;background:none;border:none;color:var(--muted2);font-size:1.2rem;cursor:pointer;padding:4px 8px;}
     .main-content{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;}
@@ -291,6 +311,10 @@
       <div class="sidebar-nav" id="sidebarNav">
         <button class="sidebar-item active" data-view="dashboard" onclick="showView('dashboard')">
           <span class="si-icon">📊</span> Dashboard
+        </button>
+        <button class="sidebar-item" data-view="notifications" onclick="showView('notifications')">
+          <span class="si-icon">🔔</span> Notifications
+          <span class="notif-badge hidden" id="sidebarNotifBadge">0</span>
         </button>
         <button class="sidebar-item" data-view="profile" onclick="showView('profile')">
           <span class="si-icon">👤</span> My Profile
@@ -569,6 +593,19 @@
         </div>
       </div><!-- /viewProfile -->
 
+      <!-- NOTIFICATIONS VIEW -->
+      <div id="viewNotifications" class="hidden">
+        <div class="notif-list">
+          <div class="notif-header">
+            <div class="notif-title">Notifications</div>
+            <button class="notif-clear" onclick="markAllRead()">Mark all as read</button>
+          </div>
+          <div id="notifFeed">
+            <div class="notif-empty">[ NO NOTIFICATIONS ]</div>
+          </div>
+        </div>
+      </div><!-- /viewNotifications -->
+
     </div><!-- /main-content -->
   </div><!-- /app-body -->
 </div><!-- /appPage -->
@@ -711,6 +748,7 @@ function showDashboard() {
   buildTabs(); loadStats(); loadAllData();
   captureBaseline();
   startPolling();
+  fetchNotifications();
   // Update sidebar user info
   document.getElementById("sidebarUsername").textContent = currentUser.username;
   document.getElementById("sidebarRole").textContent = currentUser.role.replace(/_/g," ");
@@ -904,6 +942,8 @@ document.getElementById("btnRefresh").addEventListener("click",()=>{ clearAllBad
 document.getElementById("btnLogout").addEventListener("click",()=>{
   stopPolling();
   clearAllBadges();
+  _notifications = []; _seenNotifIds = new Set(); _unreadCount = 0;
+  updateNotifBadge();
   applyTheme("dark");
   showView("dashboard");
   // Clear profile fields on logout
@@ -1116,6 +1156,7 @@ function showView(view) {
   document.getElementById("viewDashboard").classList.toggle("hidden", view !== "dashboard");
   document.getElementById("viewSettings").classList.toggle("hidden", view !== "settings");
   document.getElementById("viewProfile").classList.toggle("hidden", view !== "profile");
+  document.getElementById("viewNotifications").classList.toggle("hidden", view !== "notifications");
   document.querySelectorAll(".sidebar-item[data-view]").forEach(btn => {
     btn.classList.toggle("active", btn.dataset.view === view);
   });
@@ -1132,6 +1173,10 @@ function showView(view) {
     ["profCurrentPw","profNewPw","profConfirmPw"].forEach(id => document.getElementById(id).value = "");
     document.getElementById("profilePwError").textContent = "";
     document.getElementById("profileSavedMsg").classList.remove("show");
+  }
+  if (view === "notifications") {
+    renderNotifications();
+    markAllRead();
   }
   closeSidebar();
 }
@@ -1336,6 +1381,7 @@ async function silentRefresh() {
     // Reload table data
     await loadAllData();
     updateTimestamp();
+    fetchNotifications();
 
     // Phase 2 — badge check using already-fetched counts, no extra requests
     if (prevAssign !== null && newAssignCount > prevAssign)
@@ -1410,9 +1456,94 @@ function badgeTab(keyword, count) {
   });
 }
 
-// Clear all badges (used on manual refresh)
-function clearAllBadges() {
-  document.querySelectorAll(".tab-notif").forEach(b => b.remove());
+// ══════════════════════════════════════════════════════════════════════════════
+//  NOTIFICATIONS SYSTEM
+// ══════════════════════════════════════════════════════════════════════════════
+
+let _notifications    = [];   // full list fetched from server
+let _seenNotifIds     = new Set(); // IDs user has already seen
+let _unreadCount      = 0;
+
+// Fetch notifications from server and update badge
+async function fetchNotifications() {
+  if (!currentUser) return;
+  try {
+    const res = await fetch("/api/notifications?user_id=" + currentUser.user_id + "&role=" + encodeURIComponent(currentUser.role));
+    if (!res.ok) return;
+    const data = await res.json();
+    _notifications = data;
+
+    // Count unseen
+    const unseen = data.filter(n => !_seenNotifIds.has(n.id));
+    _unreadCount = unseen.length;
+    updateNotifBadge();
+  } catch(e) { console.warn("Notification fetch error:", e); }
+}
+
+// Update the badge number on the sidebar Notifications item
+function updateNotifBadge() {
+  const badge = document.getElementById("sidebarNotifBadge");
+  if (!badge) return;
+  if (_unreadCount > 0) {
+    badge.textContent = _unreadCount > 99 ? "99+" : _unreadCount;
+    badge.classList.remove("hidden");
+  } else {
+    badge.classList.add("hidden");
+  }
+}
+
+// Mark all current notifications as read — clears badge
+function markAllRead() {
+  _notifications.forEach(n => _seenNotifIds.add(n.id));
+  _unreadCount = 0;
+  updateNotifBadge();
+}
+
+// Render notifications feed in the view
+function renderNotifications() {
+  const feed = document.getElementById("notifFeed");
+  if (!feed) return;
+  if (!_notifications.length) {
+    feed.innerHTML = `<div class="notif-empty">[ NO NOTIFICATIONS IN THE LAST 24 HOURS ]</div>`;
+    return;
+  }
+
+  feed.innerHTML = _notifications.map(n => {
+    const isUnread = !_seenNotifIds.has(n.id) || _unreadCount > 0;
+    const typeClass = {
+      "assignment_created":  "unread",
+      "assignment_complete": "unread-complete",
+      "report_submitted":    "unread-report",
+      "overdue":             "unread-overdue"
+    }[n.type] || "unread";
+
+    const icons = {
+      "assignment_created":  "📋",
+      "assignment_complete": "✅",
+      "report_submitted":    "📄",
+      "overdue":             "⚠️"
+    };
+
+    return `
+      <div class="notif-item ${isUnread ? typeClass : ''}">
+        <div class="notif-icon">${icons[n.type] || "🔔"}</div>
+        <div class="notif-body">
+          <div class="notif-text">${n.message}</div>
+          <div class="notif-time">${formatNotifTime(n.timestamp)}</div>
+        </div>
+        ${isUnread ? '<div class="notif-dot"></div>' : ''}
+      </div>`;
+  }).join("");
+}
+
+// Format timestamp as relative time e.g. "2 hours ago"
+function formatNotifTime(ts) {
+  if (!ts) return "";
+  const diff = Math.floor((Date.now() - new Date(ts).getTime()) / 1000);
+  if (diff < 60)   return "Just now";
+  if (diff < 3600) return Math.floor(diff/60) + " min ago";
+  if (diff < 86400) return Math.floor(diff/3600) + " hr ago";
+  return new Date(ts).toLocaleDateString();
 }
 </script>
 </body>
