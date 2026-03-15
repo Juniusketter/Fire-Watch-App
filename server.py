@@ -251,7 +251,32 @@ def get_users():
     return jsonify([dict(r) for r in rows])
 
 # ── USER PREFERENCES ──────────────────────────────────────────────────────────
-@app.route("/api/users/<int:user_id>/preferences", methods=["GET"])
+@app.route("/api/users/<int:user_id>/password", methods=["PUT"])
+def change_password(user_id):
+    d = request.get_json()
+    current_pw = (d.get("current_password") or "").strip()
+    new_pw     = (d.get("new_password") or "").strip()
+
+    if not current_pw or not new_pw:
+        return jsonify({"error": "Both current and new password are required."}), 400
+
+    try:
+        with get_db() as conn:
+            # Verify current password matches
+            row = conn.execute(
+                "SELECT user_id FROM Users WHERE user_id = ? AND password_hash = ?",
+                (user_id, current_pw)
+            ).fetchone()
+            if not row:
+                return jsonify({"error": "Current password is incorrect."}), 401
+            # Update to new password
+            conn.execute(
+                "UPDATE Users SET password_hash = ? WHERE user_id = ?",
+                (new_pw, user_id)
+            )
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 def get_preferences(user_id):
     import json
     with get_db() as conn:
