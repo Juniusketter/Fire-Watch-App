@@ -348,7 +348,7 @@ def get_notifications():
     from datetime import datetime, timedelta
     user_id = request.args.get("user_id")
     role    = request.args.get("role", "")
-    since   = (datetime.utcnow() - timedelta(hours=24)).strftime("%Y-%m-%d %H:%M:%S")
+    since   = (datetime.now() - timedelta(hours=24)).strftime("%Y-%m-%d %H:%M:%S")
     notifs  = []
 
     with get_db() as conn:
@@ -408,7 +408,7 @@ def get_notifications():
                            "timestamp": r['inspection_date'] or since})
 
         # ── Overdue extinguishers ──────────────────────────────────────────
-        today = datetime.utcnow().strftime("%Y-%m-%d")
+        today = datetime.now().strftime("%Y-%m-%d")
         overdue = conn.execute(
             "SELECT extinguisher_id, address, next_due_date FROM Extinguishers "
             "WHERE next_due_date IS NOT NULL AND next_due_date < ? "
