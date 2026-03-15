@@ -110,6 +110,9 @@
     /* DASHBOARD */
     .hidden{display:none!important;}
     #appPage{min-height:100vh;display:flex;flex-direction:column;}
+    .app-body{display:flex;flex:1;overflow:hidden;min-height:0;}
+    .main-content{flex:1;display:flex;flex-direction:column;overflow-y:auto;min-width:0;}
+    #viewDashboard{display:flex;flex-direction:column;flex:1;}
     .topbar{background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:0.5rem;padding:0 var(--pad-desk);height:var(--topbar-h);position:sticky;top:0;z-index:100;}
     .last-updated{font-family:'IBM Plex Mono',monospace;font-size:0.65rem;color:var(--muted);white-space:nowrap;transition:color 0.4s;}
     .last-updated.fresh{color:var(--teal);}
@@ -351,7 +354,7 @@
       <div class="table-scroll-wrap" id="tableUsersWrap"></div>
       <div class="card-list" id="cardUsersWrap"></div>
     </div>
-  </div>
+        </div><!-- /tab-panels -->
       </div><!-- /viewDashboard -->
 
       <!-- SETTINGS VIEW -->
