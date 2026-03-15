@@ -1347,8 +1347,12 @@ document.getElementById("userModalSave").addEventListener("click", async () => {
 // ══════════════════════════════════════════════════════════════════════════════
 
 // Update the "last updated" timestamp in the topbar
-function updateTimestamp() {
-  const el = document.getElementById("lastUpdated");
+// Clear all tab notification badges (used on manual refresh and logout)
+function clearAllBadges() {
+  document.querySelectorAll(".tab-notif").forEach(b => b.remove());
+}
+
+function updateTimestamp() {  const el = document.getElementById("lastUpdated");
   if (!el) return;
   const now  = new Date();
   const h    = now.getHours().toString().padStart(2,"0");
