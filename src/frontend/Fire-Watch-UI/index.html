@@ -698,11 +698,22 @@ async function sha256(str) {
 }
 
 // ── State ──────────────────────────────────────────────────────────────────────
-let currentUser   = null;
-let selectedExtId = null;
-let editingExtId  = null;
+let currentUser      = null;
+let selectedExtId    = null;
+let editingExtId     = null;
 let selectedAssignId = null;
 let editingAssignId  = null;
+
+// ── Notification state ─────────────────────────────────────────────────────────
+let _notifications = [];
+let _seenNotifIds  = new Set();
+let _unreadCount   = 0;
+
+// ── Polling state ──────────────────────────────────────────────────────────────
+let _pollTimer       = null;
+let _prevAssignCount = null;
+let _prevReportCount = null;
+let _currentTheme    = "dark";
 
 // ── Role helpers ───────────────────────────────────────────────────────────────
 const isAdmin      = () => currentUser?.role === "Admin";
@@ -1242,8 +1253,6 @@ function closeSidebar() {
 //  THEME SYSTEM
 // ══════════════════════════════════════════════════════════════════════════════
 
-let _currentTheme = "dark";
-
 const THEMES = ["dark", "light", "navy", "contrast"];
 
 function applyTheme(theme) {
@@ -1334,12 +1343,8 @@ document.getElementById("userModalSave").addEventListener("click", async () => {
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
-//  PHASE 1 — Auto-polling (refreshes data every 45 seconds automatically)
+//  PHASE 1 — Auto-polling (refreshes data every 5 seconds automatically)
 // ══════════════════════════════════════════════════════════════════════════════
-
-let _pollTimer       = null;   // holds the setInterval ID
-let _prevAssignCount = null;   // tracks assignment count for badge detection
-let _prevReportCount = null;   // tracks report count for badge detection
 
 // Update the "last updated" timestamp in the topbar
 function updateTimestamp() {
@@ -1459,10 +1464,6 @@ function badgeTab(keyword, count) {
 // ══════════════════════════════════════════════════════════════════════════════
 //  NOTIFICATIONS SYSTEM
 // ══════════════════════════════════════════════════════════════════════════════
-
-let _notifications    = [];   // full list fetched from server
-let _seenNotifIds     = new Set(); // IDs user has already seen
-let _unreadCount      = 0;
 
 // Fetch notifications from server and update badge
 async function fetchNotifications() {
