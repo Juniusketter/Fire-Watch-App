@@ -292,6 +292,9 @@
         <button class="sidebar-item active" data-view="dashboard" onclick="showView('dashboard')">
           <span class="si-icon">📊</span> Dashboard
         </button>
+        <button class="sidebar-item" data-view="profile" onclick="showView('profile')">
+          <span class="si-icon">👤</span> My Profile
+        </button>
         <button class="sidebar-item" data-view="settings" onclick="showView('settings')">
           <span class="si-icon">⚙️</span> Settings
         </button>
@@ -511,6 +514,60 @@
           </div>
         </div>
       </div><!-- /viewSettings -->
+
+      <!-- PROFILE VIEW -->
+      <div id="viewProfile" class="hidden">
+        <div class="settings-panel">
+
+          <!-- Account Info -->
+          <div class="settings-section">
+            <div class="settings-section-title">Account Information</div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Username</div>
+                <div class="settings-desc" id="profileUsername"></div>
+              </div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Role</div>
+                <div class="settings-desc" id="profileRole"></div>
+              </div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">User ID</div>
+                <div class="settings-desc" id="profileUserId"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Change Password -->
+          <div class="settings-section">
+            <div class="settings-section-title">Change Password</div>
+            <div style="padding:0.85rem 1rem;">
+              <div class="form-row">
+                <label>Current Password</label>
+                <input type="password" id="profCurrentPw" placeholder="Enter current password" />
+              </div>
+              <div class="form-row">
+                <label>New Password</label>
+                <input type="password" id="profNewPw" placeholder="At least 6 characters" />
+              </div>
+              <div class="form-row">
+                <label>Confirm New Password</label>
+                <input type="password" id="profConfirmPw" placeholder="Re-enter new password" />
+              </div>
+              <div class="modal-error" id="profilePwError" style="margin-bottom:0.5rem;"></div>
+            </div>
+            <div class="settings-save-bar">
+              <span class="settings-saved-msg" id="profileSavedMsg">✓ Password updated</span>
+              <button class="btn-save" style="flex:none;padding:8px 24px;font-size:0.78rem;" onclick="changePassword()">Update Password</button>
+            </div>
+          </div>
+
+        </div>
+      </div><!-- /viewProfile -->
 
     </div><!-- /main-content -->
   </div><!-- /app-body -->
@@ -849,6 +906,8 @@ document.getElementById("btnLogout").addEventListener("click",()=>{
   clearAllBadges();
   applyTheme("dark");
   showView("dashboard");
+  // Clear profile fields on logout
+  ["profCurrentPw","profNewPw","profConfirmPw"].forEach(id => { const el = document.getElementById(id); if(el) el.value=""; });
   currentUser=null; selectedExtId=null;
   document.getElementById("appPage").classList.add("hidden");
   document.getElementById("loginPage").classList.remove("hidden");
@@ -1056,6 +1115,7 @@ document.getElementById("reportModalSave").addEventListener("click",async()=>{
 function showView(view) {
   document.getElementById("viewDashboard").classList.toggle("hidden", view !== "dashboard");
   document.getElementById("viewSettings").classList.toggle("hidden", view !== "settings");
+  document.getElementById("viewProfile").classList.toggle("hidden", view !== "profile");
   document.querySelectorAll(".sidebar-item[data-view]").forEach(btn => {
     btn.classList.toggle("active", btn.dataset.view === view);
   });
@@ -1064,7 +1124,58 @@ function showView(view) {
       currentUser.username + " — " + currentUser.role;
     updateThemeCards();
   }
+  if (view === "profile") {
+    document.getElementById("profileUsername").textContent = currentUser.username;
+    document.getElementById("profileRole").textContent = currentUser.role.replace(/_/g," ");
+    document.getElementById("profileUserId").textContent = "#" + currentUser.user_id;
+    // Clear password fields
+    ["profCurrentPw","profNewPw","profConfirmPw"].forEach(id => document.getElementById(id).value = "");
+    document.getElementById("profilePwError").textContent = "";
+    document.getElementById("profileSavedMsg").classList.remove("show");
+  }
   closeSidebar();
+}
+
+// ── Change Password ────────────────────────────────────────────────────────────
+async function changePassword() {
+  const currentPw = document.getElementById("profCurrentPw").value;
+  const newPw     = document.getElementById("profNewPw").value;
+  const confirmPw = document.getElementById("profConfirmPw").value;
+  const errEl     = document.getElementById("profilePwError");
+
+  errEl.textContent = "";
+
+  if (!currentPw)           { errEl.textContent = "Current password is required."; return; }
+  if (!newPw)               { errEl.textContent = "New password is required."; return; }
+  if (newPw.length < 6)    { errEl.textContent = "New password must be at least 6 characters."; return; }
+  if (newPw !== confirmPw)  { errEl.textContent = "Passwords do not match."; return; }
+  if (newPw === currentPw)  { errEl.textContent = "New password must be different from current password."; return; }
+
+  try {
+    const currentHashed = await sha256(currentPw);
+    const newHashed     = await sha256(newPw);
+
+    const res = await fetch("/api/users/" + currentUser.user_id + "/password", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        current_password: currentHashed,
+        new_password:     newHashed
+      })
+    });
+
+    const data = await res.json();
+    if (data.success) {
+      ["profCurrentPw","profNewPw","profConfirmPw"].forEach(id => document.getElementById(id).value = "");
+      const msg = document.getElementById("profileSavedMsg");
+      msg.classList.add("show");
+      setTimeout(() => msg.classList.remove("show"), 3000);
+    } else {
+      errEl.textContent = data.error || "Failed to update password.";
+    }
+  } catch(e) {
+    errEl.textContent = "Could not reach server.";
+  }
 }
 
 // Sidebar toggle for mobile
