@@ -12,6 +12,73 @@
       --green:#15803d;--blue:#1d4ed8;--purple:#7c3aed;
       --text:#e8eaf0;--muted:#6b7280;--muted2:#9ca3af;--white:#ffffff;
       --pad-mobile:1rem;--pad-desk:1.5rem;--topbar-h:52px;--tab-h:44px;
+      --sidebar-w:220px;
+    }
+
+    /* ── THEME: Light ───────────────────────────────────────── */
+    body.theme-light {
+      --bg:#f5f0e8;--bg2:#ede5d8;--bg3:#e2d8c8;--border:#c8b99a;
+      --orange:#c45400;--orange2:#e06000;--red:#a01020;--teal:#0a7060;
+      --green:#0f5c28;--blue:#1a3fa0;--purple:#5a28b8;
+      --text:#1a1410;--muted:#7a6a58;--muted2:#5a4a38;
+    }
+    /* ── THEME: Navy Blue ───────────────────────────────────── */
+    body.theme-navy {
+      --bg:#0a1628;--bg2:#0f2040;--bg3:#162a54;--border:#1e3a6e;
+      --orange:#f0a030;--orange2:#f8c060;--red:#e03050;--teal:#20c0b0;
+      --green:#20a050;--blue:#4080f0;--purple:#a060f0;
+      --text:#d8e8f8;--muted:#6080a0;--muted2:#8090b0;
+    }
+    /* ── THEME: High Contrast ───────────────────────────────── */
+    body.theme-contrast {
+      --bg:#000000;--bg2:#0a0a0a;--bg3:#141414;--border:#ffffff;
+      --orange:#ffaa00;--orange2:#ffcc00;--red:#ff3030;--teal:#00ffcc;
+      --green:#00ff80;--blue:#4499ff;--purple:#cc88ff;
+      --text:#ffffff;--muted:#cccccc;--muted2:#aaaaaa;
+    }
+
+    /* ── SIDEBAR ────────────────────────────────────────────── */
+    #appPage{display:flex;flex-direction:column;min-height:100vh;}
+    .app-body{display:flex;flex:1;overflow:hidden;}
+    .sidebar{width:var(--sidebar-w);background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;transition:transform 0.25s ease;}
+    .sidebar-header{padding:1rem 1rem 0.5rem;border-bottom:1px solid var(--border);}
+    .sidebar-title{font-family:'IBM Plex Mono',monospace;font-size:0.62rem;letter-spacing:0.18em;text-transform:uppercase;color:var(--muted);margin-bottom:0.5rem;}
+    .sidebar-user{font-family:'IBM Plex Sans',sans-serif;font-size:0.88rem;font-weight:600;color:var(--text);}
+    .sidebar-role{font-family:'IBM Plex Mono',monospace;font-size:0.7rem;color:var(--muted2);margin-top:2px;}
+    .sidebar-nav{flex:1;padding:0.5rem 0;}
+    .sidebar-item{display:flex;align-items:center;gap:0.6rem;padding:0.65rem 1rem;font-family:'IBM Plex Mono',monospace;font-size:0.75rem;font-weight:600;letter-spacing:0.05em;color:var(--muted2);cursor:pointer;transition:background 0.15s,color 0.15s;border:none;background:none;width:100%;text-align:left;}
+    .sidebar-item:hover{background:var(--bg3);color:var(--text);}
+    .sidebar-item.active{background:var(--bg3);color:var(--orange);border-right:2px solid var(--orange);}
+    .sidebar-item .si-icon{font-size:1rem;width:20px;text-align:center;}
+    .sidebar-footer{padding:0.75rem 1rem;border-top:1px solid var(--border);}
+    .sidebar-toggle{display:none;background:none;border:none;color:var(--muted2);font-size:1.2rem;cursor:pointer;padding:4px 8px;}
+    .main-content{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;}
+
+    /* ── SETTINGS PANEL ─────────────────────────────────────── */
+    .settings-panel{flex:1;padding:var(--pad-desk);overflow-y:auto;}
+    .settings-section{background:var(--bg2);border:1px solid var(--border);border-radius:6px;margin-bottom:1.25rem;overflow:hidden;}
+    .settings-section-title{font-family:'IBM Plex Mono',monospace;font-size:0.7rem;font-weight:600;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted);padding:0.75rem 1rem;border-bottom:1px solid var(--border);background:var(--bg3);}
+    .settings-row{display:flex;align-items:center;justify-content:space-between;padding:0.85rem 1rem;border-bottom:1px solid var(--border);}
+    .settings-row:last-child{border-bottom:none;}
+    .settings-label{font-family:'IBM Plex Sans',sans-serif;font-size:0.88rem;font-weight:600;color:var(--text);}
+    .settings-desc{font-family:'IBM Plex Mono',monospace;font-size:0.7rem;color:var(--muted2);margin-top:2px;}
+    .theme-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;padding:0.85rem 1rem;}
+    .theme-card{border:2px solid var(--border);border-radius:6px;padding:0.6rem 0.75rem;cursor:pointer;transition:border-color 0.15s;background:var(--bg);}
+    .theme-card:hover{border-color:var(--muted);}
+    .theme-card.selected{border-color:var(--orange);}
+    .theme-card-preview{display:flex;gap:3px;margin-bottom:0.4rem;}
+    .theme-swatch{width:16px;height:16px;border-radius:3px;}
+    .theme-card-name{font-family:'IBM Plex Mono',monospace;font-size:0.7rem;font-weight:600;color:var(--text);}
+    .settings-save-bar{display:flex;align-items:center;justify-content:flex-end;gap:0.75rem;padding:0.85rem 1rem;border-top:1px solid var(--border);background:var(--bg2);}
+    .settings-saved-msg{font-family:'IBM Plex Mono',monospace;font-size:0.75rem;color:var(--teal);opacity:0;transition:opacity 0.3s;}
+    .settings-saved-msg.show{opacity:1;}
+
+    @media(max-width:767px){
+      .sidebar{position:fixed;left:0;top:var(--topbar-h);bottom:0;z-index:150;transform:translateX(-100%);}
+      .sidebar.open{transform:translateX(0);}
+      .sidebar-toggle{display:block;}
+      .sidebar-overlay{display:none;position:fixed;inset:0;top:var(--topbar-h);background:rgba(0,0,0,0.5);z-index:140;}
+      .sidebar-overlay.show{display:block;}
     }
     *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
     html,body{font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
@@ -199,6 +266,7 @@
 <!-- DASHBOARD -->
 <div id="appPage" class="hidden">
   <div class="topbar">
+    <button class="sidebar-toggle" id="sidebarToggle" title="Menu">☰</button>
     <span class="topbar-logo">🔥 FireWatch</span>
     <span class="topbar-user"><span class="topbar-user-text"><strong id="welcomeLabel"></strong></span></span>
     <span class="role-pill" id="roleLabel"></span>
@@ -207,16 +275,44 @@
     <button class="btn-bar btn-logout" id="btnLogout">Logout</button>
   </div>
 
-  <div class="stats-row" id="statsRow">
-    <div class="stat-box color-orange" id="statBoxExt"><div class="stat-label" id="statLabelExt">Extinguishers</div><div class="stat-val" id="statExt">—</div></div>
-    <div class="stat-box color-teal" id="statBoxAssign"><div class="stat-label" id="statLabelAssign">Assignments</div><div class="stat-val" id="statAssign">—</div></div>
-    <div class="stat-box color-blue" id="statBoxReports"><div class="stat-label" id="statLabelReports">Reports</div><div class="stat-val" id="statReports">—</div></div>
-    <div class="stat-box color-purple" id="statBoxUsers"><div class="stat-label" id="statLabelUsers">Users</div><div class="stat-val" id="statUsers">—</div></div>
-  </div>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-  <div class="tab-bar" id="tabBar"></div>
+  <div class="app-body">
+    <!-- SIDEBAR -->
+    <nav class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-title">FireWatch</div>
+        <div class="sidebar-user" id="sidebarUsername"></div>
+        <div class="sidebar-role" id="sidebarRole"></div>
+      </div>
+      <div class="sidebar-nav" id="sidebarNav">
+        <button class="sidebar-item active" data-view="dashboard" onclick="showView('dashboard')">
+          <span class="si-icon">📊</span> Dashboard
+        </button>
+        <button class="sidebar-item" data-view="settings" onclick="showView('settings')">
+          <span class="si-icon">⚙️</span> Settings
+        </button>
+      </div>
+      <div class="sidebar-footer">
+        <button class="sidebar-item" onclick="document.getElementById('btnLogout').click()">
+          <span class="si-icon">🚪</span> Logout
+        </button>
+      </div>
+    </nav>
 
-  <div class="tab-panels">
+    <!-- MAIN CONTENT -->
+    <div class="main-content">
+
+      <!-- DASHBOARD VIEW -->
+      <div id="viewDashboard">
+        <div class="stats-row" id="statsRow">
+          <div class="stat-box color-orange" id="statBoxExt"><div class="stat-label" id="statLabelExt">Extinguishers</div><div class="stat-val" id="statExt">—</div></div>
+          <div class="stat-box color-teal" id="statBoxAssign"><div class="stat-label" id="statLabelAssign">Assignments</div><div class="stat-val" id="statAssign">—</div></div>
+          <div class="stat-box color-blue" id="statBoxReports"><div class="stat-label" id="statLabelReports">Reports</div><div class="stat-val" id="statReports">—</div></div>
+          <div class="stat-box color-purple" id="statBoxUsers"><div class="stat-label" id="statLabelUsers">Users</div><div class="stat-val" id="statUsers">—</div></div>
+        </div>
+        <div class="tab-bar" id="tabBar"></div>
+        <div class="tab-panels">
     <!-- Extinguishers -->
     <div class="panel" id="panelExtinguishers">
       <div class="table-toolbar hidden" id="extToolbar">
@@ -256,7 +352,75 @@
       <div class="card-list" id="cardUsersWrap"></div>
     </div>
   </div>
-</div>
+      </div><!-- /viewDashboard -->
+
+      <!-- SETTINGS VIEW -->
+      <div id="viewSettings" class="hidden">
+        <div class="settings-panel">
+          <div class="settings-section">
+            <div class="settings-section-title">Appearance — Theme</div>
+            <div class="theme-grid">
+              <div class="theme-card" data-theme="dark" onclick="selectTheme('dark')">
+                <div class="theme-card-preview">
+                  <div class="theme-swatch" style="background:#0d0f12"></div>
+                  <div class="theme-swatch" style="background:#e85d04"></div>
+                  <div class="theme-swatch" style="background:#e8eaf0"></div>
+                </div>
+                <div class="theme-card-name">Dark</div>
+              </div>
+              <div class="theme-card" data-theme="light" onclick="selectTheme('light')">
+                <div class="theme-card-preview">
+                  <div class="theme-swatch" style="background:#f5f0e8"></div>
+                  <div class="theme-swatch" style="background:#c45400"></div>
+                  <div class="theme-swatch" style="background:#1a1410"></div>
+                </div>
+                <div class="theme-card-name">Light</div>
+              </div>
+              <div class="theme-card" data-theme="navy" onclick="selectTheme('navy')">
+                <div class="theme-card-preview">
+                  <div class="theme-swatch" style="background:#0a1628"></div>
+                  <div class="theme-swatch" style="background:#f0a030"></div>
+                  <div class="theme-swatch" style="background:#d8e8f8"></div>
+                </div>
+                <div class="theme-card-name">Navy Blue</div>
+              </div>
+              <div class="theme-card" data-theme="contrast" onclick="selectTheme('contrast')">
+                <div class="theme-card-preview">
+                  <div class="theme-swatch" style="background:#000000"></div>
+                  <div class="theme-swatch" style="background:#ffaa00"></div>
+                  <div class="theme-swatch" style="background:#ffffff"></div>
+                </div>
+                <div class="theme-card-name">High Contrast</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <div class="settings-section-title">App Info</div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">FireWatch</div>
+                <div class="settings-desc">NFPA Compliance Tracking — Sprint 2</div>
+              </div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Logged in as</div>
+                <div class="settings-desc" id="settingsUserInfo"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-save-bar">
+            <span class="settings-saved-msg" id="settingsSavedMsg">✓ Preferences saved</span>
+            <button class="btn-save" style="flex:none;padding:8px 24px;font-size:0.78rem;" onclick="saveSettings()">Save Preferences</button>
+          </div>
+        </div>
+      </div><!-- /viewSettings -->
+
+    </div><!-- /main-content -->
+  </div><!-- /app-body -->
+</div><!-- /appPage -->
 
 <!-- ADD/EDIT EXTINGUISHER MODAL -->
 <div class="modal-overlay hidden" id="extModal">
@@ -396,6 +560,11 @@ function showDashboard() {
   buildTabs(); loadStats(); loadAllData();
   captureBaseline();
   startPolling();
+  // Update sidebar user info
+  document.getElementById("sidebarUsername").textContent = currentUser.username;
+  document.getElementById("sidebarRole").textContent = currentUser.role.replace(/_/g," ");
+  // Load saved preferences
+  loadUserPreferences();
 }
 
 // ── Build tabs by role ────────────────────────────────────────────────────────
@@ -584,6 +753,8 @@ document.getElementById("btnRefresh").addEventListener("click",()=>{ clearAllBad
 document.getElementById("btnLogout").addEventListener("click",()=>{
   stopPolling();
   clearAllBadges();
+  applyTheme("dark");
+  showView("dashboard");
   currentUser=null; selectedExtId=null;
   document.getElementById("appPage").classList.add("hidden");
   document.getElementById("loginPage").classList.remove("hidden");
@@ -784,7 +955,97 @@ document.getElementById("reportModalSave").addEventListener("click",async()=>{
   if(res.ok){ document.getElementById("reportModal").classList.add("hidden"); loadReports(); loadAssignments(); loadStats(); }
   else document.getElementById("reportModalError").textContent="Error: "+(await res.json()).error;
 });
-// ── Add User (Admin only) ─────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+//  SIDEBAR & VIEW SWITCHING
+// ══════════════════════════════════════════════════════════════════════════════
+
+function showView(view) {
+  document.getElementById("viewDashboard").classList.toggle("hidden", view !== "dashboard");
+  document.getElementById("viewSettings").classList.toggle("hidden", view !== "settings");
+  document.querySelectorAll(".sidebar-item[data-view]").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.view === view);
+  });
+  if (view === "settings") {
+    document.getElementById("settingsUserInfo").textContent =
+      currentUser.username + " — " + currentUser.role;
+    updateThemeCards();
+  }
+  closeSidebar();
+}
+
+// Sidebar toggle for mobile
+document.getElementById("sidebarToggle").addEventListener("click", () => {
+  const sidebar = document.getElementById("sidebar");
+  const overlay = document.getElementById("sidebarOverlay");
+  sidebar.classList.toggle("open");
+  overlay.classList.toggle("show");
+});
+
+document.getElementById("sidebarOverlay").addEventListener("click", closeSidebar);
+
+function closeSidebar() {
+  document.getElementById("sidebar").classList.remove("open");
+  document.getElementById("sidebarOverlay").classList.remove("show");
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  THEME SYSTEM
+// ══════════════════════════════════════════════════════════════════════════════
+
+let _currentTheme = "dark";
+
+const THEMES = ["dark", "light", "navy", "contrast"];
+
+function applyTheme(theme) {
+  THEMES.forEach(t => document.body.classList.remove("theme-" + t));
+  if (theme !== "dark") document.body.classList.add("theme-" + theme);
+  _currentTheme = theme;
+  updateThemeCards();
+}
+
+function selectTheme(theme) {
+  applyTheme(theme);
+}
+
+function updateThemeCards() {
+  document.querySelectorAll(".theme-card").forEach(card => {
+    card.classList.toggle("selected", card.dataset.theme === _currentTheme);
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  SAVE / LOAD PREFERENCES (synced to DB via Users.preferences column)
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function saveSettings() {
+  const prefs = { theme: _currentTheme };
+  try {
+    const res = await fetch("/api/users/" + currentUser.user_id + "/preferences", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(prefs)
+    });
+    if (res.ok) {
+      const msg = document.getElementById("settingsSavedMsg");
+      msg.classList.add("show");
+      setTimeout(() => msg.classList.remove("show"), 2500);
+    }
+  } catch(e) { console.warn("Save preferences error:", e); }
+}
+
+async function loadUserPreferences() {
+  try {
+    const res = await fetch("/api/users/" + currentUser.user_id + "/preferences");
+    if (res.ok) {
+      const prefs = await res.json();
+      if (prefs.theme) applyTheme(prefs.theme);
+    }
+  } catch(e) {
+    // No preferences yet — use default dark theme
+    applyTheme("dark");
+  }
+}
+</script>
 document.getElementById("btnAddUser").addEventListener("click", () => {
   ["uUsername","uPassword","uConfirm"].forEach(id => document.getElementById(id).value = "");
   document.getElementById("uRole").value = "Inspector";
