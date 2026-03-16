@@ -290,8 +290,8 @@ def get_preferences(user_id):
         try:
             return jsonify(json.loads(row["preferences"]))
         except:
-            return jsonify({})
-    return jsonify({})
+            return jsonify({"theme": "dark"})
+    return jsonify({"theme": "dark"})
 
 @app.route("/api/users/<int:user_id>/preferences", methods=["PUT"])
 def save_preferences(user_id):

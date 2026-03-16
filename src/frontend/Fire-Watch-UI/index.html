@@ -1264,6 +1264,8 @@ function applyTheme(theme) {
 
 function selectTheme(theme) {
   applyTheme(theme);
+  // Auto-save immediately when theme is selected
+  saveSettings();
 }
 
 function updateThemeCards() {
@@ -1297,10 +1299,11 @@ async function loadUserPreferences() {
     const res = await fetch("/api/users/" + currentUser.user_id + "/preferences");
     if (res.ok) {
       const prefs = await res.json();
-      if (prefs.theme) applyTheme(prefs.theme);
+      applyTheme(prefs.theme || "dark");
+    } else {
+      applyTheme("dark");
     }
   } catch(e) {
-    // No preferences yet — use default dark theme
     applyTheme("dark");
   }
 }
