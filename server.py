@@ -21,6 +21,7 @@ import sqlite3
 import os
 import hashlib
 import logging
+import uuid
 
 # Silence per-request logs — errors still print, routine GET/POST lines do not
 logging.getLogger("werkzeug").setLevel(logging.ERROR)
@@ -32,9 +33,13 @@ def hash_password(pw: str) -> str:
 app = Flask(__name__)
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH  = os.path.join(BASE_DIR, "src", "database", "FireWatch.db")
-UI_DIR   = os.path.join(BASE_DIR, "src", "frontend", "Fire-Watch-UI")
+BASE_DIR    = os.path.dirname(os.path.abspath(__file__))
+DB_PATH     = os.path.join(BASE_DIR, "src", "database", "FireWatch.db")
+UI_DIR      = os.path.join(BASE_DIR, "src", "frontend", "Fire-Watch-UI")
+UPLOAD_DIR  = os.path.join(BASE_DIR, "src", "uploads")
+os.makedirs(UPLOAD_DIR, exist_ok=True)  # create uploads folder if it doesn't exist
+
+ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "gif", "webp", "heic", "heif"}
 
 # ── DB helper ──────────────────────────────────────────────────────────────────
 def get_db():
@@ -53,6 +58,9 @@ def run_migrations():
             conn.execute("ALTER TABLE Assignments ADD COLUMN due_date DATE")
         if "notes" not in assign_cols:
             conn.execute("ALTER TABLE Assignments ADD COLUMN notes TEXT DEFAULT ''")
+        report_cols = [r[1] for r in conn.execute("PRAGMA table_info(Reports)").fetchall()]
+        if "photo_path" not in report_cols:
+            conn.execute("ALTER TABLE Reports ADD COLUMN photo_path TEXT")
         conn.commit()
 
 run_migrations()
@@ -66,7 +74,25 @@ def index():
 def static_files(filename):
     return send_from_directory(UI_DIR, filename)
 
-# ── AUTH ───────────────────────────────────────────────────────────────────────
+@app.route("/uploads/<path:filename>")
+def serve_upload(filename):
+    return send_from_directory(UPLOAD_DIR, filename)
+
+# ── PHOTO UPLOAD ───────────────────────────────────────────────────────────────
+@app.route("/api/upload", methods=["POST"])
+def upload_photo():
+    if "photo" not in request.files:
+        return jsonify({"error": "No photo file provided"}), 400
+    file = request.files["photo"]
+    if file.filename == "":
+        return jsonify({"error": "Empty filename"}), 400
+    ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
+    if ext not in ALLOWED_EXTENSIONS:
+        return jsonify({"error": f"File type .{ext} not allowed"}), 400
+    # Generate unique filename to avoid collisions
+    unique_name = f"{uuid.uuid4().hex}.{ext}"
+    file.save(os.path.join(UPLOAD_DIR, unique_name))
+    return jsonify({"success": True, "filename": unique_name}), 201
 @app.route("/api/login", methods=["POST"])
 def login():
     data     = request.get_json()
@@ -222,13 +248,13 @@ def get_reports():
     with get_db() as conn:
         if user_id:
             rows = conn.execute(
-                "SELECT report_id, extinguisher_id, inspection_date, notes "
+                "SELECT report_id, extinguisher_id, inspection_date, notes, photo_path "
                 "FROM Reports WHERE inspector_id = ?", (user_id,)
             ).fetchall()
         else:
             rows = conn.execute(
                 "SELECT r.report_id, r.extinguisher_id, "
-                "u.username AS inspector, r.inspection_date, r.notes "
+                "u.username AS inspector, r.inspection_date, r.notes, r.photo_path "
                 "FROM Reports r LEFT JOIN Users u ON r.inspector_id = u.user_id"
             ).fetchall()
     return jsonify([dict(r) for r in rows])
@@ -239,11 +265,16 @@ def create_report():
     d = request.get_json()
     try:
         with get_db() as conn:
+            # Ensure photo_path column exists
+            report_cols = [r[1] for r in conn.execute("PRAGMA table_info(Reports)").fetchall()]
+            if "photo_path" not in report_cols:
+                conn.execute("ALTER TABLE Reports ADD COLUMN photo_path TEXT")
             conn.execute(
-                "INSERT INTO Reports (extinguisher_id, inspector_id, inspection_date, notes) "
-                "VALUES (?, ?, ?, ?)",
+                "INSERT INTO Reports (extinguisher_id, inspector_id, inspection_date, notes, photo_path) "
+                "VALUES (?, ?, ?, ?, ?)",
                 (d.get("extinguisher_id"), d.get("inspector_id"),
-                 d.get("inspection_date"), d.get("notes", ""))
+                 d.get("inspection_date"), d.get("notes", ""),
+                 d.get("photo_path"))
             )
             # Mark assignment complete
             if d.get("assignment_id"):

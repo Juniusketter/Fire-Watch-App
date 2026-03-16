@@ -192,6 +192,22 @@
     .badge-default{background:rgba(107,114,128,0.15);color:var(--muted2);border:1px solid var(--border);}
     .empty-msg{text-align:center;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:0.8rem;padding:3rem;letter-spacing:0.05em;}
 
+    /* ── PHOTO UPLOAD ───────────────────────────────────────── */
+    .photo-upload-area{border:2px dashed var(--border);border-radius:6px;padding:1rem;text-align:center;cursor:pointer;transition:border-color 0.2s,background 0.2s;position:relative;}
+    .photo-upload-area:hover{border-color:var(--orange);background:rgba(232,93,4,0.04);}
+    .photo-upload-area.has-photo{border-color:var(--teal);border-style:solid;}
+    .photo-upload-area input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+    .photo-upload-label{font-family:'IBM Plex Mono',monospace;font-size:0.72rem;color:var(--muted2);pointer-events:none;}
+    .photo-upload-label span{color:var(--orange);font-weight:600;}
+    .photo-preview{width:100%;max-height:160px;object-fit:cover;border-radius:4px;margin-top:0.5rem;display:none;}
+    .photo-preview.show{display:block;}
+    .photo-clear{font-family:'IBM Plex Mono',monospace;font-size:0.68rem;color:var(--red);background:none;border:none;cursor:pointer;margin-top:0.4rem;display:none;}
+    .photo-clear.show{display:block;}
+    .report-thumb{width:40px;height:40px;object-fit:cover;border-radius:3px;border:1px solid var(--border);cursor:pointer;transition:transform 0.15s;}
+    .report-thumb:hover{transform:scale(1.1);}
+    .photo-viewer{position:fixed;inset:0;background:rgba(0,0,0,0.9);display:flex;align-items:center;justify-content:center;z-index:300;cursor:pointer;}
+    .photo-viewer img{max-width:90vw;max-height:90vh;object-fit:contain;border-radius:4px;}
+
     /* MODALS */
     .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);display:flex;align-items:flex-end;justify-content:center;z-index:200;backdrop-filter:blur(2px);padding:0;}
     .modal-box{background:var(--bg2);border:1px solid var(--border);border-top:2px solid var(--orange);border-radius:12px 12px 0 0;padding:1.75rem var(--pad-mobile);width:100%;max-height:92vh;overflow-y:auto;box-shadow:0 -12px 40px rgba(0,0,0,0.6);animation:slideUp 0.25s ease-out;}
@@ -657,7 +673,16 @@
     <h3>Submit Inspection Report</h3>
     <div class="form-row"><label>Assignment *</label><select id="rAssignment"></select></div>
     <div class="form-row"><label>Inspection Date</label><input type="date" id="rDate" /></div>
-    <div class="form-row"><label>Notes</label><textarea id="rNotes" rows="4" placeholder="Enter inspection notes, observations, or findings..."></textarea></div>
+    <div class="form-row"><label>Notes</label><textarea id="rNotes" rows="3" placeholder="Enter inspection notes, observations, or findings..."></textarea></div>
+    <div class="form-row">
+      <label>Photo <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+      <div class="photo-upload-area" id="photoUploadArea">
+        <input type="file" id="rPhoto" accept="image/*,.heic,.heif" />
+        <div class="photo-upload-label">📷 Tap to take photo or <span>browse files</span></div>
+        <img class="photo-preview" id="photoPreview" src="" alt="Preview" />
+        <button type="button" class="photo-clear" id="photoClear">✕ Remove photo</button>
+      </div>
+    </div>
     <div class="modal-error" id="reportModalError"></div>
     <div class="modal-actions">
       <button class="btn-cancel" id="reportModalCancel">Cancel</button>
@@ -874,7 +899,7 @@ async function loadReports() {
   let url="/api/reports";
   if (isInv()) url+="?user_id="+currentUser.user_id;
   const rows=await fetch(url).then(r=>r.json());
-  const cols=isAdmin()?["report_id","extinguisher_id","inspector","inspection_date","notes"]:["report_id","extinguisher_id","inspection_date","notes"];
+  const cols=isAdmin()?["report_id","extinguisher_id","inspector","inspection_date","notes","photo_path"]:["report_id","extinguisher_id","inspection_date","notes","photo_path"];
   renderTable("tableReportsWrap",cols,rows);
   renderCards("cardReportsWrap",rows,"report");
 }
@@ -887,7 +912,7 @@ async function loadUsers() {
 }
 
 // ── Table renderer ────────────────────────────────────────────────────────────
-const headerMap={extinguisher_id:"ID",assignment_id:"ID",report_id:"ID",user_id:"ID",address:"Address",building_number:"Building",floor_number:"Floor",room_number:"Room",location_description:"Location",inspection_interval_days:"Interval",next_due_date:"Due Date",due_date:"Due Date",assigned_by:"Assigned By",inspector:"Inspector",status:"Status",inspection_date:"Date",notes:"Notes",username:"Username",role:"Role"};
+const headerMap={extinguisher_id:"ID",assignment_id:"ID",report_id:"ID",user_id:"ID",address:"Address",building_number:"Building",floor_number:"Floor",room_number:"Room",location_description:"Location",inspection_interval_days:"Interval",next_due_date:"Due Date",due_date:"Due Date",assigned_by:"Assigned By",inspector:"Inspector",status:"Status",inspection_date:"Date",notes:"Notes",username:"Username",role:"Role",photo_path:"Photo"};
 
 function renderTable(wrapperId,cols,rows,onRowClick) {
   const wrap=document.getElementById(wrapperId);
@@ -896,9 +921,18 @@ function renderTable(wrapperId,cols,rows,onRowClick) {
   cols.forEach(c=>html+=`<th>${headerMap[c]||c}</th>`);
   html+=`</tr></thead><tbody>`;
   rows.forEach(row=>{
-    const rowId=row.extinguisher_id??row.assignment_id??row.user_id??"";
+    const rowId=row.extinguisher_id??row.assignment_id??row.user_id??row.report_id??"";
     html+=`<tr data-id="${rowId}">`;
-    cols.forEach(c=>{ let val=row[c]??"—"; if(c==="status") val=statusBadge(val); html+=`<td>${val}</td>`; });
+    cols.forEach(c=>{
+      let val=row[c]??"—";
+      if(c==="status") val=statusBadge(val);
+      else if(c==="photo_path") {
+        val = row[c]
+          ? `<img class="report-thumb" src="/uploads/${row[c]}" alt="photo" onclick="openPhotoViewer('/uploads/${row[c]}');event.stopPropagation();" />`
+          : `<span style="color:var(--muted);font-size:0.7rem;">—</span>`;
+      }
+      html+=`<td>${val}</td>`;
+    });
     html+=`</tr>`;
   });
   html+=`</tbody></table>`;
@@ -907,7 +941,11 @@ function renderTable(wrapperId,cols,rows,onRowClick) {
     tr.addEventListener("click",()=>{
       wrap.querySelectorAll("tr").forEach(r=>r.classList.remove("selected"));
       tr.classList.add("selected");
-      if(onRowClick) onRowClick(rows.find(r=>String(r.extinguisher_id)===tr.dataset.id||String(r.assignment_id)===tr.dataset.id));
+      if(onRowClick) onRowClick(rows.find(r=>
+        String(r.extinguisher_id)===tr.dataset.id||
+        String(r.assignment_id)===tr.dataset.id||
+        String(r.report_id)===tr.dataset.id
+      ));
     });
   });
 }
@@ -1141,6 +1179,10 @@ document.getElementById("btnSubmitReport").addEventListener("click",async()=>{
   document.getElementById("rAssignment").innerHTML=pending.map(a=>`<option value="${a.assignment_id}" data-ext="${a.extinguisher_id}">Assignment #${a.assignment_id} — ${extMap[a.extinguisher_id]||"Ext #"+a.extinguisher_id}</option>`).join("");
   document.getElementById("rDate").value=new Date().toISOString().split("T")[0];
   document.getElementById("rNotes").value="";
+  document.getElementById("rPhoto").value="";
+  document.getElementById("photoPreview").classList.remove("show");
+  document.getElementById("photoClear").classList.remove("show");
+  document.getElementById("photoUploadArea").classList.remove("has-photo");
   document.getElementById("reportModalError").textContent="";
   document.getElementById("reportModal").classList.remove("hidden");
 });
@@ -1154,10 +1196,59 @@ document.getElementById("reportModalSave").addEventListener("click",async()=>{
   const extId=parseInt(sel.selectedOptions[0]?.dataset.ext);
   const date=document.getElementById("rDate").value;
   const notes=document.getElementById("rNotes").value.trim();
-  if(!assignmentId||!extId){ document.getElementById("reportModalError").textContent="Please select an assignment."; return; }
-  const res=await fetch("/api/reports",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({extinguisher_id:extId,inspector_id:currentUser.user_id,inspection_date:date,notes,assignment_id:assignmentId})});
-  if(res.ok){ document.getElementById("reportModal").classList.add("hidden"); loadReports(); loadAssignments(); loadStats(); }
-  else document.getElementById("reportModalError").textContent="Error: "+(await res.json()).error;
+  const photoFile=document.getElementById("rPhoto").files[0];
+  const errEl=document.getElementById("reportModalError");
+
+  if(!assignmentId||!extId){ errEl.textContent="Please select an assignment."; return; }
+
+  // Show loading state
+  document.getElementById("reportModalSave").textContent="Submitting...";
+  document.getElementById("reportModalSave").disabled=true;
+
+  try {
+    // Step 1 — upload photo if one was selected
+    let photoPath = null;
+    if (photoFile) {
+      const formData = new FormData();
+      formData.append("photo", photoFile);
+      const uploadRes = await fetch("/api/upload", { method:"POST", body:formData });
+      if (uploadRes.ok) {
+        const uploadData = await uploadRes.json();
+        photoPath = uploadData.filename;
+      } else {
+        errEl.textContent = "Photo upload failed. Report not submitted.";
+        document.getElementById("reportModalSave").textContent="Submit Report";
+        document.getElementById("reportModalSave").disabled=false;
+        return;
+      }
+    }
+
+    // Step 2 — submit the report with photo_path
+    const res = await fetch("/api/reports", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        extinguisher_id:extId,
+        inspector_id:currentUser.user_id,
+        inspection_date:date,
+        notes,
+        assignment_id:assignmentId,
+        photo_path:photoPath
+      })
+    });
+
+    if(res.ok){
+      document.getElementById("reportModal").classList.add("hidden");
+      loadReports(); loadAssignments(); loadStats();
+    } else {
+      errEl.textContent="Error: "+(await res.json()).error;
+    }
+  } catch(e) {
+    errEl.textContent="Could not reach server.";
+  } finally {
+    document.getElementById("reportModalSave").textContent="Submit Report";
+    document.getElementById("reportModalSave").disabled=false;
+  }
 });
 // ══════════════════════════════════════════════════════════════════════════════
 //  SIDEBAR & VIEW SWITCHING
@@ -1552,6 +1643,48 @@ function formatNotifTime(ts) {
   if (diff < 3600) return Math.floor(diff/60) + " min ago";
   if (diff < 86400) return Math.floor(diff/3600) + " hr ago";
   return new Date(ts).toLocaleDateString();
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  PHOTO UPLOAD — preview and viewer
+// ══════════════════════════════════════════════════════════════════════════════
+
+document.getElementById("rPhoto").addEventListener("change", function() {
+  const file = this.files[0];
+  const preview = document.getElementById("photoPreview");
+  const clear   = document.getElementById("photoClear");
+  const area    = document.getElementById("photoUploadArea");
+  const label   = area.querySelector(".photo-upload-label");
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      preview.src = e.target.result;
+      preview.classList.add("show");
+      clear.classList.add("show");
+      area.classList.add("has-photo");
+      label.innerHTML = `📷 <span>${file.name}</span>`;
+    };
+    reader.readAsDataURL(file);
+  }
+});
+
+document.getElementById("photoClear").addEventListener("click", function(e) {
+  e.stopPropagation();
+  document.getElementById("rPhoto").value = "";
+  document.getElementById("photoPreview").classList.remove("show");
+  document.getElementById("photoPreview").src = "";
+  this.classList.remove("show");
+  document.getElementById("photoUploadArea").classList.remove("has-photo");
+  document.getElementById("photoUploadArea").querySelector(".photo-upload-label").innerHTML =
+    `📷 Tap to take photo or <span>browse files</span>`;
+});
+
+function openPhotoViewer(src) {
+  const viewer = document.createElement("div");
+  viewer.className = "photo-viewer";
+  viewer.innerHTML = `<img src="${src}" alt="Inspection photo" />`;
+  viewer.addEventListener("click", () => viewer.remove());
+  document.body.appendChild(viewer);
 }
 </script>
 </body>
