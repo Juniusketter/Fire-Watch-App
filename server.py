@@ -292,6 +292,8 @@ def change_password(user_id):
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route("/api/users/<int:user_id>/preferences", methods=["GET"])
 def get_preferences(user_id):
     import json
     with get_db() as conn:
