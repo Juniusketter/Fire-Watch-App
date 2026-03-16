@@ -42,6 +42,21 @@ def get_db():
     conn.row_factory = sqlite3.Row
     return conn
 
+# ── Startup migrations — run once on server start ──────────────────────────────
+def run_migrations():
+    with get_db() as conn:
+        existing = [r[1] for r in conn.execute("PRAGMA table_info(Users)").fetchall()]
+        if "preferences" not in existing:
+            conn.execute("ALTER TABLE Users ADD COLUMN preferences TEXT DEFAULT '{}'")
+        assign_cols = [r[1] for r in conn.execute("PRAGMA table_info(Assignments)").fetchall()]
+        if "due_date" not in assign_cols:
+            conn.execute("ALTER TABLE Assignments ADD COLUMN due_date DATE")
+        if "notes" not in assign_cols:
+            conn.execute("ALTER TABLE Assignments ADD COLUMN notes TEXT DEFAULT ''")
+        conn.commit()
+
+run_migrations()
+
 # ── Serve frontend ─────────────────────────────────────────────────────────────
 @app.route("/")
 def index():
