@@ -50,18 +50,118 @@ def get_db():
 # ── Startup migrations — run once on server start ──────────────────────────────
 def run_migrations():
     with get_db() as conn:
-        existing = [r[1] for r in conn.execute("PRAGMA table_info(Users)").fetchall()]
-        if "preferences" not in existing:
+
+        # ── Users ──────────────────────────────────────────────────────────
+        user_cols = [r[1] for r in conn.execute("PRAGMA table_info(Users)").fetchall()]
+        if "preferences" not in user_cols:
             conn.execute("ALTER TABLE Users ADD COLUMN preferences TEXT DEFAULT '{}'")
+
+        # ── Assignments ────────────────────────────────────────────────────
         assign_cols = [r[1] for r in conn.execute("PRAGMA table_info(Assignments)").fetchall()]
         if "due_date" not in assign_cols:
             conn.execute("ALTER TABLE Assignments ADD COLUMN due_date DATE")
         if "notes" not in assign_cols:
             conn.execute("ALTER TABLE Assignments ADD COLUMN notes TEXT DEFAULT ''")
+
+        # ── Reports ────────────────────────────────────────────────────────
         report_cols = [r[1] for r in conn.execute("PRAGMA table_info(Reports)").fetchall()]
         if "photo_path" not in report_cols:
             conn.execute("ALTER TABLE Reports ADD COLUMN photo_path TEXT")
+
+        # ── Companies table ────────────────────────────────────────────────
+        tables = [r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'").fetchall()]
+
+        if "Companies" not in tables:
+            conn.execute("""
+                CREATE TABLE Companies (
+                    company_id   INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name         TEXT NOT NULL,
+                    address      TEXT,
+                    city         TEXT,
+                    state        TEXT,
+                    zip          TEXT,
+                    phone        TEXT,
+                    contact_name TEXT,
+                    created_at   TEXT DEFAULT (date('now'))
+                )
+            """)
+
+        # ── Buildings table ────────────────────────────────────────────────
+        if "Buildings" not in tables:
+            conn.execute("""
+                CREATE TABLE Buildings (
+                    building_id  INTEGER PRIMARY KEY AUTOINCREMENT,
+                    company_id   INTEGER NOT NULL REFERENCES Companies(company_id),
+                    name         TEXT NOT NULL,
+                    address      TEXT,
+                    floors       INTEGER DEFAULT 1,
+                    notes        TEXT,
+                    created_at   TEXT DEFAULT (date('now'))
+                )
+            """)
+
+        # ── Add building_id to Extinguishers (nullable — safe for existing rows) ──
+        ext_cols = [r[1] for r in conn.execute("PRAGMA table_info(Extinguishers)").fetchall()]
+        if "building_id" not in ext_cols:
+            conn.execute("ALTER TABLE Extinguishers ADD COLUMN building_id INTEGER REFERENCES Buildings(building_id)")
+
         conn.commit()
+
+        # ── Auto-migrate existing extinguisher data into Companies/Buildings ──
+        # Only runs if Companies table is empty (first time) and Extinguishers exist
+        co_count  = conn.execute("SELECT COUNT(*) FROM Companies").fetchone()[0]
+        ext_count = conn.execute("SELECT COUNT(*) FROM Extinguishers").fetchone()[0]
+
+        if co_count == 0 and ext_count > 0:
+            # Collect unique addresses from existing extinguishers
+            rows = conn.execute(
+                "SELECT extinguisher_id, address, building_number FROM Extinguishers"
+            ).fetchall()
+
+            # Group by address → one Company per unique address
+            address_to_company = {}
+            for row in rows:
+                addr = row["address"] or "Unknown Address"
+                if addr not in address_to_company:
+                    # Derive a company name from the address
+                    company_name = addr
+                    conn.execute(
+                        "INSERT INTO Companies (name, address) VALUES (?, ?)",
+                        (company_name, addr)
+                    )
+                    conn.commit()
+                    co_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+                    address_to_company[addr] = co_id
+
+            # One Building per unique (address + building_number) combo
+            addr_bldg_to_building = {}
+            for row in rows:
+                addr     = row["address"] or "Unknown Address"
+                bldg_num = row["building_number"] or "Main Building"
+                key      = (addr, bldg_num)
+                if key not in addr_bldg_to_building:
+                    co_id = address_to_company[addr]
+                    conn.execute(
+                        "INSERT INTO Buildings (company_id, name, address) VALUES (?, ?, ?)",
+                        (co_id, bldg_num, addr)
+                    )
+                    conn.commit()
+                    bldg_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+                    addr_bldg_to_building[key] = bldg_id
+
+            # Link each extinguisher to its building
+            for row in rows:
+                addr     = row["address"] or "Unknown Address"
+                bldg_num = row["building_number"] or "Main Building"
+                bldg_id  = addr_bldg_to_building[(addr, bldg_num)]
+                conn.execute(
+                    "UPDATE Extinguishers SET building_id=? WHERE extinguisher_id=?",
+                    (bldg_id, row["extinguisher_id"])
+                )
+            conn.commit()
+            print(f"  [Migration] Auto-created {len(address_to_company)} companies, "
+                  f"{len(addr_bldg_to_building)} buildings from existing extinguisher data.")
 
 run_migrations()
 
@@ -119,11 +219,186 @@ def login():
         })
     return jsonify({"success": False, "error": "Invalid username or password"}), 401
 
+# ── COMPANIES ──────────────────────────────────────────────────────────────────
+@app.route("/api/companies", methods=["GET"])
+def get_companies():
+    with get_db() as conn:
+        rows = conn.execute("""
+            SELECT c.company_id, c.name, c.address, c.city, c.state, c.phone, c.contact_name,
+                   COUNT(DISTINCT b.building_id) AS building_count,
+                   COUNT(DISTINCT e.extinguisher_id) AS extinguisher_count
+            FROM Companies c
+            LEFT JOIN Buildings b ON b.company_id = c.company_id
+            LEFT JOIN Extinguishers e ON e.building_id = b.building_id
+            GROUP BY c.company_id
+            ORDER BY c.name
+        """).fetchall()
+    return jsonify([dict(r) for r in rows])
+
+@app.route("/api/companies", methods=["POST"])
+def add_company():
+    d = request.get_json()
+    name = (d.get("name") or "").strip()
+    if not name:
+        return jsonify({"error": "Company name is required."}), 400
+    try:
+        with get_db() as conn:
+            conn.execute(
+                "INSERT INTO Companies (name, address, city, state, zip, phone, contact_name) "
+                "VALUES (?,?,?,?,?,?,?)",
+                (name, d.get("address",""), d.get("city",""), d.get("state",""),
+                 d.get("zip",""), d.get("phone",""), d.get("contact_name",""))
+            )
+        return jsonify({"success": True}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/companies/<int:company_id>", methods=["PUT"])
+def update_company(company_id):
+    d = request.get_json()
+    try:
+        with get_db() as conn:
+            conn.execute(
+                "UPDATE Companies SET name=?, address=?, city=?, state=?, zip=?, phone=?, contact_name=? "
+                "WHERE company_id=?",
+                (d.get("name"), d.get("address",""), d.get("city",""), d.get("state",""),
+                 d.get("zip",""), d.get("phone",""), d.get("contact_name",""), company_id)
+            )
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/companies/<int:company_id>", methods=["DELETE"])
+def delete_company(company_id):
+    try:
+        with get_db() as conn:
+            # Get all buildings for this company
+            bldgs = conn.execute(
+                "SELECT building_id FROM Buildings WHERE company_id=?", (company_id,)
+            ).fetchall()
+            for b in bldgs:
+                bid = b["building_id"]
+                # Delete reports and assignments for extinguishers in this building
+                exts = conn.execute(
+                    "SELECT extinguisher_id FROM Extinguishers WHERE building_id=?", (bid,)
+                ).fetchall()
+                for e in exts:
+                    eid = e["extinguisher_id"]
+                    conn.execute("DELETE FROM Reports     WHERE extinguisher_id=?", (eid,))
+                    conn.execute("DELETE FROM Assignments WHERE extinguisher_id=?", (eid,))
+                conn.execute("DELETE FROM Extinguishers WHERE building_id=?", (bid,))
+            conn.execute("DELETE FROM Buildings WHERE company_id=?", (company_id,))
+            conn.execute("DELETE FROM Companies WHERE company_id=?", (company_id,))
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ── BUILDINGS ──────────────────────────────────────────────────────────────────
+@app.route("/api/buildings", methods=["GET"])
+def get_buildings():
+    company_id = request.args.get("company_id")
+    with get_db() as conn:
+        if company_id:
+            rows = conn.execute("""
+                SELECT b.building_id, b.company_id, b.name, b.address, b.floors, b.notes,
+                       c.name AS company_name,
+                       COUNT(DISTINCT e.extinguisher_id) AS extinguisher_count,
+                       SUM(CASE WHEN e.next_due_date < date('now') AND e.next_due_date IS NOT NULL THEN 1 ELSE 0 END) AS overdue_count,
+                       SUM(CASE WHEN a.status = 'Pending Inspection' THEN 1 ELSE 0 END) AS pending_count
+                FROM Buildings b
+                JOIN Companies c ON c.company_id = b.company_id
+                LEFT JOIN Extinguishers e ON e.building_id = b.building_id
+                LEFT JOIN Assignments a ON a.extinguisher_id = e.extinguisher_id AND a.status = 'Pending Inspection'
+                WHERE b.company_id = ?
+                GROUP BY b.building_id
+                ORDER BY b.name
+            """, (company_id,)).fetchall()
+        else:
+            rows = conn.execute("""
+                SELECT b.building_id, b.company_id, b.name, b.address, b.floors, b.notes,
+                       c.name AS company_name,
+                       COUNT(DISTINCT e.extinguisher_id) AS extinguisher_count,
+                       SUM(CASE WHEN e.next_due_date < date('now') AND e.next_due_date IS NOT NULL THEN 1 ELSE 0 END) AS overdue_count,
+                       SUM(CASE WHEN a.status = 'Pending Inspection' THEN 1 ELSE 0 END) AS pending_count
+                FROM Buildings b
+                JOIN Companies c ON c.company_id = b.company_id
+                LEFT JOIN Extinguishers e ON e.building_id = b.building_id
+                LEFT JOIN Assignments a ON a.extinguisher_id = e.extinguisher_id AND a.status = 'Pending Inspection'
+                GROUP BY b.building_id
+                ORDER BY c.name, b.name
+            """).fetchall()
+    return jsonify([dict(r) for r in rows])
+
+@app.route("/api/buildings", methods=["POST"])
+def add_building():
+    d = request.get_json()
+    name       = (d.get("name") or "").strip()
+    company_id = d.get("company_id")
+    if not name or not company_id:
+        return jsonify({"error": "Building name and company_id are required."}), 400
+    try:
+        with get_db() as conn:
+            conn.execute(
+                "INSERT INTO Buildings (company_id, name, address, floors, notes) VALUES (?,?,?,?,?)",
+                (company_id, name, d.get("address",""), d.get("floors", 1), d.get("notes",""))
+            )
+        return jsonify({"success": True}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/buildings/<int:building_id>", methods=["PUT"])
+def update_building(building_id):
+    d = request.get_json()
+    try:
+        with get_db() as conn:
+            conn.execute(
+                "UPDATE Buildings SET name=?, address=?, floors=?, notes=? WHERE building_id=?",
+                (d.get("name"), d.get("address",""), d.get("floors",1), d.get("notes",""), building_id)
+            )
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/buildings/<int:building_id>", methods=["DELETE"])
+def delete_building(building_id):
+    try:
+        with get_db() as conn:
+            exts = conn.execute(
+                "SELECT extinguisher_id FROM Extinguishers WHERE building_id=?", (building_id,)
+            ).fetchall()
+            for e in exts:
+                eid = e["extinguisher_id"]
+                conn.execute("DELETE FROM Reports     WHERE extinguisher_id=?", (eid,))
+                conn.execute("DELETE FROM Assignments WHERE extinguisher_id=?", (eid,))
+            conn.execute("DELETE FROM Extinguishers WHERE building_id=?", (building_id,))
+            conn.execute("DELETE FROM Buildings WHERE building_id=?", (building_id,))
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 # ── EXTINGUISHERS ──────────────────────────────────────────────────────────────
 @app.route("/api/extinguishers", methods=["GET"])
 def get_extinguishers():
+    building_id = request.args.get("building_id")
+    company_id  = request.args.get("company_id")
     with get_db() as conn:
-        rows = conn.execute("SELECT * FROM Extinguishers").fetchall()
+        base = """
+            SELECT e.*,
+                   b.name    AS building_name,
+                   c.name    AS company_name,
+                   c.company_id AS company_id_fk
+            FROM Extinguishers e
+            LEFT JOIN Buildings b ON b.building_id = e.building_id
+            LEFT JOIN Companies c ON c.company_id  = b.company_id
+        """
+        if building_id:
+            rows = conn.execute(base + " WHERE e.building_id = ? ORDER BY e.floor_number, e.room_number",
+                                (building_id,)).fetchall()
+        elif company_id:
+            rows = conn.execute(base + " WHERE c.company_id = ? ORDER BY b.name, e.floor_number, e.room_number",
+                                (company_id,)).fetchall()
+        else:
+            rows = conn.execute(base + " ORDER BY c.name, b.name, e.floor_number, e.room_number").fetchall()
     return jsonify([dict(r) for r in rows])
 
 @app.route("/api/extinguishers", methods=["POST"])
@@ -134,13 +409,14 @@ def add_extinguisher():
             conn.execute(
                 "INSERT INTO Extinguishers "
                 "(address, building_number, floor_number, room_number, "
-                " location_description, inspection_interval_days, next_due_date) "
-                "VALUES (?,?,?,?,?,?,?)",
+                " location_description, inspection_interval_days, next_due_date, building_id) "
+                "VALUES (?,?,?,?,?,?,?,?)",
                 (d.get("address"), d.get("building_number"),
                  d.get("floor_number", 1), d.get("room_number"),
                  d.get("location_description"),
                  d.get("inspection_interval_days", 30),
-                 d.get("next_due_date"))
+                 d.get("next_due_date"),
+                 d.get("building_id"))
             )
         return jsonify({"success": True}), 201
     except Exception as e:
@@ -154,13 +430,15 @@ def update_extinguisher(ext_id):
             conn.execute(
                 "UPDATE Extinguishers SET address=?, building_number=?, "
                 "floor_number=?, room_number=?, location_description=?, "
-                "inspection_interval_days=?, next_due_date=? "
+                "inspection_interval_days=?, next_due_date=?, building_id=? "
                 "WHERE extinguisher_id=?",
                 (d.get("address"), d.get("building_number"),
                  d.get("floor_number", 1), d.get("room_number"),
                  d.get("location_description"),
                  d.get("inspection_interval_days", 30),
-                 d.get("next_due_date"), ext_id)
+                 d.get("next_due_date"),
+                 d.get("building_id"),
+                 ext_id)
             )
         return jsonify({"success": True})
     except Exception as e:
