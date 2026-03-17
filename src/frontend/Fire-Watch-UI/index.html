@@ -171,6 +171,20 @@
     .btn-add{background:var(--green);color:white;border-color:var(--green);}
     .btn-edit{background:var(--blue);color:white;border-color:var(--blue);}
     .btn-delete{background:var(--red);color:white;border-color:var(--red);}
+
+    /* ── Report filter bar ───────────────────────────────────── */
+    .filter-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;width:100%;margin-top:6px;padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;}
+    .filter-bar label{font-family:'IBM Plex Mono',monospace;font-size:0.67rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);white-space:nowrap;}
+    .filter-input{background:var(--bg2);border:1px solid var(--border);border-radius:3px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:0.75rem;padding:5px 8px;min-height:32px;outline:none;transition:border-color 0.15s;}
+    .filter-input:focus{border-color:var(--orange);}
+    .filter-input[type=date]{min-width:130px;}
+    .filter-input.filter-select{min-width:140px;}
+    .filter-group{display:flex;align-items:center;gap:5px;}
+    .filter-active-count{font-family:'IBM Plex Mono',monospace;font-size:0.7rem;color:var(--teal);display:none;}
+    .filter-active-count.show{display:inline;}
+    .btn-clear-filter{background:none;border:1px solid var(--border);color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:0.68rem;padding:5px 10px;border-radius:3px;cursor:pointer;transition:all 0.15s;min-height:32px;}
+    .btn-clear-filter:hover{border-color:var(--orange);color:var(--orange);}
+
     .table-scroll-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--border);border-radius:4px;}
     .data-table{width:100%;min-width:480px;border-collapse:collapse;background:var(--bg2);font-size:0.82rem;}
     .data-table thead th{background:var(--bg3);color:var(--muted2);font-family:'IBM Plex Mono',monospace;font-size:0.68rem;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;padding:0.65rem 1rem;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;}
@@ -384,6 +398,34 @@
     <div class="panel" id="panelReports">
       <div class="table-toolbar hidden" id="reportToolbar">
         <button class="btn-crud btn-edit" id="btnSubmitReport">＋ Submit Report</button>
+        <!-- Filter bar — always visible when reports panel is shown -->
+        <div class="filter-bar" id="reportFilterBar">
+          <div class="filter-group">
+            <label>From</label>
+            <input type="date" class="filter-input" id="filterDateFrom" />
+          </div>
+          <div class="filter-group">
+            <label>To</label>
+            <input type="date" class="filter-input" id="filterDateTo" />
+          </div>
+          <div class="filter-group" id="filterInspectorGroup">
+            <label>Inspector</label>
+            <select class="filter-input filter-select" id="filterInspector">
+              <option value="">All inspectors</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Filter</label>
+            <select class="filter-input filter-select" id="filterStatus">
+              <option value="">All reports</option>
+              <option value="photo">Has photo</option>
+              <option value="nophoto">No photo</option>
+              <option value="notes">Has notes</option>
+            </select>
+          </div>
+          <span class="filter-active-count" id="filterActiveCount"></span>
+          <button class="btn-clear-filter" id="btnClearFilter">✕ Clear</button>
+        </div>
       </div>
       <div class="table-scroll-wrap" id="tableReportsWrap"></div>
       <div class="card-list" id="cardReportsWrap"></div>
@@ -899,9 +941,22 @@ async function loadReports() {
   let url="/api/reports";
   if (isInv()) url+="?user_id="+currentUser.user_id;
   const rows=await fetch(url).then(r=>r.json());
-  const cols=isAdmin()?["report_id","extinguisher_id","inspector","inspection_date","notes","photo_path"]:["report_id","extinguisher_id","inspection_date","notes","photo_path"];
-  renderTable("tableReportsWrap",cols,rows);
-  renderCards("cardReportsWrap",rows,"report");
+  window._allReports = rows; // store full unfiltered set
+
+  // Populate inspector dropdown (Admin only)
+  const inspGrp = document.getElementById("filterInspectorGroup");
+  if (isAdmin()) {
+    inspGrp.style.display = "";
+    const sel = document.getElementById("filterInspector");
+    const current = sel.value;
+    const names = [...new Set(rows.map(r=>r.inspector).filter(Boolean))].sort();
+    sel.innerHTML = '<option value="">All inspectors</option>' +
+      names.map(n=>`<option value="${n}"${n===current?' selected':''}>${n}</option>`).join("");
+  } else {
+    inspGrp.style.display = "none";
+  }
+
+  applyReportFilters(); // render with any active filters
 }
 
 async function loadUsers() {
@@ -1679,6 +1734,40 @@ document.getElementById("photoClear").addEventListener("click", function(e) {
     `📷 Tap to take photo or <span>browse files</span>`;
 });
 
+// ══════════════════════════════════════════════════════════════════════════════
+//  PHOTO UPLOAD — preview and viewer
+// ══════════════════════════════════════════════════════════════════════════════
+
+document.getElementById("rPhoto").addEventListener("change", function() {
+  const file = this.files[0];
+  const preview = document.getElementById("photoPreview");
+  const clear   = document.getElementById("photoClear");
+  const area    = document.getElementById("photoUploadArea");
+  const label   = area.querySelector(".photo-upload-label");
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      preview.src = e.target.result;
+      preview.classList.add("show");
+      clear.classList.add("show");
+      area.classList.add("has-photo");
+      label.innerHTML = `📷 <span>${file.name}</span>`;
+    };
+    reader.readAsDataURL(file);
+  }
+});
+
+document.getElementById("photoClear").addEventListener("click", function(e) {
+  e.stopPropagation();
+  document.getElementById("rPhoto").value = "";
+  document.getElementById("photoPreview").classList.remove("show");
+  document.getElementById("photoPreview").src = "";
+  this.classList.remove("show");
+  document.getElementById("photoUploadArea").classList.remove("has-photo");
+  document.getElementById("photoUploadArea").querySelector(".photo-upload-label").innerHTML =
+    `📷 Tap to take photo or <span>browse files</span>`;
+});
+
 function openPhotoViewer(src) {
   const viewer = document.createElement("div");
   viewer.className = "photo-viewer";
@@ -1686,6 +1775,70 @@ function openPhotoViewer(src) {
   viewer.addEventListener("click", () => viewer.remove());
   document.body.appendChild(viewer);
 }
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  REPORT HISTORY FILTERING
+// ══════════════════════════════════════════════════════════════════════════════
+
+function applyReportFilters() {
+  const rows = window._allReports || [];
+  const dateFrom  = document.getElementById("filterDateFrom")?.value  || "";
+  const dateTo    = document.getElementById("filterDateTo")?.value    || "";
+  const inspector = document.getElementById("filterInspector")?.value || "";
+  const status    = document.getElementById("filterStatus")?.value    || "";
+
+  let filtered = rows.filter(r => {
+    const date = r.inspection_date || "";
+
+    // Date range
+    if (dateFrom && date && date < dateFrom) return false;
+    if (dateTo   && date && date > dateTo)   return false;
+
+    // Inspector (admin only)
+    if (inspector && r.inspector !== inspector) return false;
+
+    // Photo / notes filters
+    if (status === "photo"   && !r.photo_path)                      return false;
+    if (status === "nophoto" && r.photo_path)                       return false;
+    if (status === "notes"   && !(r.notes && r.notes.trim()))       return false;
+
+    return true;
+  });
+
+  // Update active filter count badge
+  const activeCount = [dateFrom, dateTo, inspector, status].filter(Boolean).length;
+  const badge = document.getElementById("filterActiveCount");
+  if (badge) {
+    if (activeCount > 0) {
+      badge.textContent = `${filtered.length} of ${rows.length} shown`;
+      badge.classList.add("show");
+    } else {
+      badge.classList.remove("show");
+    }
+  }
+
+  // Render filtered results
+  const cols = isAdmin()
+    ? ["report_id","extinguisher_id","inspector","inspection_date","notes","photo_path"]
+    : ["report_id","extinguisher_id","inspection_date","notes","photo_path"];
+  renderTable("tableReportsWrap", cols, filtered);
+  renderCards("cardReportsWrap", filtered, "report");
+}
+
+// Wire up filter inputs — apply on any change
+["filterDateFrom","filterDateTo","filterInspector","filterStatus"].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener("change", applyReportFilters);
+});
+
+// Clear all filters
+document.getElementById("btnClearFilter")?.addEventListener("click", () => {
+  document.getElementById("filterDateFrom").value   = "";
+  document.getElementById("filterDateTo").value     = "";
+  document.getElementById("filterInspector").value  = "";
+  document.getElementById("filterStatus").value     = "";
+  applyReportFilters();
+});
 </script>
 </body>
 </html>
