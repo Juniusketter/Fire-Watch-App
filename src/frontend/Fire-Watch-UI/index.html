@@ -952,7 +952,11 @@ async function doLogin() {
     const hashed = await sha256(password);
     const res  = await fetch("/api/login", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({username, password: hashed}) });
     const data = await res.json();
-    if (data.success) { currentUser={user_id:data.user_id,username:data.username,role:data.role}; showDashboard(); }
+    if (data.success) {
+      currentUser = {user_id:data.user_id, username:data.username, role:data.role};
+      localStorage.setItem("fw_session", JSON.stringify(currentUser));
+      showDashboard();
+    }
     else { msg.style.color="#c1121f"; msg.textContent="Invalid username or password."; }
   } catch { msg.style.color="#c1121f"; msg.textContent="Cannot reach server."; }
 }
@@ -1355,6 +1359,7 @@ document.getElementById("btnLogout").addEventListener("click",()=>{
   // Clear profile fields on logout
   ["profCurrentPw","profNewPw","profConfirmPw"].forEach(id => { const el = document.getElementById(id); if(el) el.value=""; });
   currentUser=null; selectedExtId=null;
+  localStorage.removeItem("fw_session");
   document.getElementById("appPage").classList.add("hidden");
   document.getElementById("loginPage").classList.remove("hidden");
   document.getElementById("username").value="";
@@ -2375,6 +2380,21 @@ document.getElementById("btnClearFilter")?.addEventListener("click", () => {
   document.getElementById("filterStatus").value     = "";
   applyReportFilters();
 });
+// ── Session restore on page load ──────────────────────────────────────────────
+// If the user refreshes the page, restore their session from localStorage
+// so they don't have to log in again.
+(function restoreSession() {
+  try {
+    const saved = localStorage.getItem("fw_session");
+    if (!saved) return;
+    const user = JSON.parse(saved);
+    if (!user?.user_id || !user?.username || !user?.role) return;
+    currentUser = user;
+    showDashboard();
+  } catch(e) {
+    localStorage.removeItem("fw_session"); // corrupt data — clear it
+  }
+})();
 </script>
 </body>
 </html>
