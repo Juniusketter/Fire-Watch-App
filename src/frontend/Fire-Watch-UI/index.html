@@ -922,6 +922,36 @@
     <div class="ext-detail-footer" id="detailExtFooter"></div>
   </div>
 </div>
+
+<!-- ASSIGNMENT DETAIL POPUP -->
+<div class="modal-overlay hidden" id="assignDetailModal">
+  <div class="modal-box ext-detail-box">
+    <div class="ext-detail-header">
+      <div>
+        <div class="ext-detail-id" id="detailAssignId"></div>
+        <div class="ext-detail-title" id="detailAssignTitle"></div>
+      </div>
+      <button class="ext-detail-close" onclick="document.getElementById('assignDetailModal').classList.add('hidden')">✕</button>
+    </div>
+    <div class="ext-detail-grid" id="detailAssignGrid"></div>
+    <div class="ext-detail-footer" id="detailAssignFooter"></div>
+  </div>
+</div>
+
+<!-- REPORT DETAIL POPUP -->
+<div class="modal-overlay hidden" id="reportDetailModal">
+  <div class="modal-box ext-detail-box">
+    <div class="ext-detail-header">
+      <div>
+        <div class="ext-detail-id" id="detailReportId"></div>
+        <div class="ext-detail-title" id="detailReportTitle"></div>
+      </div>
+      <button class="ext-detail-close" onclick="document.getElementById('reportDetailModal').classList.add('hidden')">✕</button>
+    </div>
+    <div class="ext-detail-grid" id="detailReportGrid"></div>
+    <div class="ext-detail-footer" id="detailReportFooter"></div>
+  </div>
+</div>
 <div class="modal-overlay hidden" id="assignModal">
   <div class="modal-box">
     <h3 id="assignModalTitle">Generate Assignment</h3>
@@ -1171,6 +1201,7 @@ function buildTabs() {
     tabs = [{id:"panelExtinguishers",label:"Extinguishers"},{id:"panelAssignments",label:"Assignments"},{id:"panelReports",label:"Reports"},{id:"panelUsers",label:"All Users"}];
     document.getElementById("extToolbar").classList.remove("hidden");
     document.getElementById("assignToolbar").classList.remove("hidden");
+    document.getElementById("reportToolbar").classList.remove("hidden");
     document.getElementById("userToolbar").classList.remove("hidden");
   } else if (isInv()) {
     tabs = [{id:"panelAssignments",label:"My Assignments"},{id:"panelReports",label:"My Reports"}];
@@ -1419,8 +1450,16 @@ async function loadAssignments() {
   if (isInv()||isThirdInv()) url += `&user_id=${currentUser.user_id}`;
   const rows=await fetch(url).then(r=>r.json());
   const cols=(isAdmin()||isThirdAdmin())?["assignment_id","assigned_by","inspector","extinguisher_id","due_date","status"]:["assignment_id","assigned_by","extinguisher_id","due_date","status"];
-  renderTable("tableAssignWrap",cols,rows,row=>{ selectedAssignId=row.assignment_id; window._lastAssignRows=rows; });
-  renderCards("cardAssignWrap",rows,"assignment",row=>{ selectedAssignId=row.assignment_id; window._lastAssignRows=rows; });
+  renderTable("tableAssignWrap", cols, rows, row=>{
+    selectedAssignId = row.assignment_id;
+    window._lastAssignRows = rows;
+    openAssignDetail(row);
+  });
+  renderCards("cardAssignWrap", rows, "assignment", row=>{
+    selectedAssignId = row.assignment_id;
+    window._lastAssignRows = rows;
+    openAssignDetail(row);
+  });
 }
 
 async function loadReports() {
@@ -2503,6 +2542,123 @@ document.getElementById("extDetailModal").addEventListener("click", e => {
     document.getElementById("extDetailModal").classList.add("hidden");
 });
 
+// ── Assignment detail popup ───────────────────────────────────────────────────
+function openAssignDetail(row) {
+  document.getElementById("detailAssignId").textContent = `ASSIGN-${row.assignment_id}`;
+
+  const statusText = row.status || "Unknown";
+  const statusCls  = statusText.toLowerCase().includes("complete") ? "ok"
+                   : statusText.toLowerCase().includes("pending")  ? "due-soon" : "";
+  document.getElementById("detailAssignTitle").innerHTML =
+    `<span class="ext-detail-value ${statusCls}" style="font-size:0.9rem;">${statusText}</span>`;
+
+  const fields = [
+    { label: "Company",      value: row.company_name  || "—",                               full: false },
+    { label: "Building",     value: row.building_name || "—",                               full: false },
+    { label: "Floor",        value: row.floor_number  != null ? `Floor ${row.floor_number}` : "—", full: false },
+    { label: "Room",         value: row.room_number   || "—",                               full: false },
+    { label: "Location",     value: row.location_description || "—",                        full: true  },
+    { label: "Extinguisher", value: `#${row.extinguisher_id}`,                              full: false },
+    { label: "Assigned By",  value: row.assigned_by   || "—",                               full: false },
+    { label: "Inspector",    value: row.inspector      || "—",                               full: false },
+    { label: "Due Date",     value: row.due_date       || "—",                               full: false },
+    { label: "Status",       value: statusText,                                              full: false, cls: statusCls },
+    { label: "Notes",        value: row.notes && row.notes.trim() ? row.notes : "No notes", full: true  },
+  ];
+
+  document.getElementById("detailAssignGrid").innerHTML = fields.map(f => `
+    <div class="${f.full ? "ext-detail-field-full" : "ext-detail-field"}">
+      <div class="ext-detail-label">${f.label}</div>
+      <div class="ext-detail-value ${f.cls || ""}">${f.value}</div>
+    </div>
+  `).join("");
+
+  const footer = document.getElementById("detailAssignFooter");
+  const aid = row.assignment_id;
+  if (isAdmin() || isThirdAdmin()) {
+    footer.innerHTML = `
+      <button class="btn-crud btn-edit" style="font-size:0.72rem;padding:6px 14px;min-height:34px;"
+        onclick="document.getElementById('assignDetailModal').classList.add('hidden'); _openAssignEditById(${aid});">
+        ✎ Edit
+      </button>
+    `;
+  } else {
+    footer.innerHTML = `
+      <button class="btn-crud" style="font-size:0.72rem;padding:6px 14px;min-height:34px;background:var(--bg3);border-color:var(--border);color:var(--muted);"
+        onclick="document.getElementById('assignDetailModal').classList.add('hidden');">Close</button>
+    `;
+  }
+
+  document.getElementById("assignDetailModal").classList.remove("hidden");
+}
+
+document.getElementById("assignDetailModal").addEventListener("click", e => {
+  if (e.target === document.getElementById("assignDetailModal"))
+    document.getElementById("assignDetailModal").classList.add("hidden");
+});
+
+// ── Report detail popup ───────────────────────────────────────────────────────
+function openReportDetail(row) {
+  document.getElementById("detailReportId").textContent = `RPT-${row.report_id}`;
+  document.getElementById("detailReportTitle").textContent =
+    row.inspection_date ? `Inspected ${row.inspection_date}` : "Inspection Report";
+
+  const fields = [
+    { label: "Company",         value: row.company_name      || "—",                               full: false },
+    { label: "Building",        value: row.building_name     || "—",                               full: false },
+    { label: "Floor",           value: row.floor_number != null ? `Floor ${row.floor_number}` : "—", full: false },
+    { label: "Room",            value: row.room_number       || "—",                               full: false },
+    { label: "Location",        value: row.location_description || "—",                            full: true  },
+    { label: "Extinguisher",    value: `#${row.extinguisher_id}`,                                  full: false },
+    { label: "Inspector",       value: row.inspector          || "—",                               full: false },
+    { label: "Inspection Date", value: row.inspection_date    || "—",                               full: false },
+    { label: "Notes",           value: row.notes && row.notes.trim() ? row.notes : "No notes",     full: true  },
+  ];
+
+  let gridHtml = fields.map(f => `
+    <div class="${f.full ? "ext-detail-field-full" : "ext-detail-field"}">
+      <div class="ext-detail-label">${f.label}</div>
+      <div class="ext-detail-value">${f.value}</div>
+    </div>
+  `).join("");
+
+  // Photo — full width with clickable thumbnail
+  if (row.photo_path) {
+    gridHtml += `
+      <div class="ext-detail-field-full">
+        <div class="ext-detail-label">Photo</div>
+        <img src="/uploads/${row.photo_path}" alt="Inspection photo"
+          style="width:100%;max-height:200px;object-fit:cover;border-radius:4px;margin-top:0.3rem;cursor:zoom-in;"
+          onclick="document.getElementById('reportDetailModal').classList.add('hidden'); openPhotoViewer('/uploads/${row.photo_path}');" />
+      </div>
+    `;
+  } else {
+    gridHtml += `
+      <div class="ext-detail-field-full">
+        <div class="ext-detail-label">Photo</div>
+        <div class="ext-detail-value" style="color:var(--muted);">No photo attached</div>
+      </div>
+    `;
+  }
+
+  document.getElementById("detailReportGrid").innerHTML = gridHtml;
+  document.getElementById("detailReportFooter").innerHTML = `
+    <button class="btn-crud" style="font-size:0.72rem;padding:6px 14px;min-height:34px;background:var(--bg3);border-color:var(--border);color:var(--muted);"
+      onclick="document.getElementById('reportDetailModal').classList.add('hidden');">Close</button>
+  `;
+  document.getElementById("reportDetailModal").classList.remove("hidden");
+}
+
+document.getElementById("reportDetailModal").addEventListener("click", e => {
+  if (e.target === document.getElementById("reportDetailModal"))
+    document.getElementById("reportDetailModal").classList.add("hidden");
+});
+
+function _openAssignEditById(aid) {
+  const row = window._lastAssignRows?.find(r => r.assignment_id === aid);
+  if (row) openAssignModal(row);
+}
+
 // Open company edit modal directly from card button (no drilling required)
 function editCompanyCard(data) {
   _selectedCompany  = data;
@@ -2571,6 +2727,9 @@ document.getElementById("photoClear").addEventListener("click", function(e) {
 //  REPORT HISTORY FILTERING
 // ══════════════════════════════════════════════════════════════════════════════
 
+// Track last render state to prevent flicker on poll
+let _lastReportHash = "";
+
 function applyReportFilters() {
   const rows = window._allReports || [];
   const dateFrom  = document.getElementById("filterDateFrom")?.value  || "";
@@ -2580,19 +2739,12 @@ function applyReportFilters() {
 
   let filtered = rows.filter(r => {
     const date = r.inspection_date || "";
-
-    // Date range
     if (dateFrom && date && date < dateFrom) return false;
     if (dateTo   && date && date > dateTo)   return false;
-
-    // Inspector (admin only)
     if (inspector && r.inspector !== inspector) return false;
-
-    // Photo / notes filters
-    if (status === "photo"   && !r.photo_path)                      return false;
-    if (status === "nophoto" && r.photo_path)                       return false;
-    if (status === "notes"   && !(r.notes && r.notes.trim()))       return false;
-
+    if (status === "photo"   && !r.photo_path)                return false;
+    if (status === "nophoto" && r.photo_path)                 return false;
+    if (status === "notes"   && !(r.notes && r.notes.trim())) return false;
     return true;
   });
 
@@ -2608,18 +2760,22 @@ function applyReportFilters() {
     }
   }
 
-  // Render filtered results
+  // Only re-render if the filtered data actually changed — prevents flicker on poll
+  const newHash = JSON.stringify(filtered.map(r => r.report_id + "|" + r.inspection_date + "|" + r.photo_path));
+  if (newHash === _lastReportHash) return;
+  _lastReportHash = newHash;
+
   const cols = isAdmin()
     ? ["report_id","extinguisher_id","inspector","inspection_date","notes","photo_path"]
     : ["report_id","extinguisher_id","inspection_date","notes","photo_path"];
-  renderTable("tableReportsWrap", cols, filtered);
-  renderCards("cardReportsWrap", filtered, "report");
+  renderTable("tableReportsWrap", cols, filtered, row=>{ openReportDetail(row); });
+  renderCards("cardReportsWrap",  filtered, "report", row=>{ openReportDetail(row); });
 }
 
 // Wire up filter inputs — apply on any change
 ["filterDateFrom","filterDateTo","filterInspector","filterStatus"].forEach(id => {
   const el = document.getElementById(id);
-  if (el) el.addEventListener("change", applyReportFilters);
+  if (el) el.addEventListener("change", () => { _lastReportHash = ""; applyReportFilters(); });
 });
 
 // Clear all filters
@@ -2628,6 +2784,7 @@ document.getElementById("btnClearFilter")?.addEventListener("click", () => {
   document.getElementById("filterDateTo").value     = "";
   document.getElementById("filterInspector").value  = "";
   document.getElementById("filterStatus").value     = "";
+  _lastReportHash = "";
   applyReportFilters();
 });
 // ── Session restore on page load ──────────────────────────────────────────────
