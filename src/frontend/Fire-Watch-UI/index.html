@@ -281,6 +281,24 @@
     .photo-viewer{position:fixed;inset:0;background:rgba(0,0,0,0.9);display:flex;align-items:center;justify-content:center;z-index:300;cursor:pointer;}
     .photo-viewer img{max-width:90vw;max-height:90vh;object-fit:contain;border-radius:4px;}
 
+    /* ── Extinguisher detail popup ───────────────────────────────── */
+    .ext-detail-box{max-width:420px;width:calc(100% - 2rem);padding:0;overflow:hidden;border-radius:10px;border-top:2px solid var(--orange);}
+    .ext-detail-header{display:flex;justify-content:space-between;align-items:flex-start;padding:1.1rem 1.2rem 0.8rem;border-bottom:1px solid var(--border);background:var(--bg3);}
+    .ext-detail-id{font-family:'IBM Plex Mono',monospace;font-size:0.65rem;color:var(--orange);letter-spacing:0.12em;margin-bottom:0.25rem;}
+    .ext-detail-title{font-family:'IBM Plex Sans',sans-serif;font-size:1rem;font-weight:700;color:var(--text);}
+    .ext-detail-close{background:none;border:1px solid var(--border);color:var(--muted);width:28px;height:28px;border-radius:3px;cursor:pointer;font-size:0.8rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.15s;line-height:1;}
+    .ext-detail-close:hover{border-color:var(--red);color:var(--red);}
+    .ext-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;padding:0.5rem 0;}
+    .ext-detail-field{padding:0.55rem 1.2rem;border-bottom:1px solid rgba(255,255,255,0.04);}
+    .ext-detail-field:nth-child(odd){border-right:1px solid rgba(255,255,255,0.04);}
+    .ext-detail-field-full{grid-column:1/-1;padding:0.55rem 1.2rem;border-bottom:1px solid rgba(255,255,255,0.04);}
+    .ext-detail-label{font-family:'IBM Plex Mono',monospace;font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:0.2rem;}
+    .ext-detail-value{font-family:'IBM Plex Mono',monospace;font-size:0.8rem;color:var(--text);font-weight:500;word-break:break-word;}
+    .ext-detail-value.overdue{color:var(--red);}
+    .ext-detail-value.due-soon{color:var(--orange);}
+    .ext-detail-value.ok{color:var(--teal);}
+    .ext-detail-footer{padding:0.85rem 1.2rem;border-top:1px solid var(--border);display:flex;gap:0.6rem;justify-content:flex-end;background:var(--bg3);}
+
     /* MODALS */
     .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);display:flex;align-items:flex-end;justify-content:center;z-index:200;backdrop-filter:blur(2px);padding:0;}
     .modal-box{background:var(--bg2);border:1px solid var(--border);border-top:2px solid var(--orange);border-radius:12px 12px 0 0;padding:1.75rem var(--pad-mobile);width:100%;max-height:92vh;overflow-y:auto;box-shadow:0 -12px 40px rgba(0,0,0,0.6);animation:slideUp 0.25s ease-out;}
@@ -890,7 +908,20 @@
   </div>
 </div>
 
-<!-- GENERATE / EDIT ASSIGNMENT MODAL (Admin / ThirdPAdmin) -->
+<!-- EXTINGUISHER DETAIL POPUP -->
+<div class="modal-overlay hidden" id="extDetailModal">
+  <div class="modal-box ext-detail-box">
+    <div class="ext-detail-header">
+      <div>
+        <div class="ext-detail-id" id="detailExtId"></div>
+        <div class="ext-detail-title" id="detailExtTitle"></div>
+      </div>
+      <button class="ext-detail-close" onclick="document.getElementById('extDetailModal').classList.add('hidden')">✕</button>
+    </div>
+    <div class="ext-detail-grid" id="detailExtGrid"></div>
+    <div class="ext-detail-footer" id="detailExtFooter"></div>
+  </div>
+</div>
 <div class="modal-overlay hidden" id="assignModal">
   <div class="modal-box">
     <h3 id="assignModalTitle">Generate Assignment</h3>
@@ -1370,8 +1401,16 @@ async function renderBuildingGrid(companyId) {
 async function renderExtinguisherTable(buildingId) {
   const rows = await fetch(`/api/extinguishers?building_id=${buildingId}`).then(r=>r.json());
   const cols = ["extinguisher_id","building_name","floor_number","room_number","location_description","inspection_interval_days","next_due_date"];
-  renderTable("tableExtWrap", cols, rows, row=>{ selectedExtId=row.extinguisher_id; window._lastExtRows=rows; });
-  renderCards("cardExtWrap",  rows, "extinguisher", row=>{ selectedExtId=row.extinguisher_id; });
+  renderTable("tableExtWrap", cols, rows, row=>{
+    selectedExtId = row.extinguisher_id;
+    window._lastExtRows = rows;
+    openExtDetail(row);
+  });
+  renderCards("cardExtWrap", rows, "extinguisher", row=>{
+    selectedExtId = row.extinguisher_id;
+    window._lastExtRows = rows;
+    openExtDetail(row);
+  });
 }
 
 async function loadAssignments() {
@@ -2396,6 +2435,73 @@ function selectBuildingCard(el, data) {
   el.classList.add("selected");
   _selectedBuilding = data;
 }
+
+// ── Extinguisher detail popup ─────────────────────────────────────────────────
+function openExtDetail(row) {
+  // Header
+  document.getElementById("detailExtId").textContent = `EXT-${row.extinguisher_id}`;
+  document.getElementById("detailExtTitle").textContent =
+    row.location_description || row.building_name || row.address || "Extinguisher Details";
+
+  // Work out due date status
+  const today = new Date().toISOString().split("T")[0];
+  let dueCls = "ok", dueLabel = row.next_due_date || "—";
+  if (row.next_due_date) {
+    const daysUntil = Math.ceil((new Date(row.next_due_date) - new Date(today)) / 86400000);
+    if (daysUntil < 0)       { dueCls = "overdue";  dueLabel += "  ⚠ OVERDUE"; }
+    else if (daysUntil <= 30) { dueCls = "due-soon"; dueLabel += `  (${daysUntil}d)`; }
+  }
+
+  // Build grid fields
+  const fields = [
+    { label: "Company",      value: row.company_name  || "—",               full: false },
+    { label: "Building",     value: row.building_name || row.building_number || "—", full: false },
+    { label: "Floor",        value: row.floor_number  != null ? `Floor ${row.floor_number}` : "—", full: false },
+    { label: "Room",         value: row.room_number   || "—",               full: false },
+    { label: "Next Due Date",value: dueLabel,                                full: false, cls: dueCls },
+    { label: "Interval",     value: row.inspection_interval_days ? `Every ${row.inspection_interval_days} days` : "—", full: false },
+    { label: "Location",     value: row.location_description || "—",         full: true  },
+    { label: "Extinguisher ID", value: `#${row.extinguisher_id}`,            full: false },
+    { label: "Last Report",  value: row.last_report_id ? `Report #${row.last_report_id}` : "No reports yet", full: false },
+  ];
+
+  document.getElementById("detailExtGrid").innerHTML = fields.map(f => `
+    <div class="${f.full ? "ext-detail-field-full" : "ext-detail-field"}">
+      <div class="ext-detail-label">${f.label}</div>
+      <div class="ext-detail-value ${f.cls || ""}">${f.value}</div>
+    </div>
+  `).join("");
+
+  // Footer — quick action buttons (Admin only)
+  const footer = document.getElementById("detailExtFooter");
+  if (isAdmin()) {
+    footer.innerHTML = `
+      <button class="btn-crud btn-edit" style="font-size:0.72rem;padding:6px 14px;min-height:34px;"
+        onclick="document.getElementById('extDetailModal').classList.add('hidden'); document.getElementById('btnEdit').click();">
+        ✎ Edit
+      </button>
+      <button class="btn-crud btn-delete" style="font-size:0.72rem;padding:6px 14px;min-height:34px;"
+        onclick="document.getElementById('extDetailModal').classList.add('hidden'); document.getElementById('btnDelete').click();">
+        ✕ Delete
+      </button>
+    `;
+  } else {
+    footer.innerHTML = `
+      <button class="btn-crud btn-edit" style="font-size:0.72rem;padding:6px 14px;min-height:34px;background:var(--bg3);border-color:var(--border);color:var(--muted);"
+        onclick="document.getElementById('extDetailModal').classList.add('hidden');">
+        Close
+      </button>
+    `;
+  }
+
+  document.getElementById("extDetailModal").classList.remove("hidden");
+}
+
+// Close on backdrop tap
+document.getElementById("extDetailModal").addEventListener("click", e => {
+  if (e.target === document.getElementById("extDetailModal"))
+    document.getElementById("extDetailModal").classList.add("hidden");
+});
 
 // Open company edit modal directly from card button (no drilling required)
 function editCompanyCard(data) {
