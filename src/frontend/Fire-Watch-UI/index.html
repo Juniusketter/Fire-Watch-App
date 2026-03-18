@@ -126,8 +126,21 @@
     .btn-login:hover{background:var(--orange2);}
     .btn-login:active{transform:scale(0.99);background:var(--orange2);}
     #loginMsg{margin-top:0.85rem;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;min-height:1.2rem;color:var(--muted2);}
+    /* Login / Register tab toggle */
+    .auth-tabs{display:flex;gap:0;margin-bottom:2rem;border-bottom:1px solid var(--border);}
+    .auth-tab{flex:1;padding:0.65rem 0;background:none;border:none;border-bottom:2px solid transparent;font-family:'IBM Plex Mono',monospace;font-size:0.72rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted);cursor:pointer;transition:color 0.15s,border-color 0.15s;margin-bottom:-1px;}
+    .auth-tab.active{color:var(--orange);border-bottom-color:var(--orange);}
+    .auth-tab:hover:not(.active){color:var(--text);}
+    .auth-panel{display:none;}
+    .auth-panel.active{display:block;}
+    .field-row{display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;}
+    .register-section-label{font-family:'IBM Plex Mono',monospace;font-size:0.65rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--orange);margin:1.2rem 0 0.6rem;padding-bottom:0.3rem;border-bottom:1px solid var(--border);}
+    .org-badge{display:inline-block;background:rgba(232,93,4,0.1);border:1px solid rgba(232,93,4,0.3);color:var(--orange);font-family:'IBM Plex Mono',monospace;font-size:0.68rem;padding:2px 8px;border-radius:2px;margin-bottom:1rem;}
+    .login-card{width:min(420px,100%);max-height:90vh;overflow-y:auto;}
 
-    /* DASHBOARD */
+    .org-name-pill{font-family:'IBM Plex Mono',monospace;font-size:0.68rem;color:var(--muted);background:var(--bg3);border:1px solid var(--border);padding:2px 8px;border-radius:2px;letter-spacing:0.05em;white-space:nowrap;display:none;}
+    .org-name-pill.show{display:inline-block;}
+    /* Dashboard */
     .hidden{display:none!important;}
     #appPage{min-height:100vh;display:flex;flex-direction:column;}
     .app-body{display:flex;flex:1;overflow:hidden;min-height:0;}
@@ -340,24 +353,85 @@
     <div class="brand-sub">NFPA Compliance Tracking System</div>
     <div class="brand-divider"></div>
     <ul class="brand-features">
+      <li>MULTI-ORGANIZATION PLATFORM</li>
+      <li>ROLE-BASED ACCESS CONTROL</li>
       <li>LIVE SQLITE DATABASE CONNECTION</li>
       <li>LOCAL-FIRST · OFFLINE CAPABLE</li>
-      <li>ROLE-BASED ACCESS CONTROL</li>
     </ul>
   </section>
   <section class="login-side">
     <div class="login-card">
-      <h2>System Login</h2>
-      <div class="field">
-        <label for="username">Username</label>
-        <input type="text" id="username" autocomplete="username" placeholder="Enter username" />
+
+      <!-- Tab toggle -->
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tabSignIn"   onclick="switchAuthTab('signin')">Sign In</button>
+        <button class="auth-tab"        id="tabRegister" onclick="switchAuthTab('register')">Register Organization</button>
       </div>
-      <div class="field">
-        <label for="password">Password</label>
-        <input type="password" id="password" autocomplete="current-password" placeholder="Enter password" />
+
+      <!-- ── SIGN IN PANEL ── -->
+      <div class="auth-panel active" id="panelSignIn">
+        <div class="field">
+          <label for="username">Username</label>
+          <input type="text" id="username" autocomplete="username" placeholder="Enter username" />
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input type="password" id="password" autocomplete="current-password" placeholder="Enter password" />
+        </div>
+        <button class="btn-login" id="loginBtn">Login</button>
+        <p id="loginMsg"></p>
       </div>
-      <button class="btn-login" id="loginBtn">Login</button>
-      <p id="loginMsg"></p>
+
+      <!-- ── REGISTER ORGANIZATION PANEL ── -->
+      <div class="auth-panel" id="panelRegister">
+        <div class="org-badge">New Organization</div>
+
+        <div class="register-section-label">Organization Details</div>
+        <div class="field">
+          <label for="regOrgName">Organization Name *</label>
+          <input type="text" id="regOrgName" placeholder="e.g. City Fire Safety Services" />
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="regAddress">Address</label>
+            <input type="text" id="regAddress" placeholder="123 Main St" />
+          </div>
+          <div class="field">
+            <label for="regCity">City</label>
+            <input type="text" id="regCity" placeholder="San Diego" />
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="regState">State</label>
+            <input type="text" id="regState" placeholder="CA" maxlength="2" />
+          </div>
+          <div class="field">
+            <label for="regPhone">Phone</label>
+            <input type="text" id="regPhone" placeholder="(619) 555-0100" />
+          </div>
+        </div>
+
+        <div class="register-section-label">Admin Account</div>
+        <div class="field">
+          <label for="regUsername">Username *</label>
+          <input type="text" id="regUsername" autocomplete="off" placeholder="Choose admin username" />
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="regPassword">Password *</label>
+            <input type="password" id="regPassword" autocomplete="new-password" placeholder="Min 6 characters" />
+          </div>
+          <div class="field">
+            <label for="regConfirm">Confirm *</label>
+            <input type="password" id="regConfirm" autocomplete="new-password" placeholder="Repeat password" />
+          </div>
+        </div>
+
+        <button class="btn-login" id="registerBtn">Register Organization</button>
+        <p id="registerMsg"></p>
+      </div>
+
     </div>
   </section>
 </div>
@@ -369,6 +443,7 @@
     <span class="topbar-logo">🔥 FireWatch</span>
     <span class="topbar-user"><span class="topbar-user-text"><strong id="welcomeLabel"></strong></span></span>
     <span class="role-pill" id="roleLabel"></span>
+    <span class="org-name-pill" id="orgNamePill"></span>
     <span class="last-updated" id="lastUpdated"></span>
     <button class="btn-bar btn-refresh" id="btnRefresh" title="Refresh">↻</button>
     <button class="btn-bar btn-logout" id="btnLogout">Logout</button>
@@ -913,6 +988,17 @@ let editingExtId     = null;
 let selectedAssignId = null;
 let editingAssignId  = null;
 
+// ── Auth tab switcher ──────────────────────────────────────────────────────────
+function switchAuthTab(tab) {
+  document.getElementById("tabSignIn").classList.toggle("active",   tab==="signin");
+  document.getElementById("tabRegister").classList.toggle("active", tab==="register");
+  document.getElementById("panelSignIn").classList.toggle("active",   tab==="signin");
+  document.getElementById("panelRegister").classList.toggle("active", tab==="register");
+}
+
+// Helper: get org_id from currentUser (always pass to API calls)
+const orgId = () => currentUser?.org_id || null;
+
 // ── Drill-down state ────────────────────────────────────────────────────────────
 let _drillLevel       = "companies"; // "companies" | "buildings" | "extinguishers"
 let _selectedCompany  = null;        // { company_id, name, ... }
@@ -953,11 +1039,56 @@ async function doLogin() {
     const res  = await fetch("/api/login", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({username, password: hashed}) });
     const data = await res.json();
     if (data.success) {
-      currentUser = {user_id:data.user_id, username:data.username, role:data.role};
+      currentUser = {user_id:data.user_id, username:data.username, role:data.role, org_id:data.org_id, org_name:data.org_name};
       localStorage.setItem("fw_session", JSON.stringify(currentUser));
       showDashboard();
-    }
-    else { msg.style.color="#c1121f"; msg.textContent="Invalid username or password."; }
+    } else { msg.style.color="#c1121f"; msg.textContent="Invalid username or password."; }
+  } catch { msg.style.color="#c1121f"; msg.textContent="Cannot reach server."; }
+}
+
+// ── Register Organization ──────────────────────────────────────────────────────
+document.getElementById("registerBtn").addEventListener("click", doRegister);
+["regPassword","regConfirm","regUsername","regOrgName"].forEach(id => {
+  document.getElementById(id).addEventListener("keydown", e => { if(e.key==="Enter") doRegister(); });
+});
+
+async function doRegister() {
+  const msg      = document.getElementById("registerMsg");
+  const orgName  = document.getElementById("regOrgName").value.trim();
+  const username = document.getElementById("regUsername").value.trim();
+  const password = document.getElementById("regPassword").value;
+  const confirm  = document.getElementById("regConfirm").value;
+
+  if (!orgName)              { msg.style.color="#c1121f"; msg.textContent="Organization name is required."; return; }
+  if (!username)             { msg.style.color="#c1121f"; msg.textContent="Admin username is required."; return; }
+  if (password.length < 6)  { msg.style.color="#c1121f"; msg.textContent="Password must be at least 6 characters."; return; }
+  if (password !== confirm)  { msg.style.color="#c1121f"; msg.textContent="Passwords do not match."; return; }
+
+  msg.style.color="#6b7280"; msg.textContent="Registering...";
+  try {
+    const hashed = await sha256(password);
+    const res  = await fetch("/api/register", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({
+        org_name:     orgName,
+        username,
+        password:     hashed,
+        address:      document.getElementById("regAddress").value.trim(),
+        city:         document.getElementById("regCity").value.trim(),
+        state:        document.getElementById("regState").value.trim(),
+        phone:        document.getElementById("regPhone").value.trim(),
+      })
+    });
+    const data = await res.json();
+    if (data.success) {
+      // Auto-login after successful registration
+      currentUser = {user_id:data.user_id, username:data.username, role:data.role, org_id:data.org_id, org_name:data.org_name};
+      localStorage.setItem("fw_session", JSON.stringify(currentUser));
+      msg.style.color="#0d9488";
+      msg.textContent=`✓ Organization "${orgName}" created! Logging in...`;
+      setTimeout(showDashboard, 600);
+    } else { msg.style.color="#c1121f"; msg.textContent=data.error || "Registration failed."; }
   } catch { msg.style.color="#c1121f"; msg.textContent="Cannot reach server."; }
 }
 
@@ -976,6 +1107,14 @@ function showDashboard() {
   };
   const rc = roleColors[currentUser.role] || {color:"#9ca3af",border:"rgba(156,163,175,0.4)"};
   rl.style.color=rc.color; rl.style.borderColor=rc.border;
+  // Show org name in topbar
+  const orgPill = document.getElementById("orgNamePill");
+  if (currentUser.org_name) {
+    orgPill.textContent = "🏢 " + currentUser.org_name;
+    orgPill.classList.add("show");
+  } else {
+    orgPill.classList.remove("show");
+  }
   buildTabs(); loadStats(); loadAllData();
   captureBaseline();
   startPolling();
@@ -1042,7 +1181,8 @@ function switchTab(panelId, clickedBtn, tabBar) {
 // ── Stats ─────────────────────────────────────────────────────────────────────
 async function loadStats() {
   try {
-    const data = await fetch("/api/stats").then(r=>r.json());
+    const oid = orgId();
+    const data = await fetch(`/api/stats${oid?`?org_id=${oid}`:""}`).then(r=>r.json());
     if (isAdmin()) {
       document.getElementById("statExt").textContent=data.extinguishers;
       document.getElementById("statAssign").textContent=data.assignments;
@@ -1050,17 +1190,17 @@ async function loadStats() {
       document.getElementById("statUsers").textContent=data.users;
     } else if (isInv()) {
       const [a,r] = await Promise.all([
-        fetch("/api/assignments?user_id="+currentUser.user_id).then(r=>r.json()),
-        fetch("/api/reports?user_id="+currentUser.user_id).then(r=>r.json())
+        fetch(`/api/assignments?user_id=${currentUser.user_id}&org_id=${oid}`).then(r=>r.json()),
+        fetch(`/api/reports?user_id=${currentUser.user_id}&org_id=${oid}`).then(r=>r.json())
       ]);
       document.getElementById("statAssign").textContent=a.length;
       document.getElementById("statReports").textContent=r.length;
     } else if (isThirdAdmin()) {
       document.getElementById("statAssign").textContent=data.assignments;
-      const users=await fetch("/api/users").then(r=>r.json());
+      const users=await fetch(`/api/users${oid?`?org_id=${oid}`:""}`).then(r=>r.json());
       document.getElementById("statUsers").textContent=users.filter(u=>u.role==="3rd_Party_Inspector").length;
     } else if (isThirdInv()) {
-      const a=await fetch("/api/assignments?user_id="+currentUser.user_id).then(r=>r.json());
+      const a=await fetch(`/api/assignments?user_id=${currentUser.user_id}&org_id=${oid}`).then(r=>r.json());
       document.getElementById("statAssign").textContent=a.length;
     }
   } catch(e) { console.error("Stats error",e); }
@@ -1154,7 +1294,7 @@ async function renderCompanyGrid() {
   // Only show loading spinner on first paint (grid is empty)
   if (!grid.children.length) grid.innerHTML = `<div class="drill-empty">Loading companies…</div>`;
   try {
-    const companies = await fetch("/api/companies").then(r=>r.json());
+    const companies = await fetch(`/api/companies?org_id=${orgId()}`).then(r=>r.json());
 
     // Build new HTML
     const newHtml = companies.length
@@ -1235,8 +1375,9 @@ async function renderExtinguisherTable(buildingId) {
 }
 
 async function loadAssignments() {
-  let url="/api/assignments";
-  if (isInv()||isThirdInv()) url+="?user_id="+currentUser.user_id;
+  const oid = orgId();
+  let url = `/api/assignments?org_id=${oid}`;
+  if (isInv()||isThirdInv()) url += `&user_id=${currentUser.user_id}`;
   const rows=await fetch(url).then(r=>r.json());
   const cols=(isAdmin()||isThirdAdmin())?["assignment_id","assigned_by","inspector","extinguisher_id","due_date","status"]:["assignment_id","assigned_by","extinguisher_id","due_date","status"];
   renderTable("tableAssignWrap",cols,rows,row=>{ selectedAssignId=row.assignment_id; window._lastAssignRows=rows; });
@@ -1244,12 +1385,12 @@ async function loadAssignments() {
 }
 
 async function loadReports() {
-  let url="/api/reports";
-  if (isInv()) url+="?user_id="+currentUser.user_id;
+  const oid = orgId();
+  let url = `/api/reports?org_id=${oid}`;
+  if (isInv()) url += `&user_id=${currentUser.user_id}`;
   const rows=await fetch(url).then(r=>r.json());
-  window._allReports = rows; // store full unfiltered set
+  window._allReports = rows;
 
-  // Populate inspector dropdown (Admin only)
   const inspGrp = document.getElementById("filterInspectorGroup");
   if (isAdmin()) {
     inspGrp.style.display = "";
@@ -1261,12 +1402,12 @@ async function loadReports() {
   } else {
     inspGrp.style.display = "none";
   }
-
-  applyReportFilters(); // render with any active filters
+  applyReportFilters();
 }
 
 async function loadUsers() {
-  let rows=await fetch("/api/users").then(r=>r.json());
+  const oid = orgId();
+  let rows=await fetch(`/api/users${oid?`?org_id=${oid}`:""}`).then(r=>r.json());
   if (isThirdAdmin()) rows=rows.filter(u=>u.role==="3rd_Party_Inspector");
   renderTable("tableUsersWrap",["user_id","username","role"],rows);
   renderCards("cardUsersWrap",rows,"user");
@@ -1414,6 +1555,7 @@ document.getElementById("companyModalSave").addEventListener("click", async () =
   if (!name) { document.getElementById("companyModalError").textContent = "Company name is required."; return; }
   const body = {
     name,
+    org_id:       orgId(),
     address:      document.getElementById("cAddress").value.trim(),
     city:         document.getElementById("cCity").value.trim(),
     state:        document.getElementById("cState").value.trim(),
@@ -1471,6 +1613,7 @@ document.getElementById("buildingModalSave").addEventListener("click", async () 
   if (!name) { document.getElementById("buildingModalError").textContent = "Building name is required."; return; }
   const body = {
     company_id: _selectedCompany.company_id,
+    org_id:     orgId(),
     name,
     address: document.getElementById("bAddress").value.trim(),
     floors:  parseInt(document.getElementById("bFloors").value) || 1,
@@ -1572,6 +1715,7 @@ document.getElementById("modalSave").addEventListener("click", async () => {
     inspection_interval_days: parseInt(document.getElementById("fInterval").value) || 30,
     next_due_date:          document.getElementById("fDueDate").value,
     building_id:            buildingId,
+    org_id:                 orgId(),
   };
   const url    = editingExtId ? "/api/extinguishers/"+editingExtId : "/api/extinguishers";
   const method = editingExtId ? "PUT" : "POST";
@@ -1596,8 +1740,8 @@ async function openAssignModal(editRow=null) {
 
   // Load companies and inspectors in parallel
   const [companies, users] = await Promise.all([
-    fetch("/api/companies").then(r=>r.json()),
-    fetch("/api/users").then(r=>r.json()),
+    fetch(`/api/companies?org_id=${orgId()}`).then(r=>r.json()),
+    fetch(`/api/users?org_id=${orgId()}`).then(r=>r.json()),
   ]);
   const inspectors = users.filter(u=>u.role==="Inspector"||u.role==="3rd_Party_Inspector");
 
@@ -1757,7 +1901,7 @@ document.getElementById("assignModalSave").addEventListener("click",async()=>{
     const res = await fetch("/api/assignments",{
       method:"POST",
       headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({admin_id:currentUser.user_id, inspector_id:invId, extinguisher_id:extId, due_date:due, notes})
+      body:JSON.stringify({admin_id:currentUser.user_id, inspector_id:invId, extinguisher_id:extId, due_date:due, notes, org_id:orgId()})
     });
     if (res.ok) { document.getElementById("assignModal").classList.add("hidden"); loadAssignments(); loadStats(); }
     else errEl.textContent = "Error: "+(await res.json()).error;
@@ -1829,7 +1973,8 @@ document.getElementById("reportModalSave").addEventListener("click",async()=>{
         inspection_date:date,
         notes,
         assignment_id:assignmentId,
-        photo_path:photoPath
+        photo_path:photoPath,
+        org_id:orgId()
       })
     });
 
@@ -2021,7 +2166,7 @@ document.getElementById("userModalSave").addEventListener("click", async () => {
   const res = await fetch("/api/users", {
     method: "POST",
     headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({ username, password: hashed, role })
+    body: JSON.stringify({ username, password: hashed, role, org_id: orgId() })
   });
 
   if (res.ok) {
@@ -2061,14 +2206,13 @@ async function silentRefresh() {
     const prevReport = _prevReportCount;
 
     // Fetch stats once — reuse for both display update AND badge check
-    const stats = await fetch("/api/stats").then(r=>r.json());
+    const stats = await fetch(`/api/stats?org_id=${orgId()}`).then(r=>r.json());
 
-    // For inspectors fetch their personal counts
     let newAssignCount, newReportCount;
     if (isInv() || isThirdInv()) {
       const [a, rep] = await Promise.all([
-        fetch("/api/assignments?user_id=" + currentUser.user_id).then(r=>r.json()),
-        fetch("/api/reports?user_id="     + currentUser.user_id).then(r=>r.json())
+        fetch(`/api/assignments?user_id=${currentUser.user_id}&org_id=${orgId()}`).then(r=>r.json()),
+        fetch(`/api/reports?user_id=${currentUser.user_id}&org_id=${orgId()}`).then(r=>r.json())
       ]);
       newAssignCount = a.length;
       newReportCount = rep.length;
@@ -2163,7 +2307,7 @@ function badgeTab(keyword, count) {
 async function fetchNotifications() {
   if (!currentUser) return;
   try {
-    const res = await fetch("/api/notifications?user_id=" + currentUser.user_id + "&role=" + encodeURIComponent(currentUser.role));
+    const res = await fetch("/api/notifications?user_id=" + currentUser.user_id + "&role=" + encodeURIComponent(currentUser.role) + "&org_id=" + (orgId()||""));
     if (!res.ok) return;
     const data = await res.json();
     _notifications = data;
