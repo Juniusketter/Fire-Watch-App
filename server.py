@@ -589,23 +589,33 @@ def get_assignments():
             conn.execute("ALTER TABLE Assignments ADD COLUMN due_date DATE")
         if "notes" not in existing:
             conn.execute("ALTER TABLE Assignments ADD COLUMN notes TEXT DEFAULT ''")
+
+        base = """
+            SELECT a.assignment_id, a.inspector_id, a.extinguisher_id,
+                   a.due_date, a.status, a.notes,
+                   u_a.username AS assigned_by,
+                   u_i.username AS inspector,
+                   e.floor_number, e.room_number, e.location_description,
+                   e.next_due_date, e.building_id,
+                   b.name  AS building_name,
+                   c.name  AS company_name,
+                   c.address AS company_address
+            FROM Assignments a
+            LEFT JOIN Users u_a        ON a.admin_id      = u_a.user_id
+            LEFT JOIN Users u_i        ON a.inspector_id  = u_i.user_id
+            LEFT JOIN Extinguishers e  ON a.extinguisher_id = e.extinguisher_id
+            LEFT JOIN Buildings b      ON e.building_id   = b.building_id
+            LEFT JOIN Companies c      ON b.company_id    = c.company_id
+        """
         if user_id:
             rows = conn.execute(
-                "SELECT a.assignment_id, u_a.username AS assigned_by, "
-                "a.inspector_id, a.extinguisher_id, a.due_date, a.status, a.notes "
-                "FROM Assignments a "
-                "LEFT JOIN Users u_a ON a.admin_id = u_a.user_id "
-                "WHERE a.inspector_id=? AND (a.org_id=? OR ? IS NULL)", (user_id, org_id, org_id)
+                base + " WHERE a.inspector_id=? AND (a.org_id=? OR ? IS NULL)",
+                (user_id, org_id, org_id)
             ).fetchall()
         else:
             rows = conn.execute(
-                "SELECT a.assignment_id, u_a.username AS assigned_by, "
-                "u_i.username AS inspector, a.inspector_id, "
-                "a.extinguisher_id, a.due_date, a.status, a.notes "
-                "FROM Assignments a "
-                "LEFT JOIN Users u_a ON a.admin_id     = u_a.user_id "
-                "LEFT JOIN Users u_i ON a.inspector_id = u_i.user_id "
-                "WHERE (a.org_id=? OR ? IS NULL)", (org_id, org_id)
+                base + " WHERE (a.org_id=? OR ? IS NULL)",
+                (org_id, org_id)
             ).fetchall()
     return jsonify([dict(r) for r in rows])
 
@@ -647,18 +657,29 @@ def get_reports():
     user_id = request.args.get("user_id")
     org_id  = request.args.get("org_id")
     with get_db() as conn:
+        base = """
+            SELECT r.report_id, r.extinguisher_id, r.inspection_date,
+                   r.notes, r.photo_path,
+                   u.username  AS inspector,
+                   e.floor_number, e.room_number, e.location_description,
+                   e.next_due_date,
+                   b.name      AS building_name,
+                   c.name      AS company_name,
+                   c.address   AS company_address
+            FROM Reports r
+            LEFT JOIN Users u         ON r.inspector_id    = u.user_id
+            LEFT JOIN Extinguishers e ON r.extinguisher_id = e.extinguisher_id
+            LEFT JOIN Buildings b     ON e.building_id     = b.building_id
+            LEFT JOIN Companies c     ON b.company_id      = c.company_id
+        """
         if user_id:
             rows = conn.execute(
-                "SELECT report_id, extinguisher_id, inspection_date, notes, photo_path "
-                "FROM Reports WHERE inspector_id=? AND (org_id=? OR ? IS NULL)",
+                base + " WHERE r.inspector_id=? AND (r.org_id=? OR ? IS NULL)",
                 (user_id, org_id, org_id)
             ).fetchall()
         else:
             rows = conn.execute(
-                "SELECT r.report_id, r.extinguisher_id, "
-                "u.username AS inspector, r.inspection_date, r.notes, r.photo_path "
-                "FROM Reports r LEFT JOIN Users u ON r.inspector_id = u.user_id "
-                "WHERE (r.org_id=? OR ? IS NULL)",
+                base + " WHERE (r.org_id=? OR ? IS NULL)",
                 (org_id, org_id)
             ).fetchall()
     return jsonify([dict(r) for r in rows])
