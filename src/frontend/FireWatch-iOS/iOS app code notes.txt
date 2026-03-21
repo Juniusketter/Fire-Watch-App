@@ -1,0 +1,18 @@
+FireWatch iOS App Folder
+
+Purpose
+- This folder is a starter for an iOS app that searches for and opens the FireWatch website.
+
+What is included
+- FireWatchApp.swift: a minimal SwiftUI app with a URL field and an Open button.
+
+Notes
+- Replace the default URL in the app with the real FireWatch website URL when known.
+- This is just a starter scaffold and does not include an Xcode project yet.
+
+FireWatchApp.swift Explained
+- FireWatchAppView is the main SwiftUI screen with a URL field and an Open button.
+- The address text field lets a user type the FireWatch website URL and keeps it in state.
+- The Open button validates the text as a URL and loads it into the embedded web view.
+- WebView wraps WKWebView so the website opens inside the app.
+- The @main FireWatchApp entry point launches FireWatchAppView in a window group.
