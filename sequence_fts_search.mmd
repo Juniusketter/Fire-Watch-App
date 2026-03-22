@@ -1,0 +1,7 @@
+```mermaid
+sequenceDiagram
+User->>UI: search
+UI->>SearchService: query
+SearchService->>FTS: MATCH
+FTS-->>SearchService: results
+```

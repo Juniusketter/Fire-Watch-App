@@ -1,0 +1,7 @@
+```mermaid
+sequenceDiagram
+Admin->>Server: Create Assignment
+Server->>DB: INSERT
+Inspector->>App: Sync
+App->>DB: SELECT
+```

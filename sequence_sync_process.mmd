@@ -1,0 +1,11 @@
+```mermaid
+sequenceDiagram
+Inspector->>App: Complete Report
+App->>Queue: Add Pending Item
+Queue->>SyncService: Trigger Sync
+SyncService->>API: Upload Data
+API->>DB: Store
+DB-->>API: Success
+API-->>SyncService: Confirm
+SyncService-->>Queue: Mark Synced
+```
