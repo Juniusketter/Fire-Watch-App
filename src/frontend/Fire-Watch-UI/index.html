@@ -3487,7 +3487,7 @@ async function loadPlatformAuditLog() {
     <thead><tr><th style="${thS}">Time</th><th style="${thS}">Actor</th><th style="${thS}">Action</th><th style="${thS}">Target</th><th style="${thS}">Details</th></tr></thead><tbody>`;
   logs.forEach(l => {
     const color = actionColors[l.action] || "var(--text)";
-    const time = l.timestamp ? l.timestamp.replace("T"," ").substring(0,19) : "—";
+    const time = l.timestamp ? new Date(l.timestamp + "Z").toLocaleString([], {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'}) : "—";
     html += `<tr><td style="${tdS}color:var(--muted);font-size:0.72rem;white-space:nowrap;">${time}</td>
       <td style="${tdS}color:var(--text);">${l.actor}</td>
       <td style="${tdS}"><span style="color:${color};font-weight:600;">${l.action.replace(/_/g," ")}</span></td>
