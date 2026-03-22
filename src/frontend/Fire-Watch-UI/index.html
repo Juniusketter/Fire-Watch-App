@@ -3036,8 +3036,10 @@ document.getElementById("btnExportCSV")?.addEventListener("click", () => {
   const a    = document.createElement("a");
   a.href     = url;
   a.download = "FireWatch_Reports.csv";
+  a.style.display = "none";
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
 });
 
 // ── Export as Word (.doc HTML) ────────────────────────────────────────────────
@@ -3092,13 +3094,15 @@ document.getElementById("btnExportWord")?.addEventListener("click", () => {
   const a    = document.createElement("a");
   a.href     = url;
   a.download = "FireWatch_Reports.doc";
+  a.style.display = "none";
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
 });
 
 // ── Export as PDF ─────────────────────────────────────────────────────────────
-// Opens a styled print-friendly window with all reports (or filtered subset)
-// User can then Save as PDF or Print from the browser dialog.
+// Downloads a print-ready HTML file. On desktop, also opens a print window.
+// On mobile, the downloaded file can be opened and printed/saved as PDF.
 // Original export concept by Lillian Bowen — adapted for web by Junius Ketter.
 document.getElementById("btnExportReports")?.addEventListener("click", () => {
   document.getElementById("exportMenu").classList.add("hidden");
@@ -3127,27 +3131,24 @@ document.getElementById("btnExportReports")?.addEventListener("click", () => {
   ).join("");
 
   const html = `<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>FireWatch — Report Export</title>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FireWatch — Report Export</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family: Arial, Helvetica, sans-serif; color:#1a1a1a; padding:40px; }
-  .header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:24px; padding-bottom:16px; border-bottom:3px solid #1f3864; }
-  .header h1 { font-size:22px; color:#1f3864; }
+  body { font-family: Arial, Helvetica, sans-serif; color:#1a1a1a; padding:20px; }
+  .header { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:flex-start; margin-bottom:24px; padding-bottom:16px; border-bottom:3px solid #1f3864; }
+  .header h1 { font-size:20px; color:#1f3864; }
   .header .meta { font-size:11px; color:#666; text-align:right; }
-  .summary { margin-bottom:20px; font-size:13px; color:#444; }
-  table { width:100%; border-collapse:collapse; font-size:11px; }
-  th { background:#1f3864; color:#fff; padding:8px 6px; text-align:left; font-weight:600; }
-  td { padding:7px 6px; border-bottom:1px solid #ddd; vertical-align:top; }
+  table { width:100%; border-collapse:collapse; font-size:10px; }
+  th { background:#1f3864; color:#fff; padding:6px 4px; text-align:left; font-weight:600; }
+  td { padding:5px 4px; border-bottom:1px solid #ddd; vertical-align:top; }
   tr:nth-child(even) td { background:#f5f7fa; }
   .footer { margin-top:24px; padding-top:12px; border-top:2px solid #1f3864; font-size:10px; color:#888; display:flex; justify-content:space-between; }
-  @media print {
-    body { padding:20px; }
-    .no-print { display:none; }
-  }
+  .print-btn { display:block; margin:0 auto 20px; padding:12px 32px; background:#1f3864; color:#fff; border:none; border-radius:6px; font-weight:bold; cursor:pointer; font-size:16px; }
+  @media print { .no-print { display:none !important; } body { padding:10px; } }
 </style></head><body>
-  <div class="no-print" style="margin-bottom:16px;">
-    <button onclick="window.print()" style="padding:8px 20px;background:#1f3864;color:#fff;border:none;border-radius:4px;font-weight:bold;cursor:pointer;font-size:14px;">🖨 Print / Save PDF</button>
-    <span style="margin-left:12px;font-size:13px;color:#666;">Use "Save as PDF" in the print dialog to export as PDF file.</span>
+  <div class="no-print" style="text-align:center;margin-bottom:16px;">
+    <button class="print-btn" onclick="window.print()">🖨 Print / Save as PDF</button>
+    <p style="font-size:12px;color:#666;">Tap the button above, then choose "Save as PDF" or select your printer.</p>
   </div>
   <div class="header">
     <div>
@@ -3171,9 +3172,27 @@ document.getElementById("btnExportReports")?.addEventListener("click", () => {
   </div>
 </body></html>`;
 
-  const w = window.open("", "_blank", "width=900,height=700");
-  w.document.write(html);
-  w.document.close();
+  // Try opening a new window first (works on desktop)
+  // Fall back to downloading as HTML file (works on mobile)
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  if (!isMobile) {
+    const w = window.open("", "_blank");
+    if (w) {
+      w.document.write(html);
+      w.document.close();
+      return;
+    }
+  }
+  // Mobile fallback: download as HTML file
+  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href     = url;
+  a.download = "FireWatch_Reports.html";
+  a.style.display = "none";
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
 });
 
 // ── Session restore on page load ──────────────────────────────────────────────
