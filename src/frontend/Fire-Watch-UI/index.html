@@ -3441,7 +3441,7 @@ async function platformViewOrg(orgId, orgName) {
   ];
 
   let tabBtns = tabs.map((t,i) =>
-    `<button onclick="switchOrgDetailTab('${t.key}')" id="orgDetailTab_${t.key}" style="padding:0.5rem 1rem;border:none;background:none;color:${i===0?'var(--text)':'var(--muted)'};font-family:'IBM Plex Mono',monospace;font-size:0.72rem;font-weight:600;cursor:pointer;border-bottom:2px solid ${i===0?'var(--orange)':'transparent'};margin-bottom:-2px;">${t.label} (${(data[t.key]||[]).length})</button>`
+    `<button onclick="switchOrgDetailTab('${t.key}')" id="orgDetailTab_${t.key}" style="padding:0.5rem 1rem;border:none;background:none;color:${i===0?'var(--text)':'var(--muted)'};font-family:'IBM Plex Mono',monospace;font-size:0.72rem;font-weight:600;cursor:pointer;border-bottom:2px solid ${i===0?'var(--orange)':'transparent'};margin-bottom:-2px;white-space:nowrap;flex-shrink:0;">${t.label} (${(data[t.key]||[]).length})</button>`
   ).join("");
 
   let tabPanels = tabs.map((t,i) =>
@@ -3460,7 +3460,7 @@ async function platformViewOrg(orgId, orgName) {
       <span>👤 ${org.contact_name||"—"}</span>
       <span>📅 ${org.created_at?org.created_at.split("T")[0]:"—"}</span>
     </div>
-    <div style="display:flex;gap:0;border-bottom:2px solid var(--border);">${tabBtns}</div>
+    <div style="display:flex;gap:0;border-bottom:2px solid var(--border);overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin;">${tabBtns}</div>
     ${tabPanels}`;
 }
 
