@@ -384,6 +384,7 @@
       <div class="auth-tabs">
         <button class="auth-tab active" id="tabSignIn"   onclick="switchAuthTab('signin')">Sign In</button>
         <button class="auth-tab"        id="tabRegister" onclick="switchAuthTab('register')">Register Organization</button>
+        <button class="auth-tab"        id="tabPlatform" onclick="switchAuthTab('platform')" style="font-size:0.65rem;color:var(--muted);">⚙ Platform</button>
       </div>
 
       <!-- ── SIGN IN PANEL ── -->
@@ -450,8 +451,47 @@
         <p id="registerMsg"></p>
       </div>
 
+      <!-- ── PLATFORM SUPER ADMIN LOGIN ── -->
+      <div class="auth-panel" id="panelPlatform">
+        <div class="org-badge" style="background:var(--purple);color:#fff;">⚙ Platform Admin</div>
+        <div class="field">
+          <label for="platformPassword">Platform Password</label>
+          <input type="password" id="platformPassword" placeholder="Enter platform password" />
+        </div>
+        <button class="btn-login" id="platformLoginBtn" style="background:var(--purple);">Access Platform Dashboard</button>
+        <p id="platformMsg"></p>
+      </div>
+
     </div>
   </section>
+</div>
+
+<!-- PENDING ORG OVERLAY — shown when org is not yet approved -->
+<div id="pendingOverlay" class="hidden" style="position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;">
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:2rem;max-width:480px;width:90%;text-align:center;">
+    <div style="font-size:2.5rem;margin-bottom:1rem;">⏳</div>
+    <h2 style="color:var(--orange);font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:0.05em;margin-bottom:0.8rem;">Organization Pending Approval</h2>
+    <p style="color:var(--muted2);line-height:1.6;margin-bottom:1.2rem;">Your organization has been registered and is awaiting approval from the FireWatch platform team. You'll be able to access the full dashboard once approved.</p>
+    <p style="color:var(--muted);font-size:0.8rem;margin-bottom:1.5rem;" id="pendingOrgName"></p>
+    <button class="btn-login" onclick="localStorage.removeItem('fw_session');location.reload();" style="background:var(--border);max-width:200px;margin:0 auto;">Logout</button>
+  </div>
+</div>
+
+<!-- PLATFORM ADMIN DASHBOARD — shown after Super Admin login -->
+<div id="platformPage" class="hidden">
+  <div class="topbar" style="background:var(--bg2);border-bottom:1px solid var(--border);">
+    <div style="display:flex;align-items:center;gap:0.8rem;">
+      <span style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:0.08em;color:var(--orange);">🔥 FIREWATCH</span>
+      <span style="background:var(--purple);color:#fff;font-size:0.65rem;padding:2px 8px;border-radius:3px;font-weight:700;letter-spacing:0.1em;">PLATFORM ADMIN</span>
+    </div>
+    <button class="btn-logout" id="platformLogoutBtn">LOGOUT</button>
+  </div>
+  <div style="padding:1.5rem;max-width:1200px;margin:0 auto;">
+    <h2 style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:0.06em;color:var(--text);margin-bottom:0.4rem;">All Organizations</h2>
+    <p style="color:var(--muted);font-size:0.8rem;margin-bottom:1.2rem;">Manage organization access to the FireWatch platform.</p>
+    <div style="display:flex;gap:1rem;margin-bottom:1rem;flex-wrap:wrap;" id="platformStats"></div>
+    <div id="platformOrgTable" style="overflow-x:auto;"></div>
+  </div>
 </div>
 
 <!-- DASHBOARD -->
@@ -1102,8 +1142,10 @@ let editingAssignId  = null;
 function switchAuthTab(tab) {
   document.getElementById("tabSignIn").classList.toggle("active",   tab==="signin");
   document.getElementById("tabRegister").classList.toggle("active", tab==="register");
+  document.getElementById("tabPlatform").classList.toggle("active", tab==="platform");
   document.getElementById("panelSignIn").classList.toggle("active",   tab==="signin");
   document.getElementById("panelRegister").classList.toggle("active", tab==="register");
+  document.getElementById("panelPlatform").classList.toggle("active", tab==="platform");
 }
 
 // Helper: get org_id from currentUser (always pass to API calls)
@@ -1204,6 +1246,27 @@ async function doRegister() {
 
 // ── Dashboard setup ───────────────────────────────────────────────────────────
 function showDashboard() {
+  // ── Check if org is pending/suspended/rejected ──────────────────────────
+  const ps = currentUser.platform_status;
+  if (ps && ps !== "approved") {
+    document.getElementById("loginPage").classList.add("hidden");
+    document.getElementById("appPage").classList.add("hidden");
+    const overlay = document.getElementById("pendingOverlay");
+    overlay.classList.remove("hidden");
+    overlay.style.display = "flex";
+    const statusMessages = {
+      pending:   "Your organization has been registered and is awaiting approval from the FireWatch platform team.",
+      suspended: "Your organization has been suspended. Please contact the FireWatch platform team for assistance.",
+      rejected:  "Your organization registration has been declined. Please contact the FireWatch platform team."
+    };
+    overlay.querySelector("h2").textContent =
+      ps === "pending" ? "Organization Pending Approval" :
+      ps === "suspended" ? "Organization Suspended" : "Organization Declined";
+    overlay.querySelector("p").textContent = statusMessages[ps] || statusMessages.pending;
+    document.getElementById("pendingOrgName").textContent = currentUser.org_name ? `Organization: ${currentUser.org_name}` : "";
+    return;
+  }
+
   document.getElementById("loginPage").classList.add("hidden");
   document.getElementById("appPage").classList.remove("hidden");
   document.getElementById("welcomeLabel").textContent = currentUser.username + " · " + currentUser.role.toUpperCase();
@@ -3194,6 +3257,192 @@ document.getElementById("btnExportReports")?.addEventListener("click", () => {
   a.click();
   setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
 });
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  PLATFORM SUPER ADMIN
+// ══════════════════════════════════════════════════════════════════════════════
+
+let _platformAuth = false;
+
+// ── Platform Login ───────────────────────────────────────────────────────────
+document.getElementById("platformLoginBtn")?.addEventListener("click", async () => {
+  const pw    = document.getElementById("platformPassword").value;
+  const msgEl = document.getElementById("platformMsg");
+  if (!pw) { msgEl.textContent = "Password is required."; msgEl.style.color = "var(--red)"; return; }
+
+  const hashed = await sha256(pw);
+  const res = await fetch("/api/platform/login", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ password: hashed })
+  });
+  const data = await res.json();
+  if (data.success) {
+    _platformAuth = true;
+    document.getElementById("loginPage").classList.add("hidden");
+    document.getElementById("platformPage").classList.remove("hidden");
+    loadPlatformDashboard();
+  } else {
+    msgEl.textContent = data.error || "Invalid password.";
+    msgEl.style.color = "var(--red)";
+  }
+});
+
+// ── Platform Logout ──────────────────────────────────────────────────────────
+document.getElementById("platformLogoutBtn")?.addEventListener("click", () => {
+  _platformAuth = false;
+  document.getElementById("platformPage").classList.add("hidden");
+  document.getElementById("loginPage").classList.remove("hidden");
+  document.getElementById("platformPassword").value = "";
+  document.getElementById("platformMsg").textContent = "";
+  switchAuthTab("signin");
+});
+
+// ── Load Platform Dashboard ──────────────────────────────────────────────────
+async function loadPlatformDashboard() {
+  const orgs = await fetch("/api/platform/organizations").then(r => r.json());
+
+  // Settings: check if approval is required
+  const settingsRes = await fetch("/api/platform/settings").then(r => r.json());
+  const requireApproval = settingsRes.require_approval !== false;
+
+  // Stats
+  const total    = orgs.length;
+  const pending  = orgs.filter(o => o.platform_status === "pending").length;
+  const approved = orgs.filter(o => o.platform_status === "approved").length;
+  const suspended= orgs.filter(o => o.platform_status === "suspended").length;
+  const totalUsers = orgs.reduce((s, o) => s + (o.user_count || 0), 0);
+  const totalExt   = orgs.reduce((s, o) => s + (o.extinguisher_count || 0), 0);
+
+  document.getElementById("platformStats").innerHTML = `
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:0.8rem 1.2rem;min-width:120px;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:0.6rem;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;">Organizations</div>
+      <div style="font-size:1.5rem;font-weight:700;color:var(--text);">${total}</div>
+    </div>
+    <div style="background:var(--bg3);border:1px solid var(--orange);border-radius:8px;padding:0.8rem 1.2rem;min-width:120px;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:0.6rem;color:var(--orange);letter-spacing:0.1em;text-transform:uppercase;">Pending</div>
+      <div style="font-size:1.5rem;font-weight:700;color:var(--orange);">${pending}</div>
+    </div>
+    <div style="background:var(--bg3);border:1px solid var(--teal);border-radius:8px;padding:0.8rem 1.2rem;min-width:120px;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:0.6rem;color:var(--teal);letter-spacing:0.1em;text-transform:uppercase;">Approved</div>
+      <div style="font-size:1.5rem;font-weight:700;color:var(--teal);">${approved}</div>
+    </div>
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:0.8rem 1.2rem;min-width:120px;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:0.6rem;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;">Total Users</div>
+      <div style="font-size:1.5rem;font-weight:700;color:var(--text);">${totalUsers}</div>
+    </div>
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:0.8rem 1.2rem;min-width:120px;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:0.6rem;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;">Total Extinguishers</div>
+      <div style="font-size:1.5rem;font-weight:700;color:var(--text);">${totalExt}</div>
+    </div>
+  `;
+
+  // Approval toggle
+  const toggleHtml = `
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:1rem 1.2rem;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.8rem;">
+      <div>
+        <div style="font-weight:600;color:var(--text);font-size:0.9rem;">Require Approval for New Organizations</div>
+        <div style="color:var(--muted);font-size:0.75rem;margin-top:2px;">When ON, new organizations start as "pending" until you approve them. When OFF, new organizations are automatically approved.</div>
+      </div>
+      <label style="position:relative;display:inline-block;width:52px;height:28px;cursor:pointer;">
+        <input type="checkbox" id="approvalToggle" ${requireApproval ? "checked" : ""}
+          style="opacity:0;width:0;height:0;"
+          onchange="toggleApprovalRequirement(this.checked)">
+        <span style="position:absolute;inset:0;background:${requireApproval ? "var(--teal)" : "var(--border)"};border-radius:28px;transition:0.3s;" id="approvalSliderBg"></span>
+        <span style="position:absolute;top:3px;left:${requireApproval ? "26px" : "3px"};width:22px;height:22px;background:#fff;border-radius:50%;transition:0.3s;" id="approvalSliderDot"></span>
+      </label>
+    </div>
+  `;
+
+  // Org table
+  let tableHtml = `<table style="width:100%;border-collapse:collapse;font-size:0.78rem;font-family:'IBM Plex Mono',monospace;">
+    <thead><tr style="border-bottom:2px solid var(--border);">
+      <th style="padding:10px 8px;text-align:left;color:var(--muted);font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;">Org</th>
+      <th style="padding:10px 8px;text-align:left;color:var(--muted);font-size:0.65rem;letter-spacing:0.1em;">Status</th>
+      <th style="padding:10px 8px;text-align:center;color:var(--muted);font-size:0.65rem;letter-spacing:0.1em;">Users</th>
+      <th style="padding:10px 8px;text-align:center;color:var(--muted);font-size:0.65rem;letter-spacing:0.1em;">Ext.</th>
+      <th style="padding:10px 8px;text-align:center;color:var(--muted);font-size:0.65rem;letter-spacing:0.1em;">Reports</th>
+      <th style="padding:10px 8px;text-align:left;color:var(--muted);font-size:0.65rem;letter-spacing:0.1em;">Created</th>
+      <th style="padding:10px 8px;text-align:left;color:var(--muted);font-size:0.65rem;letter-spacing:0.1em;">Actions</th>
+    </tr></thead><tbody>`;
+
+  orgs.forEach(o => {
+    const statusColors = {
+      approved:  { bg: "rgba(13,148,136,0.15)", color: "var(--teal)", label: "Approved" },
+      pending:   { bg: "rgba(232,93,4,0.15)",   color: "var(--orange)", label: "Pending" },
+      suspended: { bg: "rgba(193,18,31,0.15)",  color: "var(--red)", label: "Suspended" },
+      rejected:  { bg: "rgba(107,114,128,0.15)", color: "var(--muted)", label: "Rejected" }
+    };
+    const st = statusColors[o.platform_status] || statusColors.pending;
+
+    let actions = "";
+    if (o.platform_status === "pending") {
+      actions = `
+        <button onclick="platformOrgAction(${o.org_id},'approved')" style="padding:4px 10px;border:none;border-radius:4px;background:var(--teal);color:#fff;cursor:pointer;font-size:0.7rem;font-weight:600;">Approve</button>
+        <button onclick="platformOrgAction(${o.org_id},'rejected')" style="padding:4px 10px;border:none;border-radius:4px;background:var(--muted);color:#fff;cursor:pointer;font-size:0.7rem;font-weight:600;">Reject</button>`;
+    } else if (o.platform_status === "approved") {
+      actions = `
+        <button onclick="platformOrgAction(${o.org_id},'suspended')" style="padding:4px 10px;border:none;border-radius:4px;background:var(--red);color:#fff;cursor:pointer;font-size:0.7rem;font-weight:600;">Suspend</button>`;
+    } else if (o.platform_status === "suspended" || o.platform_status === "rejected") {
+      actions = `
+        <button onclick="platformOrgAction(${o.org_id},'approved')" style="padding:4px 10px;border:none;border-radius:4px;background:var(--teal);color:#fff;cursor:pointer;font-size:0.7rem;font-weight:600;">Approve</button>`;
+    }
+    actions += ` <button onclick="platformDeleteOrg(${o.org_id},'${o.name.replace(/'/g,"\\'")}')" style="padding:4px 10px;border:none;border-radius:4px;background:var(--bg3);border:1px solid var(--border);color:var(--red);cursor:pointer;font-size:0.7rem;font-weight:600;">Delete</button>`;
+
+    tableHtml += `<tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:10px 8px;">
+        <div style="font-weight:600;color:var(--text);">${o.name}</div>
+        <div style="font-size:0.65rem;color:var(--muted);">${[o.city, o.state].filter(Boolean).join(", ") || "—"}</div>
+      </td>
+      <td style="padding:10px 8px;"><span style="background:${st.bg};color:${st.color};padding:3px 10px;border-radius:4px;font-size:0.68rem;font-weight:600;">${st.label}</span></td>
+      <td style="padding:10px 8px;text-align:center;color:var(--text);">${o.user_count || 0}</td>
+      <td style="padding:10px 8px;text-align:center;color:var(--text);">${o.extinguisher_count || 0}</td>
+      <td style="padding:10px 8px;text-align:center;color:var(--text);">${o.report_count || 0}</td>
+      <td style="padding:10px 8px;color:var(--muted);font-size:0.7rem;">${o.created_at ? o.created_at.split("T")[0] : "—"}</td>
+      <td style="padding:10px 8px;display:flex;gap:4px;flex-wrap:wrap;">${actions}</td>
+    </tr>`;
+  });
+  tableHtml += `</tbody></table>`;
+
+  document.getElementById("platformOrgTable").innerHTML = toggleHtml + tableHtml;
+}
+
+// ── Platform: Change org status ──────────────────────────────────────────────
+async function platformOrgAction(orgId, newStatus) {
+  const res = await fetch(`/api/platform/organizations/${orgId}/status`, {
+    method: "PUT",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ status: newStatus })
+  });
+  if (res.ok) loadPlatformDashboard();
+  else alert("Error: " + (await res.json()).error);
+}
+
+// ── Platform: Delete org ─────────────────────────────────────────────────────
+async function platformDeleteOrg(orgId, orgName) {
+  if (!confirm(`PERMANENTLY delete "${orgName}" and ALL its data?\n\nThis cannot be undone.`)) return;
+  if (!confirm(`Are you absolutely sure? This deletes all users, extinguishers, assignments, and reports for "${orgName}".`)) return;
+  const res = await fetch(`/api/platform/organizations/${orgId}`, { method: "DELETE" });
+  if (res.ok) loadPlatformDashboard();
+  else alert("Error: " + (await res.json()).error);
+}
+
+// ── Platform: Toggle approval requirement ────────────────────────────────────
+async function toggleApprovalRequirement(enabled) {
+  const res = await fetch("/api/platform/settings", {
+    method: "PUT",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ require_approval: enabled })
+  });
+  if (res.ok) {
+    // Update toggle visuals
+    document.getElementById("approvalSliderBg").style.background = enabled ? "var(--teal)" : "var(--border)";
+    document.getElementById("approvalSliderDot").style.left = enabled ? "26px" : "3px";
+  } else {
+    alert("Error saving setting.");
+    document.getElementById("approvalToggle").checked = !enabled;
+  }
+}
 
 // ── Session restore on page load ──────────────────────────────────────────────
 // If the user refreshes the page, restore their session from localStorage
