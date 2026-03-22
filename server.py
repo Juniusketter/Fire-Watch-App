@@ -41,6 +41,11 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)  # create uploads folder if it doesn't ex
 
 ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "gif", "webp", "heic", "heif"}
 
+# ── Platform Super Admin ──────────────────────────────────────────────────────
+# SHA-256 hash of the platform password. Default: "FireWatch2026!"
+# Change this value to set a new platform password (hash it with SHA-256).
+PLATFORM_PASSWORD_HASH = hashlib.sha256("FireWatch2026!".encode()).hexdigest()
+
 # ── DB helper ──────────────────────────────────────────────────────────────────
 def get_db():
     conn = sqlite3.connect(DB_PATH)
@@ -70,6 +75,25 @@ def run_migrations():
                 )
             """)
             conn.commit()
+
+        # ── Add platform_status to Organizations ────────────────────────────
+        org_cols = [r[1] for r in conn.execute("PRAGMA table_info(Organizations)").fetchall()]
+        if "platform_status" not in org_cols:
+            conn.execute("ALTER TABLE Organizations ADD COLUMN platform_status TEXT DEFAULT 'approved'")
+            conn.commit()
+            print("  [Migration] Added Organizations.platform_status")
+
+        # ── Platform Settings table ─────────────────────────────────────────
+        if "PlatformSettings" not in tables:
+            conn.execute("""
+                CREATE TABLE PlatformSettings (
+                    key   TEXT PRIMARY KEY,
+                    value TEXT
+                )
+            """)
+            conn.execute("INSERT INTO PlatformSettings (key, value) VALUES ('require_approval', 'true')")
+            conn.commit()
+            print("  [Migration] Created PlatformSettings table")
 
         # ── Users ──────────────────────────────────────────────────────────
         user_cols = [r[1] for r in conn.execute("PRAGMA table_info(Users)").fetchall()]
@@ -289,11 +313,17 @@ def register_org():
             if conn.execute("SELECT user_id FROM Users WHERE username=?", (username,)).fetchone():
                 return jsonify({"error": "That username is already taken."}), 409
 
-            # Create org
+            # Create org — check if approval is required
+            approval_row = conn.execute(
+                "SELECT value FROM PlatformSettings WHERE key='require_approval'"
+            ).fetchone()
+            require_approval = (approval_row and approval_row["value"] == "true") if approval_row else True
+            initial_status = "pending" if require_approval else "approved"
+
             conn.execute(
-                "INSERT INTO Organizations (name, address, city, state, phone, contact_name) "
-                "VALUES (?,?,?,?,?,?)",
-                (org_name, address, city, state, phone, contact)
+                "INSERT INTO Organizations (name, address, city, state, phone, contact_name, platform_status) "
+                "VALUES (?,?,?,?,?,?,?)",
+                (org_name, address, city, state, phone, contact, initial_status)
             )
             conn.commit()
             org_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
@@ -312,7 +342,8 @@ def register_org():
             "org_name": org_name,
             "user_id":  user_id,
             "username": username,
-            "role":     "Admin"
+            "role":     "Admin",
+            "platform_status": initial_status
         }), 201
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -334,13 +365,16 @@ def login():
         ).fetchone()
 
     if row:
-        # Get org name for display
+        # Get org name and platform status for display
         org_name = ""
+        platform_status = "approved"
         if row["org_id"]:
             org = get_db().execute(
-                "SELECT name FROM Organizations WHERE org_id=?", (row["org_id"],)
+                "SELECT name, platform_status FROM Organizations WHERE org_id=?", (row["org_id"],)
             ).fetchone()
-            org_name = org["name"] if org else ""
+            if org:
+                org_name = org["name"]
+                platform_status = org["platform_status"] or "approved"
         return jsonify({
             "success":  True,
             "user_id":  row["user_id"],
@@ -348,6 +382,7 @@ def login():
             "role":     row["role"],
             "org_id":   row["org_id"],
             "org_name": org_name,
+            "platform_status": platform_status,
         })
     return jsonify({"success": False, "error": "Invalid username or password"}), 401
 
@@ -1022,6 +1057,110 @@ def get_stats():
             reports = conn.execute("SELECT COUNT(*) FROM Reports").fetchone()[0]
             users   = conn.execute("SELECT COUNT(*) FROM Users").fetchone()[0]
     return jsonify({"extinguishers":ext, "assignments":assigns, "reports":reports, "users":users})
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  PLATFORM SUPER ADMIN
+# ══════════════════════════════════════════════════════════════════════════════
+
+@app.route("/api/platform/login", methods=["POST"])
+def platform_login():
+    """Authenticate with the platform password (separate from org login)."""
+    d = request.get_json()
+    password = (d.get("password") or "").strip()
+    if not password:
+        return jsonify({"error": "Password is required."}), 400
+
+    # Compare SHA-256 hash (client sends pre-hashed, same as org login)
+    if password == PLATFORM_PASSWORD_HASH:
+        return jsonify({"success": True, "role": "SuperAdmin"})
+    return jsonify({"error": "Invalid platform password."}), 401
+
+@app.route("/api/platform/organizations", methods=["GET"])
+def platform_list_orgs():
+    """List all organizations with stats for the Super Admin dashboard."""
+    with get_db() as conn:
+        orgs = conn.execute("""
+            SELECT o.org_id, o.name, o.address, o.city, o.state, o.phone,
+                   o.contact_name, o.created_at, o.platform_status,
+                   COUNT(DISTINCT u.user_id) AS user_count,
+                   COUNT(DISTINCT e.extinguisher_id) AS extinguisher_count,
+                   COUNT(DISTINCT r.report_id) AS report_count
+            FROM Organizations o
+            LEFT JOIN Users u ON u.org_id = o.org_id
+            LEFT JOIN Extinguishers e ON e.org_id = o.org_id
+            LEFT JOIN Reports r ON r.org_id = o.org_id
+            GROUP BY o.org_id
+            ORDER BY o.created_at DESC
+        """).fetchall()
+    return jsonify([dict(r) for r in orgs])
+
+@app.route("/api/platform/organizations/<int:org_id>/status", methods=["PUT"])
+def platform_update_org_status(org_id):
+    """Approve, reject, or suspend an organization."""
+    d = request.get_json()
+    new_status = (d.get("status") or "").strip()
+    valid = ["approved", "pending", "suspended", "rejected"]
+    if new_status not in valid:
+        return jsonify({"error": f"Status must be one of: {', '.join(valid)}"}), 400
+    try:
+        with get_db() as conn:
+            org = conn.execute("SELECT org_id FROM Organizations WHERE org_id=?", (org_id,)).fetchone()
+            if not org:
+                return jsonify({"error": "Organization not found."}), 404
+            conn.execute("UPDATE Organizations SET platform_status=? WHERE org_id=?", (new_status, org_id))
+        return jsonify({"success": True, "status": new_status})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/platform/organizations/<int:org_id>", methods=["DELETE"])
+def platform_delete_org(org_id):
+    """Permanently delete an organization and all its data."""
+    try:
+        with get_db() as conn:
+            org = conn.execute("SELECT name FROM Organizations WHERE org_id=?", (org_id,)).fetchone()
+            if not org:
+                return jsonify({"error": "Organization not found."}), 404
+            # Cascade delete all org data
+            conn.execute("DELETE FROM Reports      WHERE org_id=?", (org_id,))
+            conn.execute("DELETE FROM Assignments   WHERE org_id=?", (org_id,))
+            conn.execute("DELETE FROM Extinguishers WHERE org_id=?", (org_id,))
+            conn.execute("DELETE FROM Buildings     WHERE org_id=?", (org_id,))
+            conn.execute("DELETE FROM Companies     WHERE org_id=?", (org_id,))
+            conn.execute("DELETE FROM Users         WHERE org_id=?", (org_id,))
+            conn.execute("DELETE FROM Organizations WHERE org_id=?", (org_id,))
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/platform/settings", methods=["GET"])
+def platform_get_settings():
+    """Get platform settings."""
+    with get_db() as conn:
+        rows = conn.execute("SELECT key, value FROM PlatformSettings").fetchall()
+    settings = {}
+    for r in rows:
+        val = r["value"]
+        if val == "true": val = True
+        elif val == "false": val = False
+        settings[r["key"]] = val
+    return jsonify(settings)
+
+@app.route("/api/platform/settings", methods=["PUT"])
+def platform_update_settings():
+    """Update platform settings."""
+    d = request.get_json()
+    try:
+        with get_db() as conn:
+            for key, value in d.items():
+                str_val = "true" if value is True else "false" if value is False else str(value)
+                existing = conn.execute("SELECT key FROM PlatformSettings WHERE key=?", (key,)).fetchone()
+                if existing:
+                    conn.execute("UPDATE PlatformSettings SET value=? WHERE key=?", (str_val, key))
+                else:
+                    conn.execute("INSERT INTO PlatformSettings (key, value) VALUES (?,?)", (key, str_val))
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 # ── START ──────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
