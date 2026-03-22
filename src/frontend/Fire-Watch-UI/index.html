@@ -576,6 +576,7 @@
     <div class="panel" id="panelReports">
       <div class="table-toolbar hidden" id="reportToolbar">
         <button class="btn-crud btn-edit" id="btnSubmitReport">＋ Submit Report</button>
+        <button class="btn-crud btn-add" id="btnExportReports" style="display:none;">📄 Export PDF</button>
         <!-- Filter bar — always visible when reports panel is shown -->
         <div class="filter-bar" id="reportFilterBar">
           <div class="filter-group">
@@ -1202,6 +1203,7 @@ function buildTabs() {
     document.getElementById("extToolbar").classList.remove("hidden");
     document.getElementById("assignToolbar").classList.remove("hidden");
     document.getElementById("reportToolbar").classList.remove("hidden");
+    document.getElementById("btnExportReports").style.display = "";
     document.getElementById("userToolbar").classList.remove("hidden");
   } else if (isInv()) {
     tabs = [{id:"panelAssignments",label:"My Assignments"},{id:"panelReports",label:"My Reports"}];
@@ -2787,6 +2789,101 @@ document.getElementById("btnClearFilter")?.addEventListener("click", () => {
   _lastReportHash = "";
   applyReportFilters();
 });
+// ── Export Reports to PDF ─────────────────────────────────────────────────────
+// Opens a styled print-friendly window with all reports (or filtered subset)
+// User can then Save as PDF or Print from the browser dialog.
+// Original export concept by Lillian Bowen — adapted for web by Junius Ketter.
+document.getElementById("btnExportReports")?.addEventListener("click", () => {
+  const rows = window._allReports || [];
+  if (rows.length === 0) { alert("No reports to export."); return; }
+
+  // Apply current filters
+  const dateFrom  = document.getElementById("filterDateFrom")?.value  || "";
+  const dateTo    = document.getElementById("filterDateTo")?.value    || "";
+  const inspector = document.getElementById("filterInspector")?.value || "";
+  const status    = document.getElementById("filterStatus")?.value    || "";
+
+  let filtered = rows.filter(r => {
+    const date = r.inspection_date || "";
+    if (dateFrom && date && date < dateFrom) return false;
+    if (dateTo   && date && date > dateTo)   return false;
+    if (inspector && r.inspector !== inspector) return false;
+    if (status === "photo"   && !r.photo_path)                return false;
+    if (status === "nophoto" && r.photo_path)                 return false;
+    if (status === "notes"   && !(r.notes && r.notes.trim())) return false;
+    return true;
+  });
+
+  if (filtered.length === 0) { alert("No reports match current filters."); return; }
+
+  const orgName = currentUser.org_name || "FireWatch";
+  const now = new Date().toLocaleString();
+
+  let tableRows = filtered.map((r, i) =>
+    `<tr>
+      <td>${i + 1}</td>
+      <td>${r.report_id || ""}</td>
+      <td>${r.extinguisher_id || ""}</td>
+      <td>${r.company_name || ""}</td>
+      <td>${r.building_name || ""}</td>
+      <td>Floor ${r.floor_number || "—"}, Room ${r.room_number || "—"}</td>
+      <td>${r.inspector || ""}</td>
+      <td>${r.inspection_date || ""}</td>
+      <td>${r.notes || "—"}</td>
+    </tr>`
+  ).join("");
+
+  const html = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>FireWatch — Report Export</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: Arial, Helvetica, sans-serif; color:#1a1a1a; padding:40px; }
+  .header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:24px; padding-bottom:16px; border-bottom:3px solid #1f3864; }
+  .header h1 { font-size:22px; color:#1f3864; }
+  .header .meta { font-size:11px; color:#666; text-align:right; }
+  .summary { margin-bottom:20px; font-size:13px; color:#444; }
+  table { width:100%; border-collapse:collapse; font-size:11px; }
+  th { background:#1f3864; color:#fff; padding:8px 6px; text-align:left; font-weight:600; }
+  td { padding:7px 6px; border-bottom:1px solid #ddd; vertical-align:top; }
+  tr:nth-child(even) td { background:#f5f7fa; }
+  .footer { margin-top:24px; padding-top:12px; border-top:2px solid #1f3864; font-size:10px; color:#888; display:flex; justify-content:space-between; }
+  @media print {
+    body { padding:20px; }
+    .no-print { display:none; }
+  }
+</style></head><body>
+  <div class="no-print" style="margin-bottom:16px;">
+    <button onclick="window.print()" style="padding:8px 20px;background:#1f3864;color:#fff;border:none;border-radius:4px;font-weight:bold;cursor:pointer;font-size:14px;">🖨 Print / Save PDF</button>
+    <span style="margin-left:12px;font-size:13px;color:#666;">Use "Save as PDF" in the print dialog to export as PDF file.</span>
+  </div>
+  <div class="header">
+    <div>
+      <h1>🔥 FireWatch — Inspection Reports</h1>
+      <div style="font-size:13px;color:#444;margin-top:4px;">${orgName}</div>
+    </div>
+    <div class="meta">
+      Generated: ${now}<br>
+      Reports: ${filtered.length} of ${rows.length} total
+      ${(dateFrom || dateTo || inspector || status) ? "<br>Filters applied" : ""}
+    </div>
+  </div>
+  <table>
+    <thead><tr>
+      <th>#</th><th>Report</th><th>Ext ID</th><th>Company</th><th>Building</th><th>Location</th><th>Inspector</th><th>Date</th><th>Notes</th>
+    </tr></thead>
+    <tbody>${tableRows}</tbody>
+  </table>
+  <div class="footer">
+    <span>FireWatch — NFPA Compliance Tracking</span>
+    <span>Page 1</span>
+  </div>
+</body></html>`;
+
+  const w = window.open("", "_blank", "width=900,height=700");
+  w.document.write(html);
+  w.document.close();
+});
+
 // ── Session restore on page load ──────────────────────────────────────────────
 // If the user refreshes the page, restore their session from localStorage
 // so they don't have to log in again.
