@@ -614,6 +614,8 @@
     <div class="panel" id="panelUsers">
       <div class="table-toolbar hidden" id="userToolbar">
         <button class="btn-crud btn-add" id="btnAddUser">＋ Add User</button>
+        <button class="btn-crud btn-edit" id="btnEditUser">✎ Edit User</button>
+        <button class="btn-crud btn-delete" id="btnDeleteUser">✕ Delete User</button>
       </div>
       <div class="table-scroll-wrap" id="tableUsersWrap"></div>
       <div class="card-list" id="cardUsersWrap"></div>
@@ -1048,13 +1050,16 @@
   </div>
 </div>
 
-<!-- ADD USER MODAL (Admin only) -->
+<!-- ADD / EDIT USER MODAL (Admin only) -->
 <div class="modal-overlay hidden" id="userModal">
   <div class="modal-box">
-    <h3>Add New User</h3>
+    <h3 id="userModalTitle">Add New User</h3>
     <div class="form-row"><label>Username *</label><input type="text" id="uUsername" placeholder="e.g. JSmith" /></div>
-    <div class="form-row"><label>Password *</label><input type="password" id="uPassword" placeholder="Enter password" /></div>
-    <div class="form-row"><label>Confirm Password *</label><input type="password" id="uConfirm" placeholder="Re-enter password" /></div>
+    <div class="form-row" id="uPasswordRow"><label>Password *</label><input type="password" id="uPassword" placeholder="Enter password" /></div>
+    <div class="form-row" id="uConfirmRow"><label>Confirm Password *</label><input type="password" id="uConfirm" placeholder="Re-enter password" /></div>
+    <div class="form-row" id="uPasswordHint" class="hidden" style="display:none;">
+      <span style="font-size:0.75rem;color:var(--muted);font-style:italic;">Leave password blank to keep current password.</span>
+    </div>
     <div class="form-row">
       <label>Role *</label>
       <select id="uRole">
@@ -1521,12 +1526,21 @@ async function loadReports() {
   applyReportFilters();
 }
 
+let selectedUserId = null;
+let editingUserId  = null;
+window._lastUserRows = [];
+
 async function loadUsers() {
   const oid = orgId();
   let rows=await fetch(`/api/users${oid?`?org_id=${oid}`:""}`).then(r=>r.json());
   if (isThirdAdmin()) rows=rows.filter(u=>u.role==="3rd_Party_Inspector");
-  renderTable("tableUsersWrap",["user_id","username","role"],rows);
-  renderCards("cardUsersWrap",rows,"user");
+  window._lastUserRows = rows;
+  renderTable("tableUsersWrap",["user_id","username","role"],rows, row => {
+    selectedUserId = row.user_id;
+  });
+  renderCards("cardUsersWrap",rows,"user", row => {
+    selectedUserId = row.user_id;
+  });
 }
 
 // ── Table renderer ────────────────────────────────────────────────────────────
@@ -1562,7 +1576,8 @@ function renderTable(wrapperId,cols,rows,onRowClick) {
       if(onRowClick) onRowClick(rows.find(r=>
         String(r.extinguisher_id)===tr.dataset.id||
         String(r.assignment_id)===tr.dataset.id||
-        String(r.report_id)===tr.dataset.id
+        String(r.report_id)===tr.dataset.id||
+        String(r.user_id)===tr.dataset.id
       ));
     });
   });
@@ -2280,16 +2295,71 @@ async function loadUserPreferences() {
     applyTheme("dark");
   }
 }
+// ── Add User button ──────────────────────────────────────────────────────────
 document.getElementById("btnAddUser").addEventListener("click", () => {
+  editingUserId = null;
+  document.getElementById("userModalTitle").textContent = "Add New User";
+  document.getElementById("userModalSave").textContent  = "Create User";
   ["uUsername","uPassword","uConfirm"].forEach(id => document.getElementById(id).value = "");
+  document.getElementById("uUsername").disabled = false;
   document.getElementById("uRole").value = "Inspector";
   document.getElementById("userModalError").textContent = "";
+  // Show password fields as required for new user
+  document.getElementById("uPasswordRow").style.display = "";
+  document.getElementById("uConfirmRow").style.display  = "";
+  document.getElementById("uPasswordHint").style.display = "none";
   document.getElementById("userModal").classList.remove("hidden");
+});
+
+// ── Edit User button ─────────────────────────────────────────────────────────
+document.getElementById("btnEditUser").addEventListener("click", () => {
+  if (!selectedUserId) { alert("Select a user first."); return; }
+  const user = (window._lastUserRows || []).find(u => u.user_id === selectedUserId);
+  if (!user) return;
+
+  editingUserId = selectedUserId;
+  document.getElementById("userModalTitle").textContent = "Edit User";
+  document.getElementById("userModalSave").textContent  = "Save Changes";
+  document.getElementById("uUsername").value    = user.username;
+  document.getElementById("uUsername").disabled = false;
+  document.getElementById("uRole").value        = user.role;
+  document.getElementById("uPassword").value    = "";
+  document.getElementById("uConfirm").value     = "";
+  document.getElementById("userModalError").textContent = "";
+  // Password optional for edit
+  document.getElementById("uPasswordRow").style.display  = "";
+  document.getElementById("uConfirmRow").style.display   = "";
+  document.getElementById("uPasswordHint").style.display = "";
+  document.getElementById("userModal").classList.remove("hidden");
+});
+
+// ── Delete User button ───────────────────────────────────────────────────────
+document.getElementById("btnDeleteUser").addEventListener("click", async () => {
+  if (!selectedUserId) { alert("Select a user first."); return; }
+  const user = (window._lastUserRows || []).find(u => u.user_id === selectedUserId);
+  if (!user) return;
+
+  // Don't allow deleting yourself
+  if (selectedUserId === currentUser.user_id) {
+    alert("You cannot delete your own account.");
+    return;
+  }
+
+  if (!confirm(`Delete user "${user.username}" (${user.role})?\n\nTheir assignments will be unassigned. Reports will be kept for audit trail.`)) return;
+
+  const res = await fetch("/api/users/" + selectedUserId, { method: "DELETE" });
+  if (res.ok) {
+    selectedUserId = null;
+    loadUsers(); loadStats();
+  } else {
+    alert("Delete failed: " + (await res.json()).error);
+  }
 });
 
 document.getElementById("userModalCancel").addEventListener("click", () => document.getElementById("userModal").classList.add("hidden"));
 document.getElementById("userModal").addEventListener("click", e => { if(e.target === document.getElementById("userModal")) document.getElementById("userModal").classList.add("hidden"); });
 
+// ── Save handler (works for both Add and Edit) ──────────────────────────────
 document.getElementById("userModalSave").addEventListener("click", async () => {
   const username = document.getElementById("uUsername").value.trim();
   const password = document.getElementById("uPassword").value;
@@ -2297,24 +2367,50 @@ document.getElementById("userModalSave").addEventListener("click", async () => {
   const role     = document.getElementById("uRole").value;
   const errEl    = document.getElementById("userModalError");
 
-  if (!username)              { errEl.textContent = "Username is required."; return; }
-  if (!password)              { errEl.textContent = "Password is required."; return; }
-  if (password !== confirm)   { errEl.textContent = "Passwords do not match."; return; }
-  if (password.length < 6)   { errEl.textContent = "Password must be at least 6 characters."; return; }
+  if (!username) { errEl.textContent = "Username is required."; return; }
 
-  const hashed = await sha256(password);
+  if (editingUserId) {
+    // ── EDIT MODE ──
+    // Password is optional — only validate if provided
+    if (password || confirm) {
+      if (password !== confirm) { errEl.textContent = "Passwords do not match."; return; }
+      if (password.length < 6)  { errEl.textContent = "Password must be at least 6 characters."; return; }
+    }
 
-  const res = await fetch("/api/users", {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({ username, password: hashed, role, org_id: orgId() })
-  });
+    const body = { username, role };
+    if (password) body.password = await sha256(password);
 
-  if (res.ok) {
-    document.getElementById("userModal").classList.add("hidden");
-    loadUsers(); loadStats();
+    const res = await fetch("/api/users/" + editingUserId, {
+      method: "PUT",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(body)
+    });
+
+    if (res.ok) {
+      document.getElementById("userModal").classList.add("hidden");
+      loadUsers(); loadStats();
+    } else {
+      errEl.textContent = "Error: " + (await res.json()).error;
+    }
   } else {
-    errEl.textContent = "Error: " + (await res.json()).error;
+    // ── ADD MODE ──
+    if (!password)            { errEl.textContent = "Password is required."; return; }
+    if (password !== confirm) { errEl.textContent = "Passwords do not match."; return; }
+    if (password.length < 6)  { errEl.textContent = "Password must be at least 6 characters."; return; }
+
+    const hashed = await sha256(password);
+    const res = await fetch("/api/users", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ username, password: hashed, role, org_id: orgId() })
+    });
+
+    if (res.ok) {
+      document.getElementById("userModal").classList.add("hidden");
+      loadUsers(); loadStats();
+    } else {
+      errEl.textContent = "Error: " + (await res.json()).error;
+    }
   }
 });
 
