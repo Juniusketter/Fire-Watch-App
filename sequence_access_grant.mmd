@@ -1,0 +1,7 @@
+```mermaid
+sequenceDiagram
+ThirdParty->>App: Inspect
+App->>C++: generateThirdPReport
+C++->>DB: Check AccessGrant
+DB-->>C++: OK
+```

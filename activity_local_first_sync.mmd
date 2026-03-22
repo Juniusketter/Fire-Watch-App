@@ -1,0 +1,7 @@
+```mermaid
+flowchart TD
+A[Create Report]-->B[Queue]
+B-->C{Online?}
+C-->|Yes|D[Push]
+C-->|No|B
+```
