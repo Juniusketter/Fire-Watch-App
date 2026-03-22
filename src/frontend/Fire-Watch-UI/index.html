@@ -867,6 +867,42 @@
     <div class="form-row"><label>Location Description</label><input type="text" id="fLocDesc" placeholder="e.g. Near the elevator" /></div>
     <div class="form-row"><label>Inspection Interval (days)</label><input type="number" id="fInterval" value="30" min="1" /></div>
     <div class="form-row"><label>Next Due Date</label><input type="date" id="fDueDate" /></div>
+
+    <!-- NFPA 10 Compliance Metadata -->
+    <div style="border-top:1px solid var(--border);margin:0.8rem 0 0.5rem;padding-top:0.6rem;">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:0.7rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);">NFPA 10 Metadata</span>
+    </div>
+    <div class="form-row"><label>Type / Class</label>
+      <select id="fExtType">
+        <option value="">— Select —</option>
+        <option value="A">Class A — Ordinary Combustibles</option>
+        <option value="B">Class B — Flammable Liquids</option>
+        <option value="C">Class C — Electrical</option>
+        <option value="ABC">ABC — Multi-Purpose</option>
+        <option value="BC">BC — Gas/Electrical</option>
+        <option value="D">Class D — Combustible Metals</option>
+        <option value="K">Class K — Kitchen/Cooking</option>
+      </select>
+    </div>
+    <div class="form-row"><label>Size (lbs)</label><input type="number" id="fExtSize" min="1" max="350" step="0.5" placeholder="e.g. 5, 10, 20" /></div>
+    <div class="form-row"><label>Serial Number</label><input type="text" id="fSerial" placeholder="e.g. SN-2024-00123" /></div>
+    <div class="form-row"><label>Manufacturer</label><input type="text" id="fManufacturer" placeholder="e.g. Kidde, Amerex, Ansul" /></div>
+    <div class="form-row"><label>Model</label><input type="text" id="fModel" placeholder="e.g. Pro 210, B500" /></div>
+    <div class="form-row"><label>Manufacture Date</label><input type="date" id="fMfgDate" /></div>
+    <div class="form-row"><label>Status</label>
+      <select id="fExtStatus">
+        <option value="Active">Active</option>
+        <option value="Out of Service">Out of Service</option>
+        <option value="Retired">Retired</option>
+        <option value="Missing">Missing</option>
+      </select>
+    </div>
+    <div style="border-top:1px solid var(--border);margin:0.8rem 0 0.5rem;padding-top:0.6rem;">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:0.7rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);">Service History</span>
+    </div>
+    <div class="form-row"><label>Last Annual Maintenance</label><input type="date" id="fAnnualDate" /></div>
+    <div class="form-row"><label>Last 6-Year Service</label><input type="date" id="f6YearDate" /></div>
+    <div class="form-row"><label>Last Hydrostatic Test</label><input type="date" id="fHydroDate" /></div>
     <div class="modal-error" id="modalError"></div>
     <div class="modal-actions">
       <button class="btn-cancel" id="modalCancel">Cancel</button>
@@ -1761,6 +1797,17 @@ document.getElementById("btnEdit").addEventListener("click", async () => {
   document.getElementById("fLocDesc").value  = ext.location_description || "";
   document.getElementById("fInterval").value = ext.inspection_interval_days || 30;
   document.getElementById("fDueDate").value  = ext.next_due_date || "";
+  // NFPA metadata
+  document.getElementById("fExtType").value     = ext.ext_type || "";
+  document.getElementById("fExtSize").value     = ext.ext_size_lbs || "";
+  document.getElementById("fSerial").value      = ext.serial_number || "";
+  document.getElementById("fManufacturer").value= ext.manufacturer || "";
+  document.getElementById("fModel").value       = ext.model || "";
+  document.getElementById("fMfgDate").value     = ext.manufacture_date || "";
+  document.getElementById("fExtStatus").value   = ext.ext_status || "Active";
+  document.getElementById("fAnnualDate").value  = ext.last_annual_date || "";
+  document.getElementById("f6YearDate").value   = ext.last_6year_date || "";
+  document.getElementById("fHydroDate").value   = ext.last_hydro_date || "";
   document.getElementById("modalError").textContent = "";
   await populateExtModalDropdowns(ext.company_id_fk || _selectedCompany?.company_id, ext.building_id);
   document.getElementById("extModal").classList.remove("hidden");
@@ -1796,6 +1843,17 @@ document.getElementById("modalSave").addEventListener("click", async () => {
     next_due_date:          document.getElementById("fDueDate").value,
     building_id:            buildingId,
     org_id:                 orgId(),
+    // NFPA 10 metadata
+    ext_type:               document.getElementById("fExtType").value,
+    ext_size_lbs:           parseFloat(document.getElementById("fExtSize").value) || null,
+    serial_number:          document.getElementById("fSerial").value.trim(),
+    manufacturer:           document.getElementById("fManufacturer").value.trim(),
+    model:                  document.getElementById("fModel").value.trim(),
+    manufacture_date:       document.getElementById("fMfgDate").value || null,
+    ext_status:             document.getElementById("fExtStatus").value,
+    last_annual_date:       document.getElementById("fAnnualDate").value || null,
+    last_6year_date:        document.getElementById("f6YearDate").value || null,
+    last_hydro_date:        document.getElementById("fHydroDate").value || null,
   };
   const url    = editingExtId ? "/api/extinguishers/"+editingExtId : "/api/extinguishers";
   const method = editingExtId ? "PUT" : "POST";
@@ -1808,9 +1866,12 @@ document.getElementById("modalSave").addEventListener("click", async () => {
 });
 
 function clearModal() {
-  ["fRoom","fLocDesc","fDueDate"].forEach(id => document.getElementById(id).value="");
+  ["fRoom","fLocDesc","fDueDate","fSerial","fManufacturer","fModel","fMfgDate","fAnnualDate","f6YearDate","fHydroDate"].forEach(id => document.getElementById(id).value="");
   document.getElementById("fFloor").value    = 1;
   document.getElementById("fInterval").value = 30;
+  document.getElementById("fExtType").value  = "";
+  document.getElementById("fExtSize").value  = "";
+  document.getElementById("fExtStatus").value = "Active";
   document.getElementById("modalError").textContent = "";
 }
 
@@ -2506,10 +2567,31 @@ function openExtDetail(row) {
     { label: "Last Report",  value: row.last_report_id ? `Report #${row.last_report_id}` : "No reports yet", full: false },
   ];
 
+  // NFPA 10 metadata — only show fields that have data
+  const nfpaFields = [
+    { label: "Type / Class",   value: row.ext_type },
+    { label: "Size",           value: row.ext_size_lbs ? `${row.ext_size_lbs} lbs` : null },
+    { label: "Serial Number",  value: row.serial_number },
+    { label: "Manufacturer",   value: row.manufacturer },
+    { label: "Model",          value: row.model },
+    { label: "Mfg Date",       value: row.manufacture_date },
+    { label: "Status",         value: row.ext_status, cls: row.ext_status === "Active" ? "ok" : row.ext_status === "Missing" ? "overdue" : "due-soon" },
+    { label: "Annual Maint.",  value: row.last_annual_date },
+    { label: "6-Year Service", value: row.last_6year_date },
+    { label: "Hydro Test",     value: row.last_hydro_date },
+  ];
+  const hasNfpa = nfpaFields.some(f => f.value);
+  if (hasNfpa) {
+    fields.push({ label: "", value: "<span style='font-family:IBM Plex Mono,monospace;font-size:0.6rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);'>NFPA 10 Compliance</span>", full: true, raw: true });
+    nfpaFields.forEach(f => {
+      if (f.value) fields.push({ label: f.label, value: f.value, full: false, cls: f.cls || "" });
+    });
+  }
+
   document.getElementById("detailExtGrid").innerHTML = fields.map(f => `
     <div class="${f.full ? "ext-detail-field-full" : "ext-detail-field"}">
-      <div class="ext-detail-label">${f.label}</div>
-      <div class="ext-detail-value ${f.cls || ""}">${f.value}</div>
+      ${f.raw ? `<div>${f.value}</div>` : `<div class="ext-detail-label">${f.label}</div>
+      <div class="ext-detail-value ${f.cls || ""}">${f.value}</div>`}
     </div>
   `).join("");
 
