@@ -95,6 +95,21 @@ def run_migrations():
             conn.commit()
             print("  [Migration] Created PlatformSettings table")
 
+        # ── Platform Audit Log table ────────────────────────────────────────
+        if "PlatformAuditLog" not in tables:
+            conn.execute("""
+                CREATE TABLE PlatformAuditLog (
+                    log_id     INTEGER PRIMARY KEY AUTOINCREMENT,
+                    timestamp  TEXT DEFAULT (datetime('now')),
+                    actor      TEXT NOT NULL,
+                    action     TEXT NOT NULL,
+                    target     TEXT,
+                    details    TEXT
+                )
+            """)
+            conn.commit()
+            print("  [Migration] Created PlatformAuditLog table")
+
         # ── Users ──────────────────────────────────────────────────────────
         user_cols = [r[1] for r in conn.execute("PRAGMA table_info(Users)").fetchall()]
         if "preferences" not in user_cols:
@@ -336,6 +351,7 @@ def register_org():
             conn.commit()
             user_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
 
+        platform_log("system", "org_registered", org_name, f"New org registered by {username} (status: {initial_status})")
         return jsonify({
             "success":  True,
             "org_id":   org_id,
@@ -1072,7 +1088,9 @@ def platform_login():
 
     # Compare SHA-256 hash (client sends pre-hashed, same as org login)
     if password == PLATFORM_PASSWORD_HASH:
+        platform_log("SuperAdmin", "platform_login", None, "Platform admin logged in")
         return jsonify({"success": True, "role": "SuperAdmin"})
+    platform_log("unknown", "platform_login_failed", None, "Failed platform login attempt")
     return jsonify({"error": "Invalid platform password."}), 401
 
 @app.route("/api/platform/organizations", methods=["GET"])
@@ -1108,6 +1126,8 @@ def platform_update_org_status(org_id):
             if not org:
                 return jsonify({"error": "Organization not found."}), 404
             conn.execute("UPDATE Organizations SET platform_status=? WHERE org_id=?", (new_status, org_id))
+            org_name = conn.execute("SELECT name FROM Organizations WHERE org_id=?", (org_id,)).fetchone()
+            platform_log("SuperAdmin", f"org_{new_status}", org_name["name"] if org_name else str(org_id), f"Changed org #{org_id} to {new_status}")
         return jsonify({"success": True, "status": new_status})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -1128,6 +1148,7 @@ def platform_delete_org(org_id):
             conn.execute("DELETE FROM Companies     WHERE org_id=?", (org_id,))
             conn.execute("DELETE FROM Users         WHERE org_id=?", (org_id,))
             conn.execute("DELETE FROM Organizations WHERE org_id=?", (org_id,))
+        platform_log("SuperAdmin", "org_deleted", org["name"], f"Permanently deleted org #{org_id} and all data")
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -1158,9 +1179,103 @@ def platform_update_settings():
                     conn.execute("UPDATE PlatformSettings SET value=? WHERE key=?", (str_val, key))
                 else:
                     conn.execute("INSERT INTO PlatformSettings (key, value) VALUES (?,?)", (key, str_val))
+        for key, value in d.items():
+            platform_log("SuperAdmin", "settings_changed", key, f"Set {key} = {value}")
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+# ── Audit log helper ──────────────────────────────────────────────────────────
+def platform_log(actor, action, target=None, details=None):
+    """Record a platform-level action to the audit log."""
+    try:
+        with get_db() as conn:
+            conn.execute(
+                "INSERT INTO PlatformAuditLog (actor, action, target, details) VALUES (?,?,?,?)",
+                (actor, action, target, details)
+            )
+    except:
+        pass  # don't break the main action if logging fails
+
+@app.route("/api/platform/organizations/<int:org_id>/details", methods=["GET"])
+def platform_org_details(org_id):
+    """Drill into an org — returns users, extinguishers, assignments, reports."""
+    with get_db() as conn:
+        org = conn.execute("SELECT * FROM Organizations WHERE org_id=?", (org_id,)).fetchone()
+        if not org:
+            return jsonify({"error": "Organization not found."}), 404
+
+        users = conn.execute(
+            "SELECT user_id, username, role FROM Users WHERE org_id=?", (org_id,)
+        ).fetchall()
+
+        extinguishers = conn.execute("""
+            SELECT e.extinguisher_id, e.floor_number, e.room_number,
+                   e.location_description, e.ext_type, e.ext_status,
+                   e.serial_number, e.next_due_date,
+                   b.name AS building_name, c.name AS company_name
+            FROM Extinguishers e
+            LEFT JOIN Buildings b ON b.building_id = e.building_id
+            LEFT JOIN Companies c ON c.company_id  = b.company_id
+            WHERE e.org_id=?
+            ORDER BY c.name, b.name, e.floor_number
+        """, (org_id,)).fetchall()
+
+        assignments = conn.execute("""
+            SELECT a.assignment_id, a.status, a.due_date, a.notes,
+                   u_admin.username AS assigned_by,
+                   u_insp.username AS inspector
+            FROM Assignments a
+            LEFT JOIN Users u_admin ON a.admin_id = u_admin.user_id
+            LEFT JOIN Users u_insp  ON a.inspector_id = u_insp.user_id
+            WHERE a.org_id=?
+            ORDER BY a.due_date DESC
+        """, (org_id,)).fetchall()
+
+        reports = conn.execute("""
+            SELECT r.report_id, r.inspection_date, r.notes,
+                   u.username AS inspector,
+                   e.extinguisher_id, e.location_description
+            FROM Reports r
+            LEFT JOIN Users u ON r.inspector_id = u.user_id
+            LEFT JOIN Extinguishers e ON r.extinguisher_id = e.extinguisher_id
+            WHERE r.org_id=?
+            ORDER BY r.inspection_date DESC
+        """, (org_id,)).fetchall()
+
+        companies = conn.execute(
+            "SELECT company_id, name, address, city, state FROM Companies WHERE org_id=?", (org_id,)
+        ).fetchall()
+
+        buildings = conn.execute("""
+            SELECT b.building_id, b.name, b.address, b.floors,
+                   c.name AS company_name
+            FROM Buildings b
+            LEFT JOIN Companies c ON c.company_id = b.company_id
+            WHERE b.org_id=?
+        """, (org_id,)).fetchall()
+
+    platform_log("SuperAdmin", "view_org", org["name"], f"Viewed org #{org_id} details")
+
+    return jsonify({
+        "org":           dict(org),
+        "users":         [dict(r) for r in users],
+        "extinguishers": [dict(r) for r in extinguishers],
+        "assignments":   [dict(r) for r in assignments],
+        "reports":       [dict(r) for r in reports],
+        "companies":     [dict(r) for r in companies],
+        "buildings":     [dict(r) for r in buildings],
+    })
+
+@app.route("/api/platform/audit", methods=["GET"])
+def platform_audit_log():
+    """Return the platform audit log, most recent first."""
+    limit = request.args.get("limit", 100, type=int)
+    with get_db() as conn:
+        rows = conn.execute(
+            "SELECT * FROM PlatformAuditLog ORDER BY timestamp DESC LIMIT ?", (limit,)
+        ).fetchall()
+    return jsonify([dict(r) for r in rows])
 
 # ── START ──────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
