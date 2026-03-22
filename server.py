@@ -141,6 +141,25 @@ def run_migrations():
         if "org_id" not in ext_cols:
             conn.execute("ALTER TABLE Extinguishers ADD COLUMN org_id INTEGER REFERENCES Organizations(org_id)")
 
+        # ── NFPA 10 compliance metadata on Extinguishers ──────────────────
+        # Sprint 3 — adds classification, physical, and service tracking fields
+        nfpa_cols = {
+            "ext_type":            "TEXT DEFAULT ''",          # A, B, C, D, K, ABC, BC, etc.
+            "ext_size_lbs":        "REAL",                     # capacity in pounds (e.g. 5, 10, 20)
+            "serial_number":       "TEXT DEFAULT ''",          # manufacturer serial number
+            "manufacturer":        "TEXT DEFAULT ''",          # brand name
+            "model":               "TEXT DEFAULT ''",          # model number
+            "manufacture_date":    "DATE",                     # for hydro test / 6-yr / 12-yr tracking
+            "last_annual_date":    "DATE",                     # last NFPA annual maintenance
+            "last_6year_date":     "DATE",                     # last 6-year internal exam
+            "last_hydro_date":     "DATE",                     # last hydrostatic pressure test
+            "ext_status":          "TEXT DEFAULT 'Active'",    # Active, Out of Service, Retired, Missing
+        }
+        for col, col_type in nfpa_cols.items():
+            if col not in ext_cols:
+                conn.execute(f"ALTER TABLE Extinguishers ADD COLUMN {col} {col_type}")
+                print(f"  [Migration] Added Extinguishers.{col}")
+
         conn.commit()
 
         # ── Auto-migrate: seed default org for existing data ──────────────
@@ -531,15 +550,27 @@ def add_extinguisher():
             conn.execute(
                 "INSERT INTO Extinguishers "
                 "(address, building_number, floor_number, room_number, "
-                " location_description, inspection_interval_days, next_due_date, building_id, org_id) "
-                "VALUES (?,?,?,?,?,?,?,?,?)",
+                " location_description, inspection_interval_days, next_due_date, building_id, org_id,"
+                " ext_type, ext_size_lbs, serial_number, manufacturer, model,"
+                " manufacture_date, last_annual_date, last_6year_date, last_hydro_date, ext_status) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (d.get("address"), d.get("building_number"),
                  d.get("floor_number", 1), d.get("room_number"),
                  d.get("location_description"),
                  d.get("inspection_interval_days", 30),
                  d.get("next_due_date"),
                  d.get("building_id"),
-                 d.get("org_id"))
+                 d.get("org_id"),
+                 d.get("ext_type", ""),
+                 d.get("ext_size_lbs"),
+                 d.get("serial_number", ""),
+                 d.get("manufacturer", ""),
+                 d.get("model", ""),
+                 d.get("manufacture_date"),
+                 d.get("last_annual_date"),
+                 d.get("last_6year_date"),
+                 d.get("last_hydro_date"),
+                 d.get("ext_status", "Active"))
             )
         return jsonify({"success": True}), 201
     except Exception as e:
@@ -553,7 +584,9 @@ def update_extinguisher(ext_id):
             conn.execute(
                 "UPDATE Extinguishers SET address=?, building_number=?, "
                 "floor_number=?, room_number=?, location_description=?, "
-                "inspection_interval_days=?, next_due_date=?, building_id=? "
+                "inspection_interval_days=?, next_due_date=?, building_id=?,"
+                "ext_type=?, ext_size_lbs=?, serial_number=?, manufacturer=?, model=?,"
+                "manufacture_date=?, last_annual_date=?, last_6year_date=?, last_hydro_date=?, ext_status=? "
                 "WHERE extinguisher_id=?",
                 (d.get("address"), d.get("building_number"),
                  d.get("floor_number", 1), d.get("room_number"),
@@ -561,6 +594,16 @@ def update_extinguisher(ext_id):
                  d.get("inspection_interval_days", 30),
                  d.get("next_due_date"),
                  d.get("building_id"),
+                 d.get("ext_type", ""),
+                 d.get("ext_size_lbs"),
+                 d.get("serial_number", ""),
+                 d.get("manufacturer", ""),
+                 d.get("model", ""),
+                 d.get("manufacture_date"),
+                 d.get("last_annual_date"),
+                 d.get("last_6year_date"),
+                 d.get("last_hydro_date"),
+                 d.get("ext_status", "Active"),
                  ext_id)
             )
         return jsonify({"success": True})
