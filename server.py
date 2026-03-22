@@ -857,6 +857,68 @@ def create_user():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# ── EDIT USER ─────────────────────────────────────────────────────────────────
+@app.route("/api/users/<int:user_id>", methods=["PUT"])
+def update_user(user_id):
+    d = request.get_json()
+    role     = (d.get("role") or "").strip()
+    username = (d.get("username") or "").strip()
+    new_pw   = (d.get("password") or "").strip()  # optional — only set if provided
+
+    valid_roles = ["Admin", "Inspector", "3rd_Party_Admin", "3rd_Party_Inspector"]
+    if role and role not in valid_roles:
+        return jsonify({"error": f"Invalid role. Must be one of: {', '.join(valid_roles)}"}), 400
+
+    try:
+        with get_db() as conn:
+            # Check user exists
+            existing = conn.execute("SELECT user_id, username FROM Users WHERE user_id=?", (user_id,)).fetchone()
+            if not existing:
+                return jsonify({"error": "User not found."}), 404
+
+            # Check for duplicate username (if changing)
+            if username and username != existing["username"]:
+                dup = conn.execute("SELECT user_id FROM Users WHERE username=? AND user_id!=?", (username, user_id)).fetchone()
+                if dup:
+                    return jsonify({"error": "Username already exists."}), 409
+
+            # Build dynamic update
+            updates = []
+            params  = []
+            if username:
+                updates.append("username=?"); params.append(username)
+            if role:
+                updates.append("role=?"); params.append(role)
+            if new_pw:
+                updates.append("password_hash=?"); params.append(new_pw)
+
+            if updates:
+                params.append(user_id)
+                conn.execute(f"UPDATE Users SET {', '.join(updates)} WHERE user_id=?", params)
+
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ── DELETE USER ───────────────────────────────────────────────────────────────
+@app.route("/api/users/<int:user_id>", methods=["DELETE"])
+def delete_user(user_id):
+    try:
+        with get_db() as conn:
+            # Don't allow deleting yourself
+            # (The UI will enforce this too, but belt-and-suspenders)
+            user = conn.execute("SELECT username, role FROM Users WHERE user_id=?", (user_id,)).fetchone()
+            if not user:
+                return jsonify({"error": "User not found."}), 404
+
+            # Reassign their assignments to unassigned (null inspector)
+            conn.execute("UPDATE Assignments SET inspector_id=NULL WHERE inspector_id=?", (user_id,))
+            # Keep their reports for audit trail, but delete the user
+            conn.execute("DELETE FROM Users WHERE user_id=?", (user_id,))
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 # ── NOTIFICATIONS ─────────────────────────────────────────────────────────────
 @app.route("/api/notifications", methods=["GET"])
 def get_notifications():
