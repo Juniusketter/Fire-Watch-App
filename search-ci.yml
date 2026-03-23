@@ -1,0 +1,21 @@
+
+name: CI - Search Service (FTS)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ feat/search-bar-backend ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install SQLite
+        run: sudo apt-get update && sudo apt-get install -y sqlite3 libsqlite3-dev
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build build --parallel
+      - name: Run search tests
+        run: ./build/search_ext_tests || (echo "Search tests failed" && exit 1)

@@ -126,8 +126,21 @@
     .btn-login:hover{background:var(--orange2);}
     .btn-login:active{transform:scale(0.99);background:var(--orange2);}
     #loginMsg{margin-top:0.85rem;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;min-height:1.2rem;color:var(--muted2);}
+    /* Login / Register tab toggle */
+    .auth-tabs{display:flex;gap:0;margin-bottom:2rem;border-bottom:1px solid var(--border);}
+    .auth-tab{flex:1;padding:0.65rem 0;background:none;border:none;border-bottom:2px solid transparent;font-family:'IBM Plex Mono',monospace;font-size:0.72rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted);cursor:pointer;transition:color 0.15s,border-color 0.15s;margin-bottom:-1px;}
+    .auth-tab.active{color:var(--orange);border-bottom-color:var(--orange);}
+    .auth-tab:hover:not(.active){color:var(--text);}
+    .auth-panel{display:none;}
+    .auth-panel.active{display:block;}
+    .field-row{display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;}
+    .register-section-label{font-family:'IBM Plex Mono',monospace;font-size:0.65rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--orange);margin:1.2rem 0 0.6rem;padding-bottom:0.3rem;border-bottom:1px solid var(--border);}
+    .org-badge{display:inline-block;background:rgba(232,93,4,0.1);border:1px solid rgba(232,93,4,0.3);color:var(--orange);font-family:'IBM Plex Mono',monospace;font-size:0.68rem;padding:2px 8px;border-radius:2px;margin-bottom:1rem;}
+    .login-card{width:min(420px,100%);max-height:90vh;overflow-y:auto;}
 
-    /* DASHBOARD */
+    .org-name-pill{font-family:'IBM Plex Mono',monospace;font-size:0.68rem;color:var(--muted);background:var(--bg3);border:1px solid var(--border);padding:2px 8px;border-radius:2px;letter-spacing:0.05em;white-space:nowrap;display:none;}
+    .org-name-pill.show{display:inline-block;}
+    /* Dashboard */
     .hidden{display:none!important;}
     #appPage{min-height:100vh;display:flex;flex-direction:column;}
     .app-body{display:flex;flex:1;overflow:hidden;min-height:0;}
@@ -171,6 +184,66 @@
     .btn-add{background:var(--green);color:white;border-color:var(--green);}
     .btn-edit{background:var(--blue);color:white;border-color:var(--blue);}
     .btn-delete{background:var(--red);color:white;border-color:var(--red);}
+
+    /* ── Report filter bar ───────────────────────────────────── */
+    .filter-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;width:100%;margin-top:6px;padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;}
+    .filter-bar label{font-family:'IBM Plex Mono',monospace;font-size:0.67rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);white-space:nowrap;}
+    .filter-input{background:var(--bg2);border:1px solid var(--border);border-radius:3px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:0.75rem;padding:5px 8px;min-height:32px;outline:none;transition:border-color 0.15s;}
+    .filter-input:focus{border-color:var(--orange);}
+    .filter-input[type=date]{min-width:130px;}
+    .filter-input.filter-select{min-width:140px;}
+    .filter-group{display:flex;align-items:center;gap:5px;}
+    .filter-active-count{font-family:'IBM Plex Mono',monospace;font-size:0.7rem;color:var(--teal);display:none;}
+    .filter-active-count.show{display:inline;}
+    .btn-clear-filter{background:none;border:1px solid var(--border);color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:0.68rem;padding:5px 10px;border-radius:3px;cursor:pointer;transition:all 0.15s;min-height:32px;}
+    .btn-clear-filter:hover{border-color:var(--orange);color:var(--orange);}
+
+    /* ── Drill-down navigation ───────────────────────────────────── */
+    .drill-breadcrumb{display:flex;align-items:center;gap:6px;padding:10px 0 12px;flex-wrap:wrap;}
+    .drill-crumb{font-family:'IBM Plex Mono',monospace;font-size:0.78rem;font-weight:600;color:var(--muted);cursor:pointer;padding:4px 8px;border-radius:3px;transition:all 0.15s;}
+    .drill-crumb:hover{color:var(--orange);background:rgba(232,93,4,0.08);}
+    .drill-crumb.active{color:var(--text);cursor:default;}
+    .drill-crumb.active:hover{background:none;}
+    .drill-sep{color:var(--muted);font-size:0.85rem;}
+
+    /* Company cards */
+    .company-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem;padding:4px 0;}
+    .company-card{background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:1rem 1.1rem;cursor:pointer;transition:border-color 0.15s,background 0.15s,transform 0.1s;position:relative;}
+    .company-card:hover{border-color:var(--orange);background:var(--bg3);transform:translateY(-1px);}
+    .company-card.selected{border-color:var(--orange);background:rgba(232,93,4,0.06);}
+    .company-card-name{font-family:'IBM Plex Sans',sans-serif;font-size:1rem;font-weight:700;color:var(--text);margin-bottom:0.35rem;}
+    .company-card-addr{font-size:0.8rem;color:var(--muted);margin-bottom:0.7rem;font-family:'IBM Plex Mono',monospace;}
+    .company-card-stats{display:flex;gap:1rem;}
+    .company-stat{text-align:center;}
+    .company-stat-val{font-family:'IBM Plex Mono',monospace;font-size:1.1rem;font-weight:700;color:var(--orange);}
+    .company-stat-lbl{font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;}
+    .company-card-drill{position:absolute;right:0.9rem;top:50%;transform:translateY(-50%);font-size:1.1rem;color:var(--muted);transition:color 0.15s;}
+    .company-card:hover .company-card-drill{color:var(--orange);}
+    .card-edit-btn{position:absolute;top:0.55rem;right:2.2rem;background:none;border:1px solid var(--border);color:var(--muted);font-size:0.72rem;padding:2px 7px;border-radius:3px;cursor:pointer;opacity:0;transition:opacity 0.15s,border-color 0.15s,color 0.15s;line-height:1.4;font-family:'IBM Plex Mono',monospace;}
+    .company-card:hover .card-edit-btn,.building-card:hover .card-edit-btn{opacity:1;}
+    .card-edit-btn:hover{border-color:var(--orange);color:var(--orange);background:rgba(232,93,4,0.08);}
+
+    /* Building cards */
+    .building-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:1rem;padding:4px 0;}
+    .building-card{background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:1rem 1.1rem;cursor:pointer;transition:border-color 0.15s,background 0.15s,transform 0.1s;position:relative;}
+    .building-card:hover{border-color:var(--teal);background:var(--bg3);transform:translateY(-1px);}
+    .building-card.selected{border-color:var(--teal);background:rgba(13,148,136,0.06);}
+    .building-card-name{font-family:'IBM Plex Sans',sans-serif;font-size:0.95rem;font-weight:700;color:var(--text);margin-bottom:0.25rem;}
+    .building-card-addr{font-size:0.78rem;color:var(--muted);margin-bottom:0.6rem;font-family:'IBM Plex Mono',monospace;}
+    .building-card-stats{display:flex;gap:0.8rem;flex-wrap:wrap;}
+    .building-stat{text-align:center;min-width:48px;}
+    .building-stat-val{font-family:'IBM Plex Mono',monospace;font-size:1rem;font-weight:700;}
+    .building-stat-val.ok{color:var(--teal);}
+    .building-stat-val.warn{color:var(--orange);}
+    .building-stat-val.danger{color:var(--red);}
+    .building-stat-lbl{font-size:0.63rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;}
+    .building-card-drill{position:absolute;right:0.9rem;top:50%;transform:translateY(-50%);font-size:1.1rem;color:var(--muted);transition:color 0.15s;}
+    .building-card:hover .building-card-drill{color:var(--teal);}
+    .building-floors-badge{display:inline-block;font-size:0.68rem;font-family:'IBM Plex Mono',monospace;background:var(--bg3);color:var(--muted);padding:1px 6px;border-radius:2px;margin-bottom:0.5rem;}
+
+    /* Empty state */
+    .drill-empty{padding:2rem;text-align:center;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:0.82rem;}
+
     .table-scroll-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--border);border-radius:4px;}
     .data-table{width:100%;min-width:480px;border-collapse:collapse;background:var(--bg2);font-size:0.82rem;}
     .data-table thead th{background:var(--bg3);color:var(--muted2);font-family:'IBM Plex Mono',monospace;font-size:0.68rem;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;padding:0.65rem 1rem;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;}
@@ -207,6 +280,24 @@
     .report-thumb:hover{transform:scale(1.1);}
     .photo-viewer{position:fixed;inset:0;background:rgba(0,0,0,0.9);display:flex;align-items:center;justify-content:center;z-index:300;cursor:pointer;}
     .photo-viewer img{max-width:90vw;max-height:90vh;object-fit:contain;border-radius:4px;}
+
+    /* ── Extinguisher detail popup ───────────────────────────────── */
+    .ext-detail-box{max-width:420px;width:calc(100% - 2rem);padding:0;overflow:hidden;border-radius:10px;border-top:2px solid var(--orange);}
+    .ext-detail-header{display:flex;justify-content:space-between;align-items:flex-start;padding:1.1rem 1.2rem 0.8rem;border-bottom:1px solid var(--border);background:var(--bg3);}
+    .ext-detail-id{font-family:'IBM Plex Mono',monospace;font-size:0.65rem;color:var(--orange);letter-spacing:0.12em;margin-bottom:0.25rem;}
+    .ext-detail-title{font-family:'IBM Plex Sans',sans-serif;font-size:1rem;font-weight:700;color:var(--text);}
+    .ext-detail-close{background:none;border:1px solid var(--border);color:var(--muted);width:28px;height:28px;border-radius:3px;cursor:pointer;font-size:0.8rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.15s;line-height:1;}
+    .ext-detail-close:hover{border-color:var(--red);color:var(--red);}
+    .ext-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;padding:0.5rem 0;}
+    .ext-detail-field{padding:0.55rem 1.2rem;border-bottom:1px solid rgba(255,255,255,0.04);}
+    .ext-detail-field:nth-child(odd){border-right:1px solid rgba(255,255,255,0.04);}
+    .ext-detail-field-full{grid-column:1/-1;padding:0.55rem 1.2rem;border-bottom:1px solid rgba(255,255,255,0.04);}
+    .ext-detail-label{font-family:'IBM Plex Mono',monospace;font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:0.2rem;}
+    .ext-detail-value{font-family:'IBM Plex Mono',monospace;font-size:0.8rem;color:var(--text);font-weight:500;word-break:break-word;}
+    .ext-detail-value.overdue{color:var(--red);}
+    .ext-detail-value.due-soon{color:var(--orange);}
+    .ext-detail-value.ok{color:var(--teal);}
+    .ext-detail-footer{padding:0.85rem 1.2rem;border-top:1px solid var(--border);display:flex;gap:0.6rem;justify-content:flex-end;background:var(--bg3);}
 
     /* MODALS */
     .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);display:flex;align-items:flex-end;justify-content:center;z-index:200;backdrop-filter:blur(2px);padding:0;}
@@ -280,26 +371,142 @@
     <div class="brand-sub">NFPA Compliance Tracking System</div>
     <div class="brand-divider"></div>
     <ul class="brand-features">
+      <li>MULTI-ORGANIZATION PLATFORM</li>
+      <li>ROLE-BASED ACCESS CONTROL</li>
       <li>LIVE SQLITE DATABASE CONNECTION</li>
       <li>LOCAL-FIRST · OFFLINE CAPABLE</li>
-      <li>ROLE-BASED ACCESS CONTROL</li>
     </ul>
   </section>
   <section class="login-side">
     <div class="login-card">
-      <h2>System Login</h2>
-      <div class="field">
-        <label for="username">Username</label>
-        <input type="text" id="username" autocomplete="username" placeholder="Enter username" />
+
+      <!-- Tab toggle -->
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tabSignIn"   onclick="switchAuthTab('signin')">Sign In</button>
+        <button class="auth-tab"        id="tabRegister" onclick="switchAuthTab('register')">Register Organization</button>
+        <button class="auth-tab"        id="tabPlatform" onclick="switchAuthTab('platform')" style="font-size:0.65rem;color:var(--muted);">⚙ Platform</button>
       </div>
-      <div class="field">
-        <label for="password">Password</label>
-        <input type="password" id="password" autocomplete="current-password" placeholder="Enter password" />
+
+      <!-- ── SIGN IN PANEL ── -->
+      <div class="auth-panel active" id="panelSignIn">
+        <div class="field">
+          <label for="username">Username</label>
+          <input type="text" id="username" autocomplete="username" placeholder="Enter username" />
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input type="password" id="password" autocomplete="current-password" placeholder="Enter password" />
+        </div>
+        <button class="btn-login" id="loginBtn">Login</button>
+        <p id="loginMsg"></p>
       </div>
-      <button class="btn-login" id="loginBtn">Login</button>
-      <p id="loginMsg"></p>
+
+      <!-- ── REGISTER ORGANIZATION PANEL ── -->
+      <div class="auth-panel" id="panelRegister">
+        <div class="org-badge">New Organization</div>
+
+        <div class="register-section-label">Organization Details</div>
+        <div class="field">
+          <label for="regOrgName">Organization Name *</label>
+          <input type="text" id="regOrgName" placeholder="e.g. City Fire Safety Services" />
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="regAddress">Address</label>
+            <input type="text" id="regAddress" placeholder="123 Main St" />
+          </div>
+          <div class="field">
+            <label for="regCity">City</label>
+            <input type="text" id="regCity" placeholder="San Diego" />
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="regState">State</label>
+            <input type="text" id="regState" placeholder="CA" maxlength="2" />
+          </div>
+          <div class="field">
+            <label for="regPhone">Phone</label>
+            <input type="text" id="regPhone" placeholder="(619) 555-0100" />
+          </div>
+        </div>
+
+        <div class="register-section-label">Admin Account</div>
+        <div class="field">
+          <label for="regUsername">Username *</label>
+          <input type="text" id="regUsername" autocomplete="off" placeholder="Choose admin username" />
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="regPassword">Password *</label>
+            <input type="password" id="regPassword" autocomplete="new-password" placeholder="Min 6 characters" />
+          </div>
+          <div class="field">
+            <label for="regConfirm">Confirm *</label>
+            <input type="password" id="regConfirm" autocomplete="new-password" placeholder="Repeat password" />
+          </div>
+        </div>
+
+        <button class="btn-login" id="registerBtn">Register Organization</button>
+        <p id="registerMsg"></p>
+      </div>
+
+      <!-- ── PLATFORM SUPER ADMIN LOGIN ── -->
+      <div class="auth-panel" id="panelPlatform">
+        <div class="org-badge" style="background:var(--purple);color:#fff;">⚙ Platform Admin</div>
+        <div class="field">
+          <label for="platformPassword">Platform Password</label>
+          <input type="password" id="platformPassword" placeholder="Enter platform password" />
+        </div>
+        <button class="btn-login" id="platformLoginBtn" style="background:var(--purple);">Access Platform Dashboard</button>
+        <p id="platformMsg"></p>
+      </div>
+
     </div>
   </section>
+</div>
+
+<!-- PENDING ORG OVERLAY — shown when org is not yet approved -->
+<div id="pendingOverlay" class="hidden" style="position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;">
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:2rem;max-width:480px;width:90%;text-align:center;">
+    <div style="font-size:2.5rem;margin-bottom:1rem;">⏳</div>
+    <h2 style="color:var(--orange);font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:0.05em;margin-bottom:0.8rem;">Organization Pending Approval</h2>
+    <p style="color:var(--muted2);line-height:1.6;margin-bottom:1.2rem;">Your organization has been registered and is awaiting approval from the FireWatch platform team. You'll be able to access the full dashboard once approved.</p>
+    <p style="color:var(--muted);font-size:0.8rem;margin-bottom:1.5rem;" id="pendingOrgName"></p>
+    <button class="btn-login" onclick="localStorage.removeItem('fw_session');location.reload();" style="background:var(--border);max-width:200px;margin:0 auto;">Logout</button>
+  </div>
+</div>
+
+<!-- PLATFORM ADMIN DASHBOARD — shown after Super Admin login -->
+<div id="platformPage" class="hidden">
+  <div class="topbar" style="background:var(--bg2);border-bottom:1px solid var(--border);">
+    <div style="display:flex;align-items:center;gap:0.8rem;">
+      <span style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:0.08em;color:var(--orange);">🔥 FIREWATCH</span>
+      <span style="background:var(--purple);color:#fff;font-size:0.65rem;padding:2px 8px;border-radius:3px;font-weight:700;letter-spacing:0.1em;">PLATFORM ADMIN</span>
+    </div>
+    <button class="btn-logout" id="platformLogoutBtn">LOGOUT</button>
+  </div>
+  <div style="padding:1.5rem;max-width:1200px;margin:0 auto;">
+    <!-- Platform tabs -->
+    <div style="display:flex;gap:0;margin-bottom:1.2rem;border-bottom:2px solid var(--border);">
+      <button class="platform-tab active" id="ptabOrgs" onclick="switchPlatformTab('orgs')" style="padding:0.6rem 1.2rem;border:none;background:none;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:0.78rem;font-weight:600;cursor:pointer;border-bottom:2px solid var(--orange);margin-bottom:-2px;">🏢 Organizations</button>
+      <button class="platform-tab" id="ptabAudit" onclick="switchPlatformTab('audit')" style="padding:0.6rem 1.2rem;border:none;background:none;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:0.78rem;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;">📋 Activity Log</button>
+    </div>
+    <!-- Stats -->
+    <div style="display:flex;gap:1rem;margin-bottom:1rem;flex-wrap:wrap;" id="platformStats"></div>
+    <!-- Org list panel -->
+    <div id="platformPanelOrgs">
+      <div id="platformOrgTable" style="overflow-x:auto;"></div>
+    </div>
+    <!-- Audit log panel -->
+    <div id="platformPanelAudit" style="display:none;">
+      <div id="platformAuditLog" style="overflow-x:auto;"></div>
+    </div>
+    <!-- Org detail panel (shown when drilling into an org) -->
+    <div id="platformPanelOrgDetail" style="display:none;">
+      <div id="platformOrgDetail"></div>
+    </div>
+  </div>
 </div>
 
 <!-- DASHBOARD -->
@@ -309,6 +516,7 @@
     <span class="topbar-logo">🔥 FireWatch</span>
     <span class="topbar-user"><span class="topbar-user-text"><strong id="welcomeLabel"></strong></span></span>
     <span class="role-pill" id="roleLabel"></span>
+    <span class="org-name-pill" id="orgNamePill"></span>
     <span class="last-updated" id="lastUpdated"></span>
     <button class="btn-bar btn-refresh" id="btnRefresh" title="Refresh">↻</button>
     <button class="btn-bar btn-logout" id="btnLogout">Logout</button>
@@ -359,15 +567,54 @@
         </div>
         <div class="tab-bar" id="tabBar"></div>
         <div class="tab-panels">
-    <!-- Extinguishers -->
+    <!-- Extinguishers — drill-down: Company → Building → Extinguisher -->
     <div class="panel" id="panelExtinguishers">
-      <div class="table-toolbar hidden" id="extToolbar">
-        <button class="btn-crud btn-add" id="btnAdd">＋ Add</button>
-        <button class="btn-crud btn-edit" id="btnEdit">✎ Edit</button>
-        <button class="btn-crud btn-delete" id="btnDelete">✕ Delete</button>
+
+      <!-- Breadcrumb nav -->
+      <div class="drill-breadcrumb" id="drillBreadcrumb">
+        <span class="drill-crumb active" id="crumbCompanies" onclick="drillTo('companies')">🏢 Companies</span>
+        <span class="drill-sep hidden" id="sepBuildings">›</span>
+        <span class="drill-crumb hidden" id="crumbBuildings" onclick="drillTo('buildings')"></span>
+        <span class="drill-sep hidden" id="sepExtinguishers">›</span>
+        <span class="drill-crumb hidden" id="crumbExtinguishers"></span>
       </div>
-      <div class="table-scroll-wrap" id="tableExtWrap"></div>
-      <div class="card-list" id="cardExtWrap"></div>
+
+      <!-- Company-level toolbar (Admin only) -->
+      <div class="table-toolbar hidden" id="extToolbar">
+        <!-- Dynamic: changes based on drill level -->
+        <div id="drillToolbarCompany">
+          <button class="btn-crud btn-add" id="btnAddCompany">＋ Add Company</button>
+          <button class="btn-crud btn-edit" id="btnEditCompany">✎ Edit</button>
+          <button class="btn-crud btn-delete" id="btnDeleteCompany">✕ Delete</button>
+        </div>
+        <div id="drillToolbarBuilding" class="hidden">
+          <button class="btn-crud btn-add" id="btnAddBuilding">＋ Add Building</button>
+          <button class="btn-crud btn-edit" id="btnEditBuilding">✎ Edit</button>
+          <button class="btn-crud btn-delete" id="btnDeleteBuilding">✕ Delete</button>
+        </div>
+        <div id="drillToolbarExt" class="hidden">
+          <button class="btn-crud btn-add" id="btnAdd">＋ Add Extinguisher</button>
+          <button class="btn-crud btn-edit" id="btnEdit">✎ Edit</button>
+          <button class="btn-crud btn-delete" id="btnDelete">✕ Delete</button>
+        </div>
+      </div>
+
+      <!-- Company grid -->
+      <div id="drillCompanyView">
+        <div class="company-grid" id="companyGrid"></div>
+      </div>
+
+      <!-- Building grid -->
+      <div id="drillBuildingView" class="hidden">
+        <div class="building-grid" id="buildingGrid"></div>
+      </div>
+
+      <!-- Extinguisher table (existing) -->
+      <div id="drillExtView" class="hidden">
+        <div class="table-scroll-wrap" id="tableExtWrap"></div>
+        <div class="card-list" id="cardExtWrap"></div>
+      </div>
+
     </div>
 
     <!-- Assignments -->
@@ -384,6 +631,42 @@
     <div class="panel" id="panelReports">
       <div class="table-toolbar hidden" id="reportToolbar">
         <button class="btn-crud btn-edit" id="btnSubmitReport">＋ Submit Report</button>
+        <div class="export-dropdown" id="exportDropdown" style="display:none;position:relative;">
+          <button class="btn-crud btn-add" id="btnExportToggle">📁 Export File ▾</button>
+          <div class="export-menu hidden" id="exportMenu" style="position:absolute;top:100%;left:0;margin-top:4px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;min-width:160px;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,0.4);overflow:hidden;">
+            <button class="export-option" id="btnExportReports" style="display:flex;align-items:center;gap:8px;width:100%;padding:10px 14px;border:none;background:none;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:0.78rem;cursor:pointer;text-align:left;">📄 Export as PDF</button>
+            <button class="export-option" id="btnExportCSV" style="display:flex;align-items:center;gap:8px;width:100%;padding:10px 14px;border:none;background:none;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:0.78rem;cursor:pointer;text-align:left;border-top:1px solid var(--border);">📊 Export as CSV</button>
+            <button class="export-option" id="btnExportWord" style="display:flex;align-items:center;gap:8px;width:100%;padding:10px 14px;border:none;background:none;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:0.78rem;cursor:pointer;text-align:left;border-top:1px solid var(--border);">📝 Export as Word</button>
+          </div>
+        </div>
+        <!-- Filter bar — always visible when reports panel is shown -->
+        <div class="filter-bar" id="reportFilterBar">
+          <div class="filter-group">
+            <label>From</label>
+            <input type="date" class="filter-input" id="filterDateFrom" />
+          </div>
+          <div class="filter-group">
+            <label>To</label>
+            <input type="date" class="filter-input" id="filterDateTo" />
+          </div>
+          <div class="filter-group" id="filterInspectorGroup">
+            <label>Inspector</label>
+            <select class="filter-input filter-select" id="filterInspector">
+              <option value="">All inspectors</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Filter</label>
+            <select class="filter-input filter-select" id="filterStatus">
+              <option value="">All reports</option>
+              <option value="photo">Has photo</option>
+              <option value="nophoto">No photo</option>
+              <option value="notes">Has notes</option>
+            </select>
+          </div>
+          <span class="filter-active-count" id="filterActiveCount"></span>
+          <button class="btn-clear-filter" id="btnClearFilter">✕ Clear</button>
+        </div>
       </div>
       <div class="table-scroll-wrap" id="tableReportsWrap"></div>
       <div class="card-list" id="cardReportsWrap"></div>
@@ -393,6 +676,8 @@
     <div class="panel" id="panelUsers">
       <div class="table-toolbar hidden" id="userToolbar">
         <button class="btn-crud btn-add" id="btnAddUser">＋ Add User</button>
+        <button class="btn-crud btn-edit" id="btnEditUser">✎ Edit User</button>
+        <button class="btn-crud btn-delete" id="btnDeleteUser">✕ Delete User</button>
       </div>
       <div class="table-scroll-wrap" id="tableUsersWrap"></div>
       <div class="card-list" id="cardUsersWrap"></div>
@@ -627,16 +912,61 @@
 </div><!-- /appPage -->
 
 <!-- ADD/EDIT EXTINGUISHER MODAL -->
+<!-- ADD / EDIT EXTINGUISHER MODAL -->
 <div class="modal-overlay hidden" id="extModal">
   <div class="modal-box">
     <h3 id="modalTitle">Add Extinguisher</h3>
-    <div class="form-row"><label>Address *</label><input type="text" id="fAddress" placeholder="e.g. 123 University Avenue" /></div>
-    <div class="form-row"><label>Building</label><input type="text" id="fBuilding" placeholder="e.g. Bldg A" /></div>
+    <div class="form-row"><label>Company *</label>
+      <select id="fCompany">
+        <option value="">— Select company —</option>
+      </select>
+    </div>
+    <div class="form-row"><label>Building *</label>
+      <select id="fBuildingSelect">
+        <option value="">— Select building —</option>
+      </select>
+    </div>
     <div class="form-row"><label>Floor</label><input type="number" id="fFloor" value="1" min="0" /></div>
     <div class="form-row"><label>Room</label><input type="text" id="fRoom" placeholder="e.g. 101" /></div>
     <div class="form-row"><label>Location Description</label><input type="text" id="fLocDesc" placeholder="e.g. Near the elevator" /></div>
     <div class="form-row"><label>Inspection Interval (days)</label><input type="number" id="fInterval" value="30" min="1" /></div>
     <div class="form-row"><label>Next Due Date</label><input type="date" id="fDueDate" /></div>
+
+    <!-- NFPA 10 Compliance Metadata -->
+    <div style="border-top:1px solid var(--border);margin:0.8rem 0 0.5rem;padding-top:0.6rem;">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:0.7rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);">NFPA 10 Metadata</span>
+    </div>
+    <div class="form-row"><label>Type / Class</label>
+      <select id="fExtType">
+        <option value="">— Select —</option>
+        <option value="A">Class A — Ordinary Combustibles</option>
+        <option value="B">Class B — Flammable Liquids</option>
+        <option value="C">Class C — Electrical</option>
+        <option value="ABC">ABC — Multi-Purpose</option>
+        <option value="BC">BC — Gas/Electrical</option>
+        <option value="D">Class D — Combustible Metals</option>
+        <option value="K">Class K — Kitchen/Cooking</option>
+      </select>
+    </div>
+    <div class="form-row"><label>Size (lbs)</label><input type="number" id="fExtSize" min="1" max="350" step="0.5" placeholder="e.g. 5, 10, 20" /></div>
+    <div class="form-row"><label>Serial Number</label><input type="text" id="fSerial" placeholder="e.g. SN-2024-00123" /></div>
+    <div class="form-row"><label>Manufacturer</label><input type="text" id="fManufacturer" placeholder="e.g. Kidde, Amerex, Ansul" /></div>
+    <div class="form-row"><label>Model</label><input type="text" id="fModel" placeholder="e.g. Pro 210, B500" /></div>
+    <div class="form-row"><label>Manufacture Date</label><input type="date" id="fMfgDate" /></div>
+    <div class="form-row"><label>Status</label>
+      <select id="fExtStatus">
+        <option value="Active">Active</option>
+        <option value="Out of Service">Out of Service</option>
+        <option value="Retired">Retired</option>
+        <option value="Missing">Missing</option>
+      </select>
+    </div>
+    <div style="border-top:1px solid var(--border);margin:0.8rem 0 0.5rem;padding-top:0.6rem;">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:0.7rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);">Service History</span>
+    </div>
+    <div class="form-row"><label>Last Annual Maintenance</label><input type="date" id="fAnnualDate" /></div>
+    <div class="form-row"><label>Last 6-Year Service</label><input type="date" id="f6YearDate" /></div>
+    <div class="form-row"><label>Last Hydrostatic Test</label><input type="date" id="fHydroDate" /></div>
     <div class="modal-error" id="modalError"></div>
     <div class="modal-actions">
       <button class="btn-cancel" id="modalCancel">Cancel</button>
@@ -645,11 +975,102 @@
   </div>
 </div>
 
-<!-- GENERATE / EDIT ASSIGNMENT MODAL (Admin / ThirdPAdmin) -->
+<!-- ADD / EDIT COMPANY MODAL -->
+<div class="modal-overlay hidden" id="companyModal">
+  <div class="modal-box">
+    <h3 id="companyModalTitle">Add Company</h3>
+    <div class="form-row"><label>Company Name *</label><input type="text" id="cName" placeholder="e.g. City Fire Services LLC" /></div>
+    <div class="form-row"><label>Address</label><input type="text" id="cAddress" placeholder="e.g. 123 University Avenue" /></div>
+    <div class="form-row"><label>City</label><input type="text" id="cCity" placeholder="e.g. San Diego" /></div>
+    <div class="form-row"><label>State</label><input type="text" id="cState" placeholder="e.g. CA" maxlength="2" style="width:80px" /></div>
+    <div class="form-row"><label>Phone</label><input type="text" id="cPhone" placeholder="e.g. (619) 555-0100" /></div>
+    <div class="form-row"><label>Primary Contact</label><input type="text" id="cContact" placeholder="e.g. Jane Smith" /></div>
+    <div class="modal-error" id="companyModalError"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="companyModalCancel">Cancel</button>
+      <button class="btn-save" id="companyModalSave">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD / EDIT BUILDING MODAL -->
+<div class="modal-overlay hidden" id="buildingModal">
+  <div class="modal-box">
+    <h3 id="buildingModalTitle">Add Building</h3>
+    <div class="form-row"><label>Building Name *</label><input type="text" id="bName" placeholder="e.g. Main Hall" /></div>
+    <div class="form-row"><label>Address</label><input type="text" id="bAddress" placeholder="e.g. 456 College Blvd" /></div>
+    <div class="form-row"><label>Number of Floors</label><input type="number" id="bFloors" value="1" min="1" /></div>
+    <div class="form-row"><label>Notes</label><textarea id="bNotes" rows="2" placeholder="Optional notes about this building..."></textarea></div>
+    <div class="modal-error" id="buildingModalError"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="buildingModalCancel">Cancel</button>
+      <button class="btn-save" id="buildingModalSave">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- EXTINGUISHER DETAIL POPUP -->
+<div class="modal-overlay hidden" id="extDetailModal">
+  <div class="modal-box ext-detail-box">
+    <div class="ext-detail-header">
+      <div>
+        <div class="ext-detail-id" id="detailExtId"></div>
+        <div class="ext-detail-title" id="detailExtTitle"></div>
+      </div>
+      <button class="ext-detail-close" onclick="document.getElementById('extDetailModal').classList.add('hidden')">✕</button>
+    </div>
+    <div class="ext-detail-grid" id="detailExtGrid"></div>
+    <div class="ext-detail-footer" id="detailExtFooter"></div>
+  </div>
+</div>
+
+<!-- ASSIGNMENT DETAIL POPUP -->
+<div class="modal-overlay hidden" id="assignDetailModal">
+  <div class="modal-box ext-detail-box">
+    <div class="ext-detail-header">
+      <div>
+        <div class="ext-detail-id" id="detailAssignId"></div>
+        <div class="ext-detail-title" id="detailAssignTitle"></div>
+      </div>
+      <button class="ext-detail-close" onclick="document.getElementById('assignDetailModal').classList.add('hidden')">✕</button>
+    </div>
+    <div class="ext-detail-grid" id="detailAssignGrid"></div>
+    <div class="ext-detail-footer" id="detailAssignFooter"></div>
+  </div>
+</div>
+
+<!-- REPORT DETAIL POPUP -->
+<div class="modal-overlay hidden" id="reportDetailModal">
+  <div class="modal-box ext-detail-box">
+    <div class="ext-detail-header">
+      <div>
+        <div class="ext-detail-id" id="detailReportId"></div>
+        <div class="ext-detail-title" id="detailReportTitle"></div>
+      </div>
+      <button class="ext-detail-close" onclick="document.getElementById('reportDetailModal').classList.add('hidden')">✕</button>
+    </div>
+    <div class="ext-detail-grid" id="detailReportGrid"></div>
+    <div class="ext-detail-footer" id="detailReportFooter"></div>
+  </div>
+</div>
 <div class="modal-overlay hidden" id="assignModal">
   <div class="modal-box">
     <h3 id="assignModalTitle">Generate Assignment</h3>
-    <div class="form-row"><label>Extinguisher *</label><select id="aExtinguisher"></select></div>
+    <div class="form-row"><label>Company *</label>
+      <select id="aCompany">
+        <option value="">— Select company —</option>
+      </select>
+    </div>
+    <div class="form-row"><label>Building *</label>
+      <select id="aBuilding" disabled>
+        <option value="">— Select company first —</option>
+      </select>
+    </div>
+    <div class="form-row"><label>Extinguisher *</label>
+      <select id="aExtinguisher" disabled>
+        <option value="">— Select building first —</option>
+      </select>
+    </div>
     <div class="form-row"><label>Inspector *</label><select id="aInspector"></select></div>
     <div class="form-row"><label>Due Date</label><input type="date" id="aDueDate" /></div>
     <div class="form-row"><label>Notes</label><textarea id="aNotes" rows="3" placeholder="Optional notes for the inspector..."></textarea></div>
@@ -691,13 +1112,16 @@
   </div>
 </div>
 
-<!-- ADD USER MODAL (Admin only) -->
+<!-- ADD / EDIT USER MODAL (Admin only) -->
 <div class="modal-overlay hidden" id="userModal">
   <div class="modal-box">
-    <h3>Add New User</h3>
+    <h3 id="userModalTitle">Add New User</h3>
     <div class="form-row"><label>Username *</label><input type="text" id="uUsername" placeholder="e.g. JSmith" /></div>
-    <div class="form-row"><label>Password *</label><input type="password" id="uPassword" placeholder="Enter password" /></div>
-    <div class="form-row"><label>Confirm Password *</label><input type="password" id="uConfirm" placeholder="Re-enter password" /></div>
+    <div class="form-row" id="uPasswordRow"><label>Password *</label><input type="password" id="uPassword" placeholder="Enter password" /></div>
+    <div class="form-row" id="uConfirmRow"><label>Confirm Password *</label><input type="password" id="uConfirm" placeholder="Re-enter password" /></div>
+    <div class="form-row" id="uPasswordHint" class="hidden" style="display:none;">
+      <span style="font-size:0.75rem;color:var(--muted);font-style:italic;">Leave password blank to keep current password.</span>
+    </div>
     <div class="form-row">
       <label>Role *</label>
       <select id="uRole">
@@ -728,6 +1152,26 @@ let selectedExtId    = null;
 let editingExtId     = null;
 let selectedAssignId = null;
 let editingAssignId  = null;
+
+// ── Auth tab switcher ──────────────────────────────────────────────────────────
+function switchAuthTab(tab) {
+  document.getElementById("tabSignIn").classList.toggle("active",   tab==="signin");
+  document.getElementById("tabRegister").classList.toggle("active", tab==="register");
+  document.getElementById("tabPlatform").classList.toggle("active", tab==="platform");
+  document.getElementById("panelSignIn").classList.toggle("active",   tab==="signin");
+  document.getElementById("panelRegister").classList.toggle("active", tab==="register");
+  document.getElementById("panelPlatform").classList.toggle("active", tab==="platform");
+}
+
+// Helper: get org_id from currentUser (always pass to API calls)
+const orgId = () => currentUser?.org_id || null;
+
+// ── Drill-down state ────────────────────────────────────────────────────────────
+let _drillLevel       = "companies"; // "companies" | "buildings" | "extinguishers"
+let _selectedCompany  = null;        // { company_id, name, ... }
+let _selectedBuilding = null;        // { building_id, name, ... }
+let _selectedCompanyId   = null;
+let _selectedBuildingId  = null;
 
 // ── Notification state ─────────────────────────────────────────────────────────
 let _notifications = [];
@@ -761,13 +1205,83 @@ async function doLogin() {
     const hashed = await sha256(password);
     const res  = await fetch("/api/login", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({username, password: hashed}) });
     const data = await res.json();
-    if (data.success) { currentUser={user_id:data.user_id,username:data.username,role:data.role}; showDashboard(); }
-    else { msg.style.color="#c1121f"; msg.textContent="Invalid username or password."; }
+    if (data.success) {
+      currentUser = {user_id:data.user_id, username:data.username, role:data.role, org_id:data.org_id, org_name:data.org_name};
+      localStorage.setItem("fw_session", JSON.stringify(currentUser));
+      showDashboard();
+    } else { msg.style.color="#c1121f"; msg.textContent="Invalid username or password."; }
+  } catch { msg.style.color="#c1121f"; msg.textContent="Cannot reach server."; }
+}
+
+// ── Register Organization ──────────────────────────────────────────────────────
+document.getElementById("registerBtn").addEventListener("click", doRegister);
+["regPassword","regConfirm","regUsername","regOrgName"].forEach(id => {
+  document.getElementById(id).addEventListener("keydown", e => { if(e.key==="Enter") doRegister(); });
+});
+
+async function doRegister() {
+  const msg      = document.getElementById("registerMsg");
+  const orgName  = document.getElementById("regOrgName").value.trim();
+  const username = document.getElementById("regUsername").value.trim();
+  const password = document.getElementById("regPassword").value;
+  const confirm  = document.getElementById("regConfirm").value;
+
+  if (!orgName)              { msg.style.color="#c1121f"; msg.textContent="Organization name is required."; return; }
+  if (!username)             { msg.style.color="#c1121f"; msg.textContent="Admin username is required."; return; }
+  if (password.length < 6)  { msg.style.color="#c1121f"; msg.textContent="Password must be at least 6 characters."; return; }
+  if (password !== confirm)  { msg.style.color="#c1121f"; msg.textContent="Passwords do not match."; return; }
+
+  msg.style.color="#6b7280"; msg.textContent="Registering...";
+  try {
+    const hashed = await sha256(password);
+    const res  = await fetch("/api/register", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({
+        org_name:     orgName,
+        username,
+        password:     hashed,
+        address:      document.getElementById("regAddress").value.trim(),
+        city:         document.getElementById("regCity").value.trim(),
+        state:        document.getElementById("regState").value.trim(),
+        phone:        document.getElementById("regPhone").value.trim(),
+      })
+    });
+    const data = await res.json();
+    if (data.success) {
+      // Auto-login after successful registration
+      currentUser = {user_id:data.user_id, username:data.username, role:data.role, org_id:data.org_id, org_name:data.org_name};
+      localStorage.setItem("fw_session", JSON.stringify(currentUser));
+      msg.style.color="#0d9488";
+      msg.textContent=`✓ Organization "${orgName}" created! Logging in...`;
+      setTimeout(showDashboard, 600);
+    } else { msg.style.color="#c1121f"; msg.textContent=data.error || "Registration failed."; }
   } catch { msg.style.color="#c1121f"; msg.textContent="Cannot reach server."; }
 }
 
 // ── Dashboard setup ───────────────────────────────────────────────────────────
 function showDashboard() {
+  // ── Check if org is pending/suspended/rejected ──────────────────────────
+  const ps = currentUser.platform_status;
+  if (ps && ps !== "approved") {
+    document.getElementById("loginPage").classList.add("hidden");
+    document.getElementById("appPage").classList.add("hidden");
+    const overlay = document.getElementById("pendingOverlay");
+    overlay.classList.remove("hidden");
+    overlay.style.display = "flex";
+    const statusMessages = {
+      pending:   "Your organization has been registered and is awaiting approval from the FireWatch platform team.",
+      suspended: "Your organization has been suspended. Please contact the FireWatch platform team for assistance.",
+      rejected:  "Your organization registration has been declined. Please contact the FireWatch platform team."
+    };
+    overlay.querySelector("h2").textContent =
+      ps === "pending" ? "Organization Pending Approval" :
+      ps === "suspended" ? "Organization Suspended" : "Organization Declined";
+    overlay.querySelector("p").textContent = statusMessages[ps] || statusMessages.pending;
+    document.getElementById("pendingOrgName").textContent = currentUser.org_name ? `Organization: ${currentUser.org_name}` : "";
+    return;
+  }
+
   document.getElementById("loginPage").classList.add("hidden");
   document.getElementById("appPage").classList.remove("hidden");
   document.getElementById("welcomeLabel").textContent = currentUser.username + " · " + currentUser.role.toUpperCase();
@@ -781,6 +1295,14 @@ function showDashboard() {
   };
   const rc = roleColors[currentUser.role] || {color:"#9ca3af",border:"rgba(156,163,175,0.4)"};
   rl.style.color=rc.color; rl.style.borderColor=rc.border;
+  // Show org name in topbar
+  const orgPill = document.getElementById("orgNamePill");
+  if (currentUser.org_name) {
+    orgPill.textContent = "🏢 " + currentUser.org_name;
+    orgPill.classList.add("show");
+  } else {
+    orgPill.classList.remove("show");
+  }
   buildTabs(); loadStats(); loadAllData();
   captureBaseline();
   startPolling();
@@ -806,6 +1328,8 @@ function buildTabs() {
     tabs = [{id:"panelExtinguishers",label:"Extinguishers"},{id:"panelAssignments",label:"Assignments"},{id:"panelReports",label:"Reports"},{id:"panelUsers",label:"All Users"}];
     document.getElementById("extToolbar").classList.remove("hidden");
     document.getElementById("assignToolbar").classList.remove("hidden");
+    document.getElementById("reportToolbar").classList.remove("hidden");
+    document.getElementById("exportDropdown").style.display = "";
     document.getElementById("userToolbar").classList.remove("hidden");
   } else if (isInv()) {
     tabs = [{id:"panelAssignments",label:"My Assignments"},{id:"panelReports",label:"My Reports"}];
@@ -847,7 +1371,8 @@ function switchTab(panelId, clickedBtn, tabBar) {
 // ── Stats ─────────────────────────────────────────────────────────────────────
 async function loadStats() {
   try {
-    const data = await fetch("/api/stats").then(r=>r.json());
+    const oid = orgId();
+    const data = await fetch(`/api/stats${oid?`?org_id=${oid}`:""}`).then(r=>r.json());
     if (isAdmin()) {
       document.getElementById("statExt").textContent=data.extinguishers;
       document.getElementById("statAssign").textContent=data.assignments;
@@ -855,17 +1380,17 @@ async function loadStats() {
       document.getElementById("statUsers").textContent=data.users;
     } else if (isInv()) {
       const [a,r] = await Promise.all([
-        fetch("/api/assignments?user_id="+currentUser.user_id).then(r=>r.json()),
-        fetch("/api/reports?user_id="+currentUser.user_id).then(r=>r.json())
+        fetch(`/api/assignments?user_id=${currentUser.user_id}&org_id=${oid}`).then(r=>r.json()),
+        fetch(`/api/reports?user_id=${currentUser.user_id}&org_id=${oid}`).then(r=>r.json())
       ]);
       document.getElementById("statAssign").textContent=a.length;
       document.getElementById("statReports").textContent=r.length;
     } else if (isThirdAdmin()) {
       document.getElementById("statAssign").textContent=data.assignments;
-      const users=await fetch("/api/users").then(r=>r.json());
+      const users=await fetch(`/api/users${oid?`?org_id=${oid}`:""}`).then(r=>r.json());
       document.getElementById("statUsers").textContent=users.filter(u=>u.role==="3rd_Party_Inspector").length;
     } else if (isThirdInv()) {
-      const a=await fetch("/api/assignments?user_id="+currentUser.user_id).then(r=>r.json());
+      const a=await fetch(`/api/assignments?user_id=${currentUser.user_id}&org_id=${oid}`).then(r=>r.json());
       document.getElementById("statAssign").textContent=a.length;
     }
   } catch(e) { console.error("Stats error",e); }
@@ -880,35 +1405,227 @@ function loadAllData() {
 }
 
 async function loadExtinguishers() {
-  const rows = await fetch("/api/extinguishers").then(r=>r.json());
-  const cols = ["extinguisher_id","address","building_number","floor_number","room_number","location_description","inspection_interval_days","next_due_date"];
-  renderTable("tableExtWrap",cols,rows,row=>{ selectedExtId=row.extinguisher_id; });
-  renderCards("cardExtWrap",rows,"extinguisher",row=>{ selectedExtId=row.extinguisher_id; });
+  // On poll refreshes, call render functions directly — never touch drillTo()
+  // drillTo() manipulates visibility/breadcrumbs and causes visible flicker
+  if (_drillLevel === "extinguishers" && _selectedBuilding) {
+    await renderExtinguisherTable(_selectedBuilding.building_id);
+  } else if (_drillLevel === "buildings" && _selectedCompany) {
+    await renderBuildingGrid(_selectedCompany.company_id);
+  } else if (_drillLevel === "companies") {
+    await renderCompanyGrid();
+  } else {
+    // First login — full drill init
+    _drillLevel       = "companies";
+    _selectedCompany  = null;
+    _selectedBuilding = null;
+    await drillTo("companies");
+  }
+}
+
+// ── DRILL-DOWN: Company → Building → Extinguisher ─────────────────────────────
+
+async function drillTo(level, data) {
+  _drillLevel = level;
+
+  // Hide all views
+  document.getElementById("drillCompanyView").classList.add("hidden");
+  document.getElementById("drillBuildingView").classList.add("hidden");
+  document.getElementById("drillExtView").classList.add("hidden");
+  document.getElementById("drillToolbarCompany").classList.add("hidden");
+  document.getElementById("drillToolbarBuilding").classList.add("hidden");
+  document.getElementById("drillToolbarExt").classList.add("hidden");
+
+  // Update breadcrumb
+  const crumbB  = document.getElementById("crumbBuildings");
+  const crumbE  = document.getElementById("crumbExtinguishers");
+  const sepB    = document.getElementById("sepBuildings");
+  const sepE    = document.getElementById("sepExtinguishers");
+  document.getElementById("crumbCompanies").classList.toggle("active", level==="companies");
+
+  if (level === "companies") {
+    crumbB.classList.add("hidden"); sepB.classList.add("hidden");
+    crumbE.classList.add("hidden"); sepE.classList.add("hidden");
+    _selectedCompany  = null;
+    _selectedBuilding = null;
+    await renderCompanyGrid();
+    document.getElementById("drillCompanyView").classList.remove("hidden");
+    if (isAdmin()) document.getElementById("drillToolbarCompany").classList.remove("hidden");
+
+  } else if (level === "buildings") {
+    if (data) _selectedCompany = data;
+    crumbB.textContent = "🏗 " + (_selectedCompany?.name || "Buildings");
+    crumbB.classList.remove("hidden"); sepB.classList.remove("hidden");
+    crumbB.classList.add("active");
+    document.getElementById("crumbCompanies").classList.remove("active");
+    crumbE.classList.add("hidden"); sepE.classList.add("hidden");
+    _selectedBuilding = null;
+    await renderBuildingGrid(_selectedCompany.company_id);
+    document.getElementById("drillBuildingView").classList.remove("hidden");
+    if (isAdmin()) document.getElementById("drillToolbarBuilding").classList.remove("hidden");
+
+  } else if (level === "extinguishers") {
+    if (data) _selectedBuilding = data;
+    crumbB.textContent = "🏗 " + (_selectedCompany?.name || "Buildings");
+    crumbB.classList.remove("hidden"); sepB.classList.remove("hidden");
+    crumbB.classList.remove("active");
+    document.getElementById("crumbCompanies").classList.remove("active");
+    crumbE.textContent = "🧯 " + (_selectedBuilding?.name || "Extinguishers");
+    crumbE.classList.remove("hidden"); sepE.classList.remove("hidden");
+    crumbE.classList.add("active");
+    crumbB.classList.remove("active");
+    await renderExtinguisherTable(_selectedBuilding.building_id);
+    document.getElementById("drillExtView").classList.remove("hidden");
+    if (isAdmin()) document.getElementById("drillToolbarExt").classList.remove("hidden");
+  }
+}
+
+async function renderCompanyGrid() {
+  const grid = document.getElementById("companyGrid");
+  // Only show loading spinner on first paint (grid is empty)
+  if (!grid.children.length) grid.innerHTML = `<div class="drill-empty">Loading companies…</div>`;
+  try {
+    const companies = await fetch(`/api/companies?org_id=${orgId()}`).then(r=>r.json());
+
+    // Build new HTML
+    const newHtml = companies.length
+      ? companies.map(c => `
+          <div class="company-card" data-id="${c.company_id}"
+               onclick="selectCompanyCard(this, ${JSON.stringify(c).replace(/"/g,'&quot;')}); drillTo('buildings', ${JSON.stringify(c).replace(/"/g,'&quot;')})">
+            <div class="company-card-name">${c.name}</div>
+            <div class="company-card-addr">${c.address || '—'}</div>
+            <div class="company-card-stats">
+              <div class="company-stat">
+                <div class="company-stat-val">${c.building_count}</div>
+                <div class="company-stat-lbl">Buildings</div>
+              </div>
+              <div class="company-stat">
+                <div class="company-stat-val">${c.extinguisher_count}</div>
+                <div class="company-stat-lbl">Extinguishers</div>
+              </div>
+            </div>
+            <button class="card-edit-btn" onclick="event.stopPropagation(); editCompanyCard(${JSON.stringify(c).replace(/"/g,'&quot;')})">✎ Edit</button>
+            <div class="company-card-drill">›</div>
+          </div>`).join("")
+      : `<div class="drill-empty">No companies yet. Click ＋ Add Company to get started.</div>`;
+
+    // Only update DOM if something actually changed — prevents flicker on poll
+    if (grid.innerHTML !== newHtml) grid.innerHTML = newHtml;
+  } catch(e) {
+    grid.innerHTML = `<div class="drill-empty">Error loading companies.</div>`;
+  }
+}
+
+async function renderBuildingGrid(companyId) {
+  const grid = document.getElementById("buildingGrid");
+  if (!grid.children.length) grid.innerHTML = `<div class="drill-empty">Loading buildings…</div>`;
+  try {
+    const buildings = await fetch(`/api/buildings?company_id=${companyId}`).then(r=>r.json());
+
+    const newHtml = buildings.length
+      ? buildings.map(b => {
+          const overdueClass = b.overdue_count > 0 ? "danger" : "ok";
+          const pendingClass = b.pending_count > 0 ? "warn"   : "ok";
+          return `
+            <div class="building-card" data-id="${b.building_id}"
+                 onclick="selectBuildingCard(this, ${JSON.stringify(b).replace(/"/g,'&quot;')}); drillTo('extinguishers', ${JSON.stringify(b).replace(/"/g,'&quot;')})">
+              <div class="building-card-name">${b.name}</div>
+              <div class="building-card-addr">${b.address || '—'}</div>
+              <div class="building-floors-badge">${b.floors || 1} floor${b.floors !== 1 ? 's' : ''}</div>
+              <div class="building-card-stats">
+                <div class="building-stat">
+                  <div class="building-stat-val ok">${b.extinguisher_count}</div>
+                  <div class="building-stat-lbl">Total</div>
+                </div>
+                <div class="building-stat">
+                  <div class="building-stat-val ${overdueClass}">${b.overdue_count}</div>
+                  <div class="building-stat-lbl">Overdue</div>
+                </div>
+                <div class="building-stat">
+                  <div class="building-stat-val ${pendingClass}">${b.pending_count}</div>
+                  <div class="building-stat-lbl">Pending</div>
+                </div>
+              </div>
+              <button class="card-edit-btn" onclick="event.stopPropagation(); editBuildingCard(${JSON.stringify(b).replace(/"/g,'&quot;')})">✎ Edit</button>
+              <div class="building-card-drill">›</div>
+            </div>`;
+        }).join("")
+      : `<div class="drill-empty">No buildings yet. Click ＋ Add Building to get started.</div>`;
+
+    if (grid.innerHTML !== newHtml) grid.innerHTML = newHtml;
+  } catch(e) {
+    grid.innerHTML = `<div class="drill-empty">Error loading buildings.</div>`;
+  }
+}
+
+async function renderExtinguisherTable(buildingId) {
+  const rows = await fetch(`/api/extinguishers?building_id=${buildingId}`).then(r=>r.json());
+  const cols = ["extinguisher_id","building_name","floor_number","room_number","location_description","inspection_interval_days","next_due_date"];
+  renderTable("tableExtWrap", cols, rows, row=>{
+    selectedExtId = row.extinguisher_id;
+    window._lastExtRows = rows;
+    openExtDetail(row);
+  });
+  renderCards("cardExtWrap", rows, "extinguisher", row=>{
+    selectedExtId = row.extinguisher_id;
+    window._lastExtRows = rows;
+    openExtDetail(row);
+  });
 }
 
 async function loadAssignments() {
-  let url="/api/assignments";
-  if (isInv()||isThirdInv()) url+="?user_id="+currentUser.user_id;
+  const oid = orgId();
+  let url = `/api/assignments?org_id=${oid}`;
+  if (isInv()||isThirdInv()) url += `&user_id=${currentUser.user_id}`;
   const rows=await fetch(url).then(r=>r.json());
   const cols=(isAdmin()||isThirdAdmin())?["assignment_id","assigned_by","inspector","extinguisher_id","due_date","status"]:["assignment_id","assigned_by","extinguisher_id","due_date","status"];
-  renderTable("tableAssignWrap",cols,rows,row=>{ selectedAssignId=row.assignment_id; window._lastAssignRows=rows; });
-  renderCards("cardAssignWrap",rows,"assignment",row=>{ selectedAssignId=row.assignment_id; window._lastAssignRows=rows; });
+  renderTable("tableAssignWrap", cols, rows, row=>{
+    selectedAssignId = row.assignment_id;
+    window._lastAssignRows = rows;
+    openAssignDetail(row);
+  });
+  renderCards("cardAssignWrap", rows, "assignment", row=>{
+    selectedAssignId = row.assignment_id;
+    window._lastAssignRows = rows;
+    openAssignDetail(row);
+  });
 }
 
 async function loadReports() {
-  let url="/api/reports";
-  if (isInv()) url+="?user_id="+currentUser.user_id;
+  const oid = orgId();
+  let url = `/api/reports?org_id=${oid}`;
+  if (isInv()) url += `&user_id=${currentUser.user_id}`;
   const rows=await fetch(url).then(r=>r.json());
-  const cols=isAdmin()?["report_id","extinguisher_id","inspector","inspection_date","notes","photo_path"]:["report_id","extinguisher_id","inspection_date","notes","photo_path"];
-  renderTable("tableReportsWrap",cols,rows);
-  renderCards("cardReportsWrap",rows,"report");
+  window._allReports = rows;
+
+  const inspGrp = document.getElementById("filterInspectorGroup");
+  if (isAdmin()) {
+    inspGrp.style.display = "";
+    const sel = document.getElementById("filterInspector");
+    const current = sel.value;
+    const names = [...new Set(rows.map(r=>r.inspector).filter(Boolean))].sort();
+    sel.innerHTML = '<option value="">All inspectors</option>' +
+      names.map(n=>`<option value="${n}"${n===current?' selected':''}>${n}</option>`).join("");
+  } else {
+    inspGrp.style.display = "none";
+  }
+  applyReportFilters();
 }
 
+let selectedUserId = null;
+let editingUserId  = null;
+window._lastUserRows = [];
+
 async function loadUsers() {
-  let rows=await fetch("/api/users").then(r=>r.json());
+  const oid = orgId();
+  let rows=await fetch(`/api/users${oid?`?org_id=${oid}`:""}`).then(r=>r.json());
   if (isThirdAdmin()) rows=rows.filter(u=>u.role==="3rd_Party_Inspector");
-  renderTable("tableUsersWrap",["user_id","username","role"],rows);
-  renderCards("cardUsersWrap",rows,"user");
+  window._lastUserRows = rows;
+  renderTable("tableUsersWrap",["user_id","username","role"],rows, row => {
+    selectedUserId = row.user_id;
+  });
+  renderCards("cardUsersWrap",rows,"user", row => {
+    selectedUserId = row.user_id;
+  });
 }
 
 // ── Table renderer ────────────────────────────────────────────────────────────
@@ -944,7 +1661,8 @@ function renderTable(wrapperId,cols,rows,onRowClick) {
       if(onRowClick) onRowClick(rows.find(r=>
         String(r.extinguisher_id)===tr.dataset.id||
         String(r.assignment_id)===tr.dataset.id||
-        String(r.report_id)===tr.dataset.id
+        String(r.report_id)===tr.dataset.id||
+        String(r.user_id)===tr.dataset.id
       ));
     });
   });
@@ -998,6 +1716,7 @@ document.getElementById("btnLogout").addEventListener("click",()=>{
   // Clear profile fields on logout
   ["profCurrentPw","profNewPw","profConfirmPw"].forEach(id => { const el = document.getElementById(id); if(el) el.value=""; });
   currentUser=null; selectedExtId=null;
+  localStorage.removeItem("fw_session");
   document.getElementById("appPage").classList.add("hidden");
   document.getElementById("loginPage").classList.remove("hidden");
   document.getElementById("username").value="";
@@ -1007,107 +1726,369 @@ document.getElementById("btnLogout").addEventListener("click",()=>{
   ["extToolbar","assignToolbar","reportToolbar","userToolbar"].forEach(id=>document.getElementById(id).classList.add("hidden"));
 });
 
-// ── CRUD: Add Extinguisher ────────────────────────────────────────────────────
-document.getElementById("btnAdd").addEventListener("click",()=>{
-  editingExtId=null;
-  document.getElementById("modalTitle").textContent="Add Extinguisher";
-  document.getElementById("modalSave").textContent="Add";
+// ── CRUD: Company ─────────────────────────────────────────────────────────────
+let _editingCompanyId  = null;
+let _editingBuildingId = null;
+
+document.getElementById("btnAddCompany").addEventListener("click", () => {
+  _editingCompanyId = null;
+  document.getElementById("companyModalTitle").textContent = "Add Company";
+  document.getElementById("companyModalSave").textContent  = "Add Company";
+  ["cName","cAddress","cCity","cState","cPhone","cContact"].forEach(id => document.getElementById(id).value="");
+  document.getElementById("companyModalError").textContent = "";
+  document.getElementById("companyModal").classList.remove("hidden");
+});
+
+document.getElementById("btnEditCompany").addEventListener("click", async () => {
+  if (!_selectedCompany) { alert("Click a company card first."); return; }
+  _editingCompanyId = _selectedCompany.company_id;
+  const c = _selectedCompany;
+  document.getElementById("companyModalTitle").textContent = "Edit Company";
+  document.getElementById("companyModalSave").textContent  = "Save Changes";
+  document.getElementById("cName").value    = c.name         || "";
+  document.getElementById("cAddress").value = c.address      || "";
+  document.getElementById("cCity").value    = c.city         || "";
+  document.getElementById("cState").value   = c.state        || "";
+  document.getElementById("cPhone").value   = c.phone        || "";
+  document.getElementById("cContact").value = c.contact_name || "";
+  document.getElementById("companyModalError").textContent = "";
+  document.getElementById("companyModal").classList.remove("hidden");
+});
+
+document.getElementById("btnDeleteCompany").addEventListener("click", async () => {
+  if (!_selectedCompany) { alert("Click a company card first."); return; }
+  if (!confirm(`Delete "${_selectedCompany.name}" and ALL its buildings and extinguishers? This cannot be undone.`)) return;
+  const res = await fetch(`/api/companies/${_selectedCompany.company_id}`, { method:"DELETE" });
+  if (res.ok) { _selectedCompany=null; drillTo("companies"); loadStats(); }
+  else alert("Delete failed: " + (await res.json()).error);
+});
+
+document.getElementById("companyModalCancel").addEventListener("click", () => document.getElementById("companyModal").classList.add("hidden"));
+document.getElementById("companyModal").addEventListener("click", e => { if (e.target===document.getElementById("companyModal")) document.getElementById("companyModal").classList.add("hidden"); });
+
+document.getElementById("companyModalSave").addEventListener("click", async () => {
+  const name = document.getElementById("cName").value.trim();
+  if (!name) { document.getElementById("companyModalError").textContent = "Company name is required."; return; }
+  const body = {
+    name,
+    org_id:       orgId(),
+    address:      document.getElementById("cAddress").value.trim(),
+    city:         document.getElementById("cCity").value.trim(),
+    state:        document.getElementById("cState").value.trim(),
+    phone:        document.getElementById("cPhone").value.trim(),
+    contact_name: document.getElementById("cContact").value.trim(),
+  };
+  const url    = _editingCompanyId ? `/api/companies/${_editingCompanyId}` : "/api/companies";
+  const method = _editingCompanyId ? "PUT" : "POST";
+  const res = await fetch(url, { method, headers:{"Content-Type":"application/json"}, body:JSON.stringify(body) });
+  if (res.ok) {
+    document.getElementById("companyModal").classList.add("hidden");
+    drillTo("companies");
+  } else document.getElementById("companyModalError").textContent = "Error: " + (await res.json()).error;
+});
+
+// ── CRUD: Building ────────────────────────────────────────────────────────────
+document.getElementById("btnAddBuilding").addEventListener("click", () => {
+  if (!_selectedCompany) { alert("Select a company first."); return; }
+  _editingBuildingId = null;
+  document.getElementById("buildingModalTitle").textContent = `Add Building — ${_selectedCompany.name}`;
+  document.getElementById("buildingModalSave").textContent  = "Add Building";
+  ["bName","bAddress","bNotes"].forEach(id => document.getElementById(id).value="");
+  document.getElementById("bFloors").value = 1;
+  document.getElementById("buildingModalError").textContent = "";
+  document.getElementById("buildingModal").classList.remove("hidden");
+});
+
+document.getElementById("btnEditBuilding").addEventListener("click", () => {
+  if (!_selectedBuilding) { alert("Click a building card first."); return; }
+  _editingBuildingId = _selectedBuilding.building_id;
+  const b = _selectedBuilding;
+  document.getElementById("buildingModalTitle").textContent = "Edit Building";
+  document.getElementById("buildingModalSave").textContent  = "Save Changes";
+  document.getElementById("bName").value    = b.name    || "";
+  document.getElementById("bAddress").value = b.address || "";
+  document.getElementById("bFloors").value  = b.floors  || 1;
+  document.getElementById("bNotes").value   = b.notes   || "";
+  document.getElementById("buildingModalError").textContent = "";
+  document.getElementById("buildingModal").classList.remove("hidden");
+});
+
+document.getElementById("btnDeleteBuilding").addEventListener("click", async () => {
+  if (!_selectedBuilding) { alert("Click a building card first."); return; }
+  if (!confirm(`Delete "${_selectedBuilding.name}" and ALL its extinguishers? This cannot be undone.`)) return;
+  const res = await fetch(`/api/buildings/${_selectedBuilding.building_id}`, { method:"DELETE" });
+  if (res.ok) { _selectedBuilding=null; drillTo("buildings"); loadStats(); }
+  else alert("Delete failed: " + (await res.json()).error);
+});
+
+document.getElementById("buildingModalCancel").addEventListener("click", () => document.getElementById("buildingModal").classList.add("hidden"));
+document.getElementById("buildingModal").addEventListener("click", e => { if (e.target===document.getElementById("buildingModal")) document.getElementById("buildingModal").classList.add("hidden"); });
+
+document.getElementById("buildingModalSave").addEventListener("click", async () => {
+  const name = document.getElementById("bName").value.trim();
+  if (!name) { document.getElementById("buildingModalError").textContent = "Building name is required."; return; }
+  const body = {
+    company_id: _selectedCompany.company_id,
+    org_id:     orgId(),
+    name,
+    address: document.getElementById("bAddress").value.trim(),
+    floors:  parseInt(document.getElementById("bFloors").value) || 1,
+    notes:   document.getElementById("bNotes").value.trim(),
+  };
+  const url    = _editingBuildingId ? `/api/buildings/${_editingBuildingId}` : "/api/buildings";
+  const method = _editingBuildingId ? "PUT" : "POST";
+  const res = await fetch(url, { method, headers:{"Content-Type":"application/json"}, body:JSON.stringify(body) });
+  if (res.ok) {
+    document.getElementById("buildingModal").classList.add("hidden");
+    drillTo("buildings");
+  } else document.getElementById("buildingModalError").textContent = "Error: " + (await res.json()).error;
+});
+
+// ── CRUD: Add / Edit Extinguisher ─────────────────────────────────────────────
+async function populateExtModalDropdowns(presetCompanyId=null, presetBuildingId=null) {
+  const companies = await fetch("/api/companies").then(r=>r.json());
+  const compSel = document.getElementById("fCompany");
+  compSel.innerHTML = '<option value="">— Select company —</option>' +
+    companies.map(c => `<option value="${c.company_id}">${c.name}</option>`).join("");
+
+  // When company changes, reload buildings
+  compSel.onchange = async () => {
+    const cid = compSel.value;
+    const bSel = document.getElementById("fBuildingSelect");
+    if (!cid) { bSel.innerHTML = '<option value="">— Select building —</option>'; return; }
+    const buildings = await fetch(`/api/buildings?company_id=${cid}`).then(r=>r.json());
+    bSel.innerHTML = '<option value="">— Select building —</option>' +
+      buildings.map(b => `<option value="${b.building_id}">${b.name}</option>`).join("");
+  };
+
+  // Preset values if editing or drilling in from a building
+  if (presetCompanyId) {
+    compSel.value = presetCompanyId;
+    await compSel.onchange();
+    if (presetBuildingId) document.getElementById("fBuildingSelect").value = presetBuildingId;
+  }
+}
+
+document.getElementById("btnAdd").addEventListener("click", async () => {
+  editingExtId = null;
+  document.getElementById("modalTitle").textContent = "Add Extinguisher";
+  document.getElementById("modalSave").textContent  = "Add";
   clearModal();
-  const d=new Date(); d.setDate(d.getDate()+30);
-  document.getElementById("fDueDate").value=d.toISOString().split("T")[0];
+  const d = new Date(); d.setDate(d.getDate()+30);
+  document.getElementById("fDueDate").value = d.toISOString().split("T")[0];
+  // Pre-select current building from drill context
+  const presetCo   = _selectedCompany  ? _selectedCompany.company_id   : null;
+  const presetBldg = _selectedBuilding ? _selectedBuilding.building_id  : null;
+  await populateExtModalDropdowns(presetCo, presetBldg);
   document.getElementById("extModal").classList.remove("hidden");
 });
 
-document.getElementById("btnEdit").addEventListener("click",async()=>{
-  if(!selectedExtId){ alert("Select a row first."); return; }
-  const rows=await fetch("/api/extinguishers").then(r=>r.json());
-  const ext=rows.find(r=>r.extinguisher_id===selectedExtId);
-  if(!ext) return;
-  editingExtId=selectedExtId;
-  document.getElementById("modalTitle").textContent="Edit Extinguisher";
-  document.getElementById("modalSave").textContent="Save Changes";
-  document.getElementById("fAddress").value=ext.address||"";
-  document.getElementById("fBuilding").value=ext.building_number||"";
-  document.getElementById("fFloor").value=ext.floor_number||1;
-  document.getElementById("fRoom").value=ext.room_number||"";
-  document.getElementById("fLocDesc").value=ext.location_description||"";
-  document.getElementById("fInterval").value=ext.inspection_interval_days||30;
-  document.getElementById("fDueDate").value=ext.next_due_date||"";
-  document.getElementById("modalError").textContent="";
+document.getElementById("btnEdit").addEventListener("click", async () => {
+  if (!selectedExtId) { alert("Select a row first."); return; }
+  const rows = window._lastExtRows ||
+    await fetch(`/api/extinguishers?building_id=${_selectedBuilding?.building_id||""}`).then(r=>r.json());
+  const ext = rows.find(r => r.extinguisher_id === selectedExtId);
+  if (!ext) return;
+  editingExtId = selectedExtId;
+  document.getElementById("modalTitle").textContent = "Edit Extinguisher";
+  document.getElementById("modalSave").textContent  = "Save Changes";
+  document.getElementById("fFloor").value    = ext.floor_number  || 1;
+  document.getElementById("fRoom").value     = ext.room_number   || "";
+  document.getElementById("fLocDesc").value  = ext.location_description || "";
+  document.getElementById("fInterval").value = ext.inspection_interval_days || 30;
+  document.getElementById("fDueDate").value  = ext.next_due_date || "";
+  // NFPA metadata
+  document.getElementById("fExtType").value     = ext.ext_type || "";
+  document.getElementById("fExtSize").value     = ext.ext_size_lbs || "";
+  document.getElementById("fSerial").value      = ext.serial_number || "";
+  document.getElementById("fManufacturer").value= ext.manufacturer || "";
+  document.getElementById("fModel").value       = ext.model || "";
+  document.getElementById("fMfgDate").value     = ext.manufacture_date || "";
+  document.getElementById("fExtStatus").value   = ext.ext_status || "Active";
+  document.getElementById("fAnnualDate").value  = ext.last_annual_date || "";
+  document.getElementById("f6YearDate").value   = ext.last_6year_date || "";
+  document.getElementById("fHydroDate").value   = ext.last_hydro_date || "";
+  document.getElementById("modalError").textContent = "";
+  await populateExtModalDropdowns(ext.company_id_fk || _selectedCompany?.company_id, ext.building_id);
   document.getElementById("extModal").classList.remove("hidden");
 });
 
-document.getElementById("btnDelete").addEventListener("click",async()=>{
-  if(!selectedExtId){ alert("Select a row first."); return; }
-  if(!confirm("Delete this extinguisher and all linked assignments/reports?")) return;
-  const res=await fetch("/api/extinguishers/"+selectedExtId,{method:"DELETE"});
-  if(res.ok){ selectedExtId=null; loadExtinguishers(); loadStats(); }
-  else alert("Delete failed: "+(await res.json()).error);
+document.getElementById("btnDelete").addEventListener("click", async () => {
+  if (!selectedExtId) { alert("Select a row first."); return; }
+  if (!confirm("Delete this extinguisher and all linked assignments/reports?")) return;
+  const res = await fetch("/api/extinguishers/"+selectedExtId, { method:"DELETE" });
+  if (res.ok) {
+    selectedExtId = null;
+    await renderExtinguisherTable(_selectedBuilding.building_id);
+    loadStats();
+  } else alert("Delete failed: " + (await res.json()).error);
 });
 
-document.getElementById("modalCancel").addEventListener("click",()=>document.getElementById("extModal").classList.add("hidden"));
-document.getElementById("extModal").addEventListener("click",e=>{ if(e.target===document.getElementById("extModal")) document.getElementById("extModal").classList.add("hidden"); });
+document.getElementById("modalCancel").addEventListener("click", () => document.getElementById("extModal").classList.add("hidden"));
+document.getElementById("extModal").addEventListener("click", e => { if (e.target===document.getElementById("extModal")) document.getElementById("extModal").classList.add("hidden"); });
 
-document.getElementById("modalSave").addEventListener("click",async()=>{
-  const address=document.getElementById("fAddress").value.trim();
-  if(!address){ document.getElementById("modalError").textContent="Address is required."; return; }
-  const body={address,building_number:document.getElementById("fBuilding").value.trim(),floor_number:parseInt(document.getElementById("fFloor").value)||1,room_number:document.getElementById("fRoom").value.trim(),location_description:document.getElementById("fLocDesc").value.trim(),inspection_interval_days:parseInt(document.getElementById("fInterval").value)||30,next_due_date:document.getElementById("fDueDate").value};
-  const url=editingExtId?"/api/extinguishers/"+editingExtId:"/api/extinguishers";
-  const method=editingExtId?"PUT":"POST";
-  const res=await fetch(url,{method,headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
-  if(res.ok){ document.getElementById("extModal").classList.add("hidden"); loadExtinguishers(); loadStats(); }
-  else document.getElementById("modalError").textContent="Error: "+(await res.json()).error;
+document.getElementById("modalSave").addEventListener("click", async () => {
+  const buildingId = parseInt(document.getElementById("fBuildingSelect").value);
+  if (!buildingId) { document.getElementById("modalError").textContent = "Select a building."; return; }
+  // Derive address from building for backward-compat
+  const buildings = await fetch(`/api/buildings?company_id=${document.getElementById("fCompany").value}`).then(r=>r.json());
+  const bldg = buildings.find(b => b.building_id === buildingId);
+  const body = {
+    address:                bldg?.address || bldg?.name || "",
+    building_number:        bldg?.name || "",
+    floor_number:           parseInt(document.getElementById("fFloor").value) || 1,
+    room_number:            document.getElementById("fRoom").value.trim(),
+    location_description:   document.getElementById("fLocDesc").value.trim(),
+    inspection_interval_days: parseInt(document.getElementById("fInterval").value) || 30,
+    next_due_date:          document.getElementById("fDueDate").value,
+    building_id:            buildingId,
+    org_id:                 orgId(),
+    // NFPA 10 metadata
+    ext_type:               document.getElementById("fExtType").value,
+    ext_size_lbs:           parseFloat(document.getElementById("fExtSize").value) || null,
+    serial_number:          document.getElementById("fSerial").value.trim(),
+    manufacturer:           document.getElementById("fManufacturer").value.trim(),
+    model:                  document.getElementById("fModel").value.trim(),
+    manufacture_date:       document.getElementById("fMfgDate").value || null,
+    ext_status:             document.getElementById("fExtStatus").value,
+    last_annual_date:       document.getElementById("fAnnualDate").value || null,
+    last_6year_date:        document.getElementById("f6YearDate").value || null,
+    last_hydro_date:        document.getElementById("fHydroDate").value || null,
+  };
+  const url    = editingExtId ? "/api/extinguishers/"+editingExtId : "/api/extinguishers";
+  const method = editingExtId ? "PUT" : "POST";
+  const res = await fetch(url, { method, headers:{"Content-Type":"application/json"}, body:JSON.stringify(body) });
+  if (res.ok) {
+    document.getElementById("extModal").classList.add("hidden");
+    await renderExtinguisherTable(buildingId);
+    loadStats();
+  } else document.getElementById("modalError").textContent = "Error: " + (await res.json()).error;
 });
 
 function clearModal() {
-  ["fAddress","fBuilding","fRoom","fLocDesc","fDueDate"].forEach(id=>document.getElementById(id).value="");
-  document.getElementById("fFloor").value=1;
-  document.getElementById("fInterval").value=30;
-  document.getElementById("modalError").textContent="";
+  ["fRoom","fLocDesc","fDueDate","fSerial","fManufacturer","fModel","fMfgDate","fAnnualDate","f6YearDate","fHydroDate"].forEach(id => document.getElementById(id).value="");
+  document.getElementById("fFloor").value    = 1;
+  document.getElementById("fInterval").value = 30;
+  document.getElementById("fExtType").value  = "";
+  document.getElementById("fExtSize").value  = "";
+  document.getElementById("fExtStatus").value = "Active";
+  document.getElementById("modalError").textContent = "";
 }
 
 // ── Assignment modal helpers ───────────────────────────────────────────────────
 async function openAssignModal(editRow=null) {
   editingAssignId = editRow ? editRow.assignment_id : null;
 
-  const exts  = await fetch("/api/extinguishers").then(r=>r.json());
-  const users  = await fetch("/api/users").then(r=>r.json());
+  // Load companies and inspectors in parallel
+  const [companies, users] = await Promise.all([
+    fetch(`/api/companies?org_id=${orgId()}`).then(r=>r.json()),
+    fetch(`/api/users?org_id=${orgId()}`).then(r=>r.json()),
+  ]);
   const inspectors = users.filter(u=>u.role==="Inspector"||u.role==="3rd_Party_Inspector");
 
-  document.getElementById("aExtinguisher").innerHTML = exts.map(e=>
-    `<option value="${e.extinguisher_id}">#${e.extinguisher_id} — ${e.address}, ${e.building_number} Fl.${e.floor_number}</option>`
-  ).join("");
+  // ── Populate Company dropdown ──────────────────────────────────
+  const aCompany = document.getElementById("aCompany");
+  const aBuilding = document.getElementById("aBuilding");
+  const aExt = document.getElementById("aExtinguisher");
+
+  aCompany.innerHTML = '<option value="">— Select company —</option>' +
+    companies.map(c=>`<option value="${c.company_id}">${c.name}</option>`).join("");
+  aBuilding.innerHTML = '<option value="">— Select company first —</option>';
+  aBuilding.disabled = true;
+  aExt.innerHTML = '<option value="">— Select building first —</option>';
+  aExt.disabled = true;
+
+  // ── Cascade: company → buildings ──────────────────────────────
+  aCompany.onchange = async () => {
+    const cid = aCompany.value;
+    aBuilding.innerHTML = '<option value="">— Select building —</option>';
+    aExt.innerHTML = '<option value="">— Select building first —</option>';
+    aExt.disabled = true;
+    if (!cid) { aBuilding.disabled = true; return; }
+    const buildings = await fetch(`/api/buildings?company_id=${cid}`).then(r=>r.json());
+    aBuilding.innerHTML = '<option value="">— Select building —</option>' +
+      buildings.map(b=>`<option value="${b.building_id}">${b.name}${b.address ? ' — '+b.address : ''}</option>`).join("");
+    aBuilding.disabled = false;
+  };
+
+  // ── Cascade: building → extinguishers ────────────────────────
+  aBuilding.onchange = async () => {
+    const bid = aBuilding.value;
+    aExt.innerHTML = '<option value="">— Select extinguisher —</option>';
+    if (!bid) { aExt.disabled = true; return; }
+    const exts = await fetch(`/api/extinguishers?building_id=${bid}`).then(r=>r.json());
+    if (!exts.length) {
+      aExt.innerHTML = '<option value="">No extinguishers in this building</option>';
+      aExt.disabled = true;
+      return;
+    }
+    aExt.innerHTML = '<option value="">— Select extinguisher —</option>' +
+      exts.map(e => {
+        const loc = `Fl.${e.floor_number||"?"} Rm.${e.room_number||"?"}`;
+        const desc = e.location_description ? ` — ${e.location_description}` : "";
+        return `<option value="${e.extinguisher_id}">#${e.extinguisher_id} · ${loc}${desc}</option>`;
+      }).join("");
+    aExt.disabled = false;
+  };
+
+  // ── Populate Inspector dropdown ───────────────────────────────
   document.getElementById("aInspector").innerHTML = inspectors.map(u=>
     `<option value="${u.user_id}">${u.username} [${u.role}]</option>`
   ).join("");
 
   if (editRow) {
-    // Pre-fill for edit
+    // Pre-fill all three cascades for edit — find the ext to get its building/company
     document.getElementById("assignModalTitle").textContent = "Edit Assignment";
     document.getElementById("assignModalSave").textContent  = "Save Changes";
     document.getElementById("aStatusRow").style.display     = "";
-    // Select matching extinguisher
-    [...document.getElementById("aExtinguisher").options].forEach(o=>{
-      if(parseInt(o.value)===editRow.extinguisher_id) o.selected=true;
-    });
-    // Select matching inspector by username — need to match user_id
-    // inspectors list has user_id; editRow may have inspector username, so find by id if available
+    document.getElementById("aDueDate").value = editRow.due_date || "";
+    document.getElementById("aNotes").value   = editRow.notes    || "";
+    document.getElementById("aStatus").value  = editRow.status   || "Pending Inspection";
+
+    // Load ext to find its building_id and company
+    if (editRow.extinguisher_id) {
+      const allExts = await fetch("/api/extinguishers").then(r=>r.json());
+      const ext = allExts.find(e=>e.extinguisher_id===editRow.extinguisher_id);
+      if (ext && ext.building_id) {
+        // Set company, trigger cascade
+        const coId = ext.company_id_fk || companies.find(c=>c.name===ext.company_name)?.company_id;
+        if (coId) {
+          aCompany.value = coId;
+          await aCompany.onchange();
+          // Set building, trigger cascade
+          const bldgs = await fetch(`/api/buildings?company_id=${coId}`).then(r=>r.json());
+          const bldg = bldgs.find(b=>b.building_id===ext.building_id);
+          if (bldg) {
+            aBuilding.value = bldg.building_id;
+            await aBuilding.onchange();
+            aExt.value = editRow.extinguisher_id;
+          }
+        }
+      }
+    }
     if (editRow.inspector_id) {
       [...document.getElementById("aInspector").options].forEach(o=>{
         if(parseInt(o.value)===editRow.inspector_id) o.selected=true;
       });
     }
-    document.getElementById("aDueDate").value  = editRow.due_date || "";
-    document.getElementById("aNotes").value    = editRow.notes    || "";
-    document.getElementById("aStatus").value   = editRow.status   || "Pending Inspection";
   } else {
-    // Fresh generate
+    // Fresh generate — pre-select current drill context if available
     document.getElementById("assignModalTitle").textContent = "Generate Assignment";
     document.getElementById("assignModalSave").textContent  = "Generate";
     document.getElementById("aStatusRow").style.display     = "none";
     const d = new Date(); d.setDate(d.getDate()+7);
     document.getElementById("aDueDate").value = d.toISOString().split("T")[0];
     document.getElementById("aNotes").value   = "";
+
+    // If user is already drilled into a company/building, pre-select it
+    if (_selectedCompany) {
+      aCompany.value = _selectedCompany.company_id;
+      await aCompany.onchange();
+      if (_selectedBuilding) {
+        aBuilding.value = _selectedBuilding.building_id;
+        await aBuilding.onchange();
+      }
+    }
   }
 
   document.getElementById("assignModalError").textContent = "";
@@ -1161,7 +2142,7 @@ document.getElementById("assignModalSave").addEventListener("click",async()=>{
     const res = await fetch("/api/assignments",{
       method:"POST",
       headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({admin_id:currentUser.user_id, inspector_id:invId, extinguisher_id:extId, due_date:due, notes})
+      body:JSON.stringify({admin_id:currentUser.user_id, inspector_id:invId, extinguisher_id:extId, due_date:due, notes, org_id:orgId()})
     });
     if (res.ok) { document.getElementById("assignModal").classList.add("hidden"); loadAssignments(); loadStats(); }
     else errEl.textContent = "Error: "+(await res.json()).error;
@@ -1233,7 +2214,8 @@ document.getElementById("reportModalSave").addEventListener("click",async()=>{
         inspection_date:date,
         notes,
         assignment_id:assignmentId,
-        photo_path:photoPath
+        photo_path:photoPath,
+        org_id:orgId()
       })
     });
 
@@ -1398,16 +2380,71 @@ async function loadUserPreferences() {
     applyTheme("dark");
   }
 }
+// ── Add User button ──────────────────────────────────────────────────────────
 document.getElementById("btnAddUser").addEventListener("click", () => {
+  editingUserId = null;
+  document.getElementById("userModalTitle").textContent = "Add New User";
+  document.getElementById("userModalSave").textContent  = "Create User";
   ["uUsername","uPassword","uConfirm"].forEach(id => document.getElementById(id).value = "");
+  document.getElementById("uUsername").disabled = false;
   document.getElementById("uRole").value = "Inspector";
   document.getElementById("userModalError").textContent = "";
+  // Show password fields as required for new user
+  document.getElementById("uPasswordRow").style.display = "";
+  document.getElementById("uConfirmRow").style.display  = "";
+  document.getElementById("uPasswordHint").style.display = "none";
   document.getElementById("userModal").classList.remove("hidden");
+});
+
+// ── Edit User button ─────────────────────────────────────────────────────────
+document.getElementById("btnEditUser").addEventListener("click", () => {
+  if (!selectedUserId) { alert("Select a user first."); return; }
+  const user = (window._lastUserRows || []).find(u => u.user_id === selectedUserId);
+  if (!user) return;
+
+  editingUserId = selectedUserId;
+  document.getElementById("userModalTitle").textContent = "Edit User";
+  document.getElementById("userModalSave").textContent  = "Save Changes";
+  document.getElementById("uUsername").value    = user.username;
+  document.getElementById("uUsername").disabled = false;
+  document.getElementById("uRole").value        = user.role;
+  document.getElementById("uPassword").value    = "";
+  document.getElementById("uConfirm").value     = "";
+  document.getElementById("userModalError").textContent = "";
+  // Password optional for edit
+  document.getElementById("uPasswordRow").style.display  = "";
+  document.getElementById("uConfirmRow").style.display   = "";
+  document.getElementById("uPasswordHint").style.display = "";
+  document.getElementById("userModal").classList.remove("hidden");
+});
+
+// ── Delete User button ───────────────────────────────────────────────────────
+document.getElementById("btnDeleteUser").addEventListener("click", async () => {
+  if (!selectedUserId) { alert("Select a user first."); return; }
+  const user = (window._lastUserRows || []).find(u => u.user_id === selectedUserId);
+  if (!user) return;
+
+  // Don't allow deleting yourself
+  if (selectedUserId === currentUser.user_id) {
+    alert("You cannot delete your own account.");
+    return;
+  }
+
+  if (!confirm(`Delete user "${user.username}" (${user.role})?\n\nTheir assignments will be unassigned. Reports will be kept for audit trail.`)) return;
+
+  const res = await fetch("/api/users/" + selectedUserId, { method: "DELETE" });
+  if (res.ok) {
+    selectedUserId = null;
+    loadUsers(); loadStats();
+  } else {
+    alert("Delete failed: " + (await res.json()).error);
+  }
 });
 
 document.getElementById("userModalCancel").addEventListener("click", () => document.getElementById("userModal").classList.add("hidden"));
 document.getElementById("userModal").addEventListener("click", e => { if(e.target === document.getElementById("userModal")) document.getElementById("userModal").classList.add("hidden"); });
 
+// ── Save handler (works for both Add and Edit) ──────────────────────────────
 document.getElementById("userModalSave").addEventListener("click", async () => {
   const username = document.getElementById("uUsername").value.trim();
   const password = document.getElementById("uPassword").value;
@@ -1415,24 +2452,50 @@ document.getElementById("userModalSave").addEventListener("click", async () => {
   const role     = document.getElementById("uRole").value;
   const errEl    = document.getElementById("userModalError");
 
-  if (!username)              { errEl.textContent = "Username is required."; return; }
-  if (!password)              { errEl.textContent = "Password is required."; return; }
-  if (password !== confirm)   { errEl.textContent = "Passwords do not match."; return; }
-  if (password.length < 6)   { errEl.textContent = "Password must be at least 6 characters."; return; }
+  if (!username) { errEl.textContent = "Username is required."; return; }
 
-  const hashed = await sha256(password);
+  if (editingUserId) {
+    // ── EDIT MODE ──
+    // Password is optional — only validate if provided
+    if (password || confirm) {
+      if (password !== confirm) { errEl.textContent = "Passwords do not match."; return; }
+      if (password.length < 6)  { errEl.textContent = "Password must be at least 6 characters."; return; }
+    }
 
-  const res = await fetch("/api/users", {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({ username, password: hashed, role })
-  });
+    const body = { username, role };
+    if (password) body.password = await sha256(password);
 
-  if (res.ok) {
-    document.getElementById("userModal").classList.add("hidden");
-    loadUsers(); loadStats();
+    const res = await fetch("/api/users/" + editingUserId, {
+      method: "PUT",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(body)
+    });
+
+    if (res.ok) {
+      document.getElementById("userModal").classList.add("hidden");
+      loadUsers(); loadStats();
+    } else {
+      errEl.textContent = "Error: " + (await res.json()).error;
+    }
   } else {
-    errEl.textContent = "Error: " + (await res.json()).error;
+    // ── ADD MODE ──
+    if (!password)            { errEl.textContent = "Password is required."; return; }
+    if (password !== confirm) { errEl.textContent = "Passwords do not match."; return; }
+    if (password.length < 6)  { errEl.textContent = "Password must be at least 6 characters."; return; }
+
+    const hashed = await sha256(password);
+    const res = await fetch("/api/users", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ username, password: hashed, role, org_id: orgId() })
+    });
+
+    if (res.ok) {
+      document.getElementById("userModal").classList.add("hidden");
+      loadUsers(); loadStats();
+    } else {
+      errEl.textContent = "Error: " + (await res.json()).error;
+    }
   }
 });
 
@@ -1465,14 +2528,13 @@ async function silentRefresh() {
     const prevReport = _prevReportCount;
 
     // Fetch stats once — reuse for both display update AND badge check
-    const stats = await fetch("/api/stats").then(r=>r.json());
+    const stats = await fetch(`/api/stats?org_id=${orgId()}`).then(r=>r.json());
 
-    // For inspectors fetch their personal counts
     let newAssignCount, newReportCount;
     if (isInv() || isThirdInv()) {
       const [a, rep] = await Promise.all([
-        fetch("/api/assignments?user_id=" + currentUser.user_id).then(r=>r.json()),
-        fetch("/api/reports?user_id="     + currentUser.user_id).then(r=>r.json())
+        fetch(`/api/assignments?user_id=${currentUser.user_id}&org_id=${orgId()}`).then(r=>r.json()),
+        fetch(`/api/reports?user_id=${currentUser.user_id}&org_id=${orgId()}`).then(r=>r.json())
       ]);
       newAssignCount = a.length;
       newReportCount = rep.length;
@@ -1567,7 +2629,7 @@ function badgeTab(keyword, count) {
 async function fetchNotifications() {
   if (!currentUser) return;
   try {
-    const res = await fetch("/api/notifications?user_id=" + currentUser.user_id + "&role=" + encodeURIComponent(currentUser.role));
+    const res = await fetch("/api/notifications?user_id=" + currentUser.user_id + "&role=" + encodeURIComponent(currentUser.role) + "&org_id=" + (orgId()||""));
     if (!res.ok) return;
     const data = await res.json();
     _notifications = data;
@@ -1645,6 +2707,253 @@ function formatNotifTime(ts) {
   return new Date(ts).toLocaleDateString();
 }
 
+// ── Card selection helpers (for edit/delete without re-drilling) ──────────────
+function selectCompanyCard(el, data) {
+  document.querySelectorAll(".company-card").forEach(c => c.classList.remove("selected"));
+  el.classList.add("selected");
+  _selectedCompany = data;
+}
+function selectBuildingCard(el, data) {
+  document.querySelectorAll(".building-card").forEach(c => c.classList.remove("selected"));
+  el.classList.add("selected");
+  _selectedBuilding = data;
+}
+
+// ── Extinguisher detail popup ─────────────────────────────────────────────────
+function openExtDetail(row) {
+  // Header
+  document.getElementById("detailExtId").textContent = `EXT-${row.extinguisher_id}`;
+  document.getElementById("detailExtTitle").textContent =
+    row.location_description || row.building_name || row.address || "Extinguisher Details";
+
+  // Work out due date status
+  const today = new Date().toISOString().split("T")[0];
+  let dueCls = "ok", dueLabel = row.next_due_date || "—";
+  if (row.next_due_date) {
+    const daysUntil = Math.ceil((new Date(row.next_due_date) - new Date(today)) / 86400000);
+    if (daysUntil < 0)       { dueCls = "overdue";  dueLabel += "  ⚠ OVERDUE"; }
+    else if (daysUntil <= 30) { dueCls = "due-soon"; dueLabel += `  (${daysUntil}d)`; }
+  }
+
+  // Build grid fields
+  const fields = [
+    { label: "Company",      value: row.company_name  || "—",               full: false },
+    { label: "Building",     value: row.building_name || row.building_number || "—", full: false },
+    { label: "Floor",        value: row.floor_number  != null ? `Floor ${row.floor_number}` : "—", full: false },
+    { label: "Room",         value: row.room_number   || "—",               full: false },
+    { label: "Next Due Date",value: dueLabel,                                full: false, cls: dueCls },
+    { label: "Interval",     value: row.inspection_interval_days ? `Every ${row.inspection_interval_days} days` : "—", full: false },
+    { label: "Location",     value: row.location_description || "—",         full: true  },
+    { label: "Extinguisher ID", value: `#${row.extinguisher_id}`,            full: false },
+    { label: "Last Report",  value: row.last_report_id ? `Report #${row.last_report_id}` : "No reports yet", full: false },
+  ];
+
+  // NFPA 10 metadata — only show fields that have data
+  const nfpaFields = [
+    { label: "Type / Class",   value: row.ext_type },
+    { label: "Size",           value: row.ext_size_lbs ? `${row.ext_size_lbs} lbs` : null },
+    { label: "Serial Number",  value: row.serial_number },
+    { label: "Manufacturer",   value: row.manufacturer },
+    { label: "Model",          value: row.model },
+    { label: "Mfg Date",       value: row.manufacture_date },
+    { label: "Status",         value: row.ext_status, cls: row.ext_status === "Active" ? "ok" : row.ext_status === "Missing" ? "overdue" : "due-soon" },
+    { label: "Annual Maint.",  value: row.last_annual_date },
+    { label: "6-Year Service", value: row.last_6year_date },
+    { label: "Hydro Test",     value: row.last_hydro_date },
+  ];
+  const hasNfpa = nfpaFields.some(f => f.value);
+  if (hasNfpa) {
+    fields.push({ label: "", value: "<span style='font-family:IBM Plex Mono,monospace;font-size:0.6rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);'>NFPA 10 Compliance</span>", full: true, raw: true });
+    nfpaFields.forEach(f => {
+      if (f.value) fields.push({ label: f.label, value: f.value, full: false, cls: f.cls || "" });
+    });
+  }
+
+  document.getElementById("detailExtGrid").innerHTML = fields.map(f => `
+    <div class="${f.full ? "ext-detail-field-full" : "ext-detail-field"}">
+      ${f.raw ? `<div>${f.value}</div>` : `<div class="ext-detail-label">${f.label}</div>
+      <div class="ext-detail-value ${f.cls || ""}">${f.value}</div>`}
+    </div>
+  `).join("");
+
+  // Footer — quick action buttons (Admin only)
+  const footer = document.getElementById("detailExtFooter");
+  if (isAdmin()) {
+    footer.innerHTML = `
+      <button class="btn-crud btn-edit" style="font-size:0.72rem;padding:6px 14px;min-height:34px;"
+        onclick="document.getElementById('extDetailModal').classList.add('hidden'); document.getElementById('btnEdit').click();">
+        ✎ Edit
+      </button>
+      <button class="btn-crud btn-delete" style="font-size:0.72rem;padding:6px 14px;min-height:34px;"
+        onclick="document.getElementById('extDetailModal').classList.add('hidden'); document.getElementById('btnDelete').click();">
+        ✕ Delete
+      </button>
+    `;
+  } else {
+    footer.innerHTML = `
+      <button class="btn-crud btn-edit" style="font-size:0.72rem;padding:6px 14px;min-height:34px;background:var(--bg3);border-color:var(--border);color:var(--muted);"
+        onclick="document.getElementById('extDetailModal').classList.add('hidden');">
+        Close
+      </button>
+    `;
+  }
+
+  document.getElementById("extDetailModal").classList.remove("hidden");
+}
+
+// Close on backdrop tap
+document.getElementById("extDetailModal").addEventListener("click", e => {
+  if (e.target === document.getElementById("extDetailModal"))
+    document.getElementById("extDetailModal").classList.add("hidden");
+});
+
+// ── Assignment detail popup ───────────────────────────────────────────────────
+function openAssignDetail(row) {
+  document.getElementById("detailAssignId").textContent = `ASSIGN-${row.assignment_id}`;
+
+  const statusText = row.status || "Unknown";
+  const statusCls  = statusText.toLowerCase().includes("complete") ? "ok"
+                   : statusText.toLowerCase().includes("pending")  ? "due-soon" : "";
+  document.getElementById("detailAssignTitle").innerHTML =
+    `<span class="ext-detail-value ${statusCls}" style="font-size:0.9rem;">${statusText}</span>`;
+
+  const fields = [
+    { label: "Company",      value: row.company_name  || "—",                               full: false },
+    { label: "Building",     value: row.building_name || "—",                               full: false },
+    { label: "Floor",        value: row.floor_number  != null ? `Floor ${row.floor_number}` : "—", full: false },
+    { label: "Room",         value: row.room_number   || "—",                               full: false },
+    { label: "Location",     value: row.location_description || "—",                        full: true  },
+    { label: "Extinguisher", value: `#${row.extinguisher_id}`,                              full: false },
+    { label: "Assigned By",  value: row.assigned_by   || "—",                               full: false },
+    { label: "Inspector",    value: row.inspector      || "—",                               full: false },
+    { label: "Due Date",     value: row.due_date       || "—",                               full: false },
+    { label: "Status",       value: statusText,                                              full: false, cls: statusCls },
+    { label: "Notes",        value: row.notes && row.notes.trim() ? row.notes : "No notes", full: true  },
+  ];
+
+  document.getElementById("detailAssignGrid").innerHTML = fields.map(f => `
+    <div class="${f.full ? "ext-detail-field-full" : "ext-detail-field"}">
+      <div class="ext-detail-label">${f.label}</div>
+      <div class="ext-detail-value ${f.cls || ""}">${f.value}</div>
+    </div>
+  `).join("");
+
+  const footer = document.getElementById("detailAssignFooter");
+  const aid = row.assignment_id;
+  if (isAdmin() || isThirdAdmin()) {
+    footer.innerHTML = `
+      <button class="btn-crud btn-edit" style="font-size:0.72rem;padding:6px 14px;min-height:34px;"
+        onclick="document.getElementById('assignDetailModal').classList.add('hidden'); _openAssignEditById(${aid});">
+        ✎ Edit
+      </button>
+    `;
+  } else {
+    footer.innerHTML = `
+      <button class="btn-crud" style="font-size:0.72rem;padding:6px 14px;min-height:34px;background:var(--bg3);border-color:var(--border);color:var(--muted);"
+        onclick="document.getElementById('assignDetailModal').classList.add('hidden');">Close</button>
+    `;
+  }
+
+  document.getElementById("assignDetailModal").classList.remove("hidden");
+}
+
+document.getElementById("assignDetailModal").addEventListener("click", e => {
+  if (e.target === document.getElementById("assignDetailModal"))
+    document.getElementById("assignDetailModal").classList.add("hidden");
+});
+
+// ── Report detail popup ───────────────────────────────────────────────────────
+function openReportDetail(row) {
+  document.getElementById("detailReportId").textContent = `RPT-${row.report_id}`;
+  document.getElementById("detailReportTitle").textContent =
+    row.inspection_date ? `Inspected ${row.inspection_date}` : "Inspection Report";
+
+  const fields = [
+    { label: "Company",         value: row.company_name      || "—",                               full: false },
+    { label: "Building",        value: row.building_name     || "—",                               full: false },
+    { label: "Floor",           value: row.floor_number != null ? `Floor ${row.floor_number}` : "—", full: false },
+    { label: "Room",            value: row.room_number       || "—",                               full: false },
+    { label: "Location",        value: row.location_description || "—",                            full: true  },
+    { label: "Extinguisher",    value: `#${row.extinguisher_id}`,                                  full: false },
+    { label: "Inspector",       value: row.inspector          || "—",                               full: false },
+    { label: "Inspection Date", value: row.inspection_date    || "—",                               full: false },
+    { label: "Notes",           value: row.notes && row.notes.trim() ? row.notes : "No notes",     full: true  },
+  ];
+
+  let gridHtml = fields.map(f => `
+    <div class="${f.full ? "ext-detail-field-full" : "ext-detail-field"}">
+      <div class="ext-detail-label">${f.label}</div>
+      <div class="ext-detail-value">${f.value}</div>
+    </div>
+  `).join("");
+
+  // Photo — full width with clickable thumbnail
+  if (row.photo_path) {
+    gridHtml += `
+      <div class="ext-detail-field-full">
+        <div class="ext-detail-label">Photo</div>
+        <img src="/uploads/${row.photo_path}" alt="Inspection photo"
+          style="width:100%;max-height:200px;object-fit:cover;border-radius:4px;margin-top:0.3rem;cursor:zoom-in;"
+          onclick="document.getElementById('reportDetailModal').classList.add('hidden'); openPhotoViewer('/uploads/${row.photo_path}');" />
+      </div>
+    `;
+  } else {
+    gridHtml += `
+      <div class="ext-detail-field-full">
+        <div class="ext-detail-label">Photo</div>
+        <div class="ext-detail-value" style="color:var(--muted);">No photo attached</div>
+      </div>
+    `;
+  }
+
+  document.getElementById("detailReportGrid").innerHTML = gridHtml;
+  document.getElementById("detailReportFooter").innerHTML = `
+    <button class="btn-crud" style="font-size:0.72rem;padding:6px 14px;min-height:34px;background:var(--bg3);border-color:var(--border);color:var(--muted);"
+      onclick="document.getElementById('reportDetailModal').classList.add('hidden');">Close</button>
+  `;
+  document.getElementById("reportDetailModal").classList.remove("hidden");
+}
+
+document.getElementById("reportDetailModal").addEventListener("click", e => {
+  if (e.target === document.getElementById("reportDetailModal"))
+    document.getElementById("reportDetailModal").classList.add("hidden");
+});
+
+function _openAssignEditById(aid) {
+  const row = window._lastAssignRows?.find(r => r.assignment_id === aid);
+  if (row) openAssignModal(row);
+}
+
+// Open company edit modal directly from card button (no drilling required)
+function editCompanyCard(data) {
+  _selectedCompany  = data;
+  _editingCompanyId = data.company_id;
+  document.getElementById("companyModalTitle").textContent = "Edit Company";
+  document.getElementById("companyModalSave").textContent  = "Save Changes";
+  document.getElementById("cName").value    = data.name         || "";
+  document.getElementById("cAddress").value = data.address      || "";
+  document.getElementById("cCity").value    = data.city         || "";
+  document.getElementById("cState").value   = data.state        || "";
+  document.getElementById("cPhone").value   = data.phone        || "";
+  document.getElementById("cContact").value = data.contact_name || "";
+  document.getElementById("companyModalError").textContent = "";
+  document.getElementById("companyModal").classList.remove("hidden");
+}
+
+// Open building edit modal directly from card button (no drilling required)
+function editBuildingCard(data) {
+  _selectedBuilding  = data;
+  _editingBuildingId = data.building_id;
+  document.getElementById("buildingModalTitle").textContent = "Edit Building";
+  document.getElementById("buildingModalSave").textContent  = "Save Changes";
+  document.getElementById("bName").value    = data.name    || "";
+  document.getElementById("bAddress").value = data.address || "";
+  document.getElementById("bFloors").value  = data.floors  || 1;
+  document.getElementById("bNotes").value   = data.notes   || "";
+  document.getElementById("buildingModalError").textContent = "";
+  document.getElementById("buildingModal").classList.remove("hidden");
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 //  PHOTO UPLOAD — preview and viewer
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1679,13 +2988,530 @@ document.getElementById("photoClear").addEventListener("click", function(e) {
     `📷 Tap to take photo or <span>browse files</span>`;
 });
 
-function openPhotoViewer(src) {
-  const viewer = document.createElement("div");
-  viewer.className = "photo-viewer";
-  viewer.innerHTML = `<img src="${src}" alt="Inspection photo" />`;
-  viewer.addEventListener("click", () => viewer.remove());
-  document.body.appendChild(viewer);
+// ══════════════════════════════════════════════════════════════════════════════
+//  REPORT HISTORY FILTERING
+// ══════════════════════════════════════════════════════════════════════════════
+
+// Track last render state to prevent flicker on poll
+let _lastReportHash = "";
+
+function applyReportFilters() {
+  const rows = window._allReports || [];
+  const dateFrom  = document.getElementById("filterDateFrom")?.value  || "";
+  const dateTo    = document.getElementById("filterDateTo")?.value    || "";
+  const inspector = document.getElementById("filterInspector")?.value || "";
+  const status    = document.getElementById("filterStatus")?.value    || "";
+
+  let filtered = rows.filter(r => {
+    const date = r.inspection_date || "";
+    if (dateFrom && date && date < dateFrom) return false;
+    if (dateTo   && date && date > dateTo)   return false;
+    if (inspector && r.inspector !== inspector) return false;
+    if (status === "photo"   && !r.photo_path)                return false;
+    if (status === "nophoto" && r.photo_path)                 return false;
+    if (status === "notes"   && !(r.notes && r.notes.trim())) return false;
+    return true;
+  });
+
+  // Update active filter count badge
+  const activeCount = [dateFrom, dateTo, inspector, status].filter(Boolean).length;
+  const badge = document.getElementById("filterActiveCount");
+  if (badge) {
+    if (activeCount > 0) {
+      badge.textContent = `${filtered.length} of ${rows.length} shown`;
+      badge.classList.add("show");
+    } else {
+      badge.classList.remove("show");
+    }
+  }
+
+  // Only re-render if the filtered data actually changed — prevents flicker on poll
+  const newHash = JSON.stringify(filtered.map(r => r.report_id + "|" + r.inspection_date + "|" + r.photo_path));
+  if (newHash === _lastReportHash) return;
+  _lastReportHash = newHash;
+
+  const cols = isAdmin()
+    ? ["report_id","extinguisher_id","inspector","inspection_date","notes","photo_path"]
+    : ["report_id","extinguisher_id","inspection_date","notes","photo_path"];
+  renderTable("tableReportsWrap", cols, filtered, row=>{ openReportDetail(row); });
+  renderCards("cardReportsWrap",  filtered, "report", row=>{ openReportDetail(row); });
 }
+
+// Wire up filter inputs — apply on any change
+["filterDateFrom","filterDateTo","filterInspector","filterStatus"].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener("change", () => { _lastReportHash = ""; applyReportFilters(); });
+});
+
+// Clear all filters
+document.getElementById("btnClearFilter")?.addEventListener("click", () => {
+  document.getElementById("filterDateFrom").value   = "";
+  document.getElementById("filterDateTo").value     = "";
+  document.getElementById("filterInspector").value  = "";
+  document.getElementById("filterStatus").value     = "";
+  _lastReportHash = "";
+  applyReportFilters();
+});
+// ── Export File dropdown toggle ───────────────────────────────────────────────
+document.getElementById("btnExportToggle")?.addEventListener("click", (e) => {
+  e.stopPropagation();
+  document.getElementById("exportMenu").classList.toggle("hidden");
+});
+// Close dropdown when clicking anywhere else
+document.addEventListener("click", () => {
+  document.getElementById("exportMenu")?.classList.add("hidden");
+});
+// Hover effect on export options
+document.querySelectorAll(".export-option").forEach(btn => {
+  btn.addEventListener("mouseenter", () => btn.style.background = "var(--bg3)");
+  btn.addEventListener("mouseleave", () => btn.style.background = "none");
+});
+
+// Shared helper: get filtered report rows
+function getFilteredReports() {
+  const rows = window._allReports || [];
+  if (rows.length === 0) return [];
+  const dateFrom  = document.getElementById("filterDateFrom")?.value  || "";
+  const dateTo    = document.getElementById("filterDateTo")?.value    || "";
+  const inspector = document.getElementById("filterInspector")?.value || "";
+  const status    = document.getElementById("filterStatus")?.value    || "";
+  return rows.filter(r => {
+    const date = r.inspection_date || "";
+    if (dateFrom && date && date < dateFrom) return false;
+    if (dateTo   && date && date > dateTo)   return false;
+    if (inspector && r.inspector !== inspector) return false;
+    if (status === "photo"   && !r.photo_path)                return false;
+    if (status === "nophoto" && r.photo_path)                 return false;
+    if (status === "notes"   && !(r.notes && r.notes.trim())) return false;
+    return true;
+  });
+}
+
+// ── Export as CSV ─────────────────────────────────────────────────────────────
+document.getElementById("btnExportCSV")?.addEventListener("click", () => {
+  document.getElementById("exportMenu").classList.add("hidden");
+  const filtered = getFilteredReports();
+  if (filtered.length === 0) { alert("No reports to export."); return; }
+
+  const headers = ["Report ID","Extinguisher ID","Company","Building","Floor","Room","Inspector","Date","Notes"];
+  const csvRows = [headers.join(",")];
+  filtered.forEach(r => {
+    csvRows.push([
+      r.report_id || "",
+      r.extinguisher_id || "",
+      `"${(r.company_name || "").replace(/"/g,'""')}"`,
+      `"${(r.building_name || "").replace(/"/g,'""')}"`,
+      r.floor_number || "",
+      r.room_number || "",
+      `"${(r.inspector || "").replace(/"/g,'""')}"`,
+      r.inspection_date || "",
+      `"${(r.notes || "").replace(/"/g,'""')}"`
+    ].join(","));
+  });
+
+  const blob = new Blob([csvRows.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href     = url;
+  a.download = "FireWatch_Reports.csv";
+  a.style.display = "none";
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
+});
+
+// ── Export as Word (.doc HTML) ────────────────────────────────────────────────
+document.getElementById("btnExportWord")?.addEventListener("click", () => {
+  document.getElementById("exportMenu").classList.add("hidden");
+  const filtered = getFilteredReports();
+  if (filtered.length === 0) { alert("No reports to export."); return; }
+
+  const orgName = currentUser.org_name || "FireWatch";
+  const now = new Date().toLocaleString();
+
+  let tableRows = filtered.map((r, i) =>
+    `<tr>
+      <td style="padding:6px 8px;border:1px solid #ccc;">${i + 1}</td>
+      <td style="padding:6px 8px;border:1px solid #ccc;">${r.report_id || ""}</td>
+      <td style="padding:6px 8px;border:1px solid #ccc;">${r.extinguisher_id || ""}</td>
+      <td style="padding:6px 8px;border:1px solid #ccc;">${r.company_name || ""}</td>
+      <td style="padding:6px 8px;border:1px solid #ccc;">${r.building_name || ""}</td>
+      <td style="padding:6px 8px;border:1px solid #ccc;">${r.inspector || ""}</td>
+      <td style="padding:6px 8px;border:1px solid #ccc;">${r.inspection_date || ""}</td>
+      <td style="padding:6px 8px;border:1px solid #ccc;">${r.notes || "—"}</td>
+    </tr>`
+  ).join("");
+
+  const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office"
+    xmlns:w="urn:schemas-microsoft-com:office:word"
+    xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="UTF-8">
+<style>
+  body { font-family: Calibri, Arial, sans-serif; margin: 40px; }
+  h1 { color: #1f3864; font-size: 22pt; margin-bottom: 4px; }
+  .meta { color: #666; font-size: 10pt; margin-bottom: 20px; }
+  table { border-collapse: collapse; width: 100%; font-size: 10pt; }
+  th { background-color: #1f3864; color: white; padding: 8px; border: 1px solid #ccc; text-align: left; }
+  td { padding: 6px 8px; border: 1px solid #ccc; vertical-align: top; }
+  tr:nth-child(even) td { background-color: #f2f5f9; }
+  .footer { margin-top: 20px; border-top: 2px solid #1f3864; padding-top: 8px; font-size: 9pt; color: #888; }
+</style></head><body>
+  <h1>🔥 FireWatch — Inspection Reports</h1>
+  <div class="meta">${orgName} — Generated: ${now} — ${filtered.length} report(s)</div>
+  <table>
+    <thead><tr>
+      <th>#</th><th>Report</th><th>Ext ID</th><th>Company</th><th>Building</th><th>Inspector</th><th>Date</th><th>Notes</th>
+    </tr></thead>
+    <tbody>${tableRows}</tbody>
+  </table>
+  <div class="footer">FireWatch — NFPA Compliance Tracking</div>
+</body></html>`;
+
+  const blob = new Blob(['\ufeff' + html], { type: "application/msword" });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href     = url;
+  a.download = "FireWatch_Reports.doc";
+  a.style.display = "none";
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
+});
+
+// ── Export as PDF ─────────────────────────────────────────────────────────────
+// Downloads a print-ready HTML file. On desktop, also opens a print window.
+// On mobile, the downloaded file can be opened and printed/saved as PDF.
+// Original export concept by Lillian Bowen — adapted for web by Junius Ketter.
+document.getElementById("btnExportReports")?.addEventListener("click", () => {
+  document.getElementById("exportMenu").classList.add("hidden");
+  const rows = window._allReports || [];
+  if (rows.length === 0) { alert("No reports to export."); return; }
+
+  let filtered = getFilteredReports();
+
+  if (filtered.length === 0) { alert("No reports match current filters."); return; }
+
+  const orgName = currentUser.org_name || "FireWatch";
+  const now = new Date().toLocaleString();
+
+  let tableRows = filtered.map((r, i) =>
+    `<tr>
+      <td>${i + 1}</td>
+      <td>${r.report_id || ""}</td>
+      <td>${r.extinguisher_id || ""}</td>
+      <td>${r.company_name || ""}</td>
+      <td>${r.building_name || ""}</td>
+      <td>Floor ${r.floor_number || "—"}, Room ${r.room_number || "—"}</td>
+      <td>${r.inspector || ""}</td>
+      <td>${r.inspection_date || ""}</td>
+      <td>${r.notes || "—"}</td>
+    </tr>`
+  ).join("");
+
+  const html = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FireWatch — Report Export</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: Arial, Helvetica, sans-serif; color:#1a1a1a; padding:20px; }
+  .header { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:flex-start; margin-bottom:24px; padding-bottom:16px; border-bottom:3px solid #1f3864; }
+  .header h1 { font-size:20px; color:#1f3864; }
+  .header .meta { font-size:11px; color:#666; text-align:right; }
+  table { width:100%; border-collapse:collapse; font-size:10px; }
+  th { background:#1f3864; color:#fff; padding:6px 4px; text-align:left; font-weight:600; }
+  td { padding:5px 4px; border-bottom:1px solid #ddd; vertical-align:top; }
+  tr:nth-child(even) td { background:#f5f7fa; }
+  .footer { margin-top:24px; padding-top:12px; border-top:2px solid #1f3864; font-size:10px; color:#888; display:flex; justify-content:space-between; }
+  .print-btn { display:block; margin:0 auto 20px; padding:12px 32px; background:#1f3864; color:#fff; border:none; border-radius:6px; font-weight:bold; cursor:pointer; font-size:16px; }
+  @media print { .no-print { display:none !important; } body { padding:10px; } }
+</style></head><body>
+  <div class="no-print" style="text-align:center;margin-bottom:16px;">
+    <button class="print-btn" onclick="window.print()">🖨 Print / Save as PDF</button>
+    <p style="font-size:12px;color:#666;">Tap the button above, then choose "Save as PDF" or select your printer.</p>
+  </div>
+  <div class="header">
+    <div>
+      <h1>🔥 FireWatch — Inspection Reports</h1>
+      <div style="font-size:13px;color:#444;margin-top:4px;">${orgName}</div>
+    </div>
+    <div class="meta">
+      Generated: ${now}<br>
+      Reports: ${filtered.length} of ${(window._allReports||[]).length} total
+    </div>
+  </div>
+  <table>
+    <thead><tr>
+      <th>#</th><th>Report</th><th>Ext ID</th><th>Company</th><th>Building</th><th>Location</th><th>Inspector</th><th>Date</th><th>Notes</th>
+    </tr></thead>
+    <tbody>${tableRows}</tbody>
+  </table>
+  <div class="footer">
+    <span>FireWatch — NFPA Compliance Tracking</span>
+    <span>Page 1</span>
+  </div>
+</body></html>`;
+
+  // Try opening a new window first (works on desktop)
+  // Fall back to downloading as HTML file (works on mobile)
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  if (!isMobile) {
+    const w = window.open("", "_blank");
+    if (w) {
+      w.document.write(html);
+      w.document.close();
+      return;
+    }
+  }
+  // Mobile fallback: download as HTML file
+  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href     = url;
+  a.download = "FireWatch_Reports.html";
+  a.style.display = "none";
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  PLATFORM SUPER ADMIN
+// ══════════════════════════════════════════════════════════════════════════════
+
+let _platformAuth = false;
+
+// ── Platform Tab Switcher ────────────────────────────────────────────────────
+function switchPlatformTab(tab) {
+  document.getElementById("ptabOrgs").style.borderBottomColor  = tab === "orgs"  ? "var(--orange)" : "transparent";
+  document.getElementById("ptabOrgs").style.color              = tab === "orgs"  ? "var(--text)"   : "var(--muted)";
+  document.getElementById("ptabAudit").style.borderBottomColor = tab === "audit" ? "var(--orange)" : "transparent";
+  document.getElementById("ptabAudit").style.color             = tab === "audit" ? "var(--text)"   : "var(--muted)";
+  document.getElementById("platformPanelOrgs").style.display      = tab === "orgs"  ? "" : "none";
+  document.getElementById("platformPanelAudit").style.display     = tab === "audit" ? "" : "none";
+  document.getElementById("platformPanelOrgDetail").style.display = "none";
+  document.getElementById("platformStats").style.display          = tab === "orgs" ? "flex" : "none";
+  if (tab === "audit") loadPlatformAuditLog();
+  if (tab === "orgs")  loadPlatformDashboard();
+}
+
+// ── Platform Login ───────────────────────────────────────────────────────────
+document.getElementById("platformLoginBtn")?.addEventListener("click", async () => {
+  const pw    = document.getElementById("platformPassword").value;
+  const msgEl = document.getElementById("platformMsg");
+  if (!pw) { msgEl.textContent = "Password is required."; msgEl.style.color = "var(--red)"; return; }
+  const hashed = await sha256(pw);
+  const res = await fetch("/api/platform/login", {
+    method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ password: hashed })
+  });
+  const data = await res.json();
+  if (data.success) {
+    _platformAuth = true;
+    document.getElementById("loginPage").classList.add("hidden");
+    document.getElementById("platformPage").classList.remove("hidden");
+    loadPlatformDashboard();
+  } else { msgEl.textContent = data.error || "Invalid password."; msgEl.style.color = "var(--red)"; }
+});
+
+// ── Platform Logout ──────────────────────────────────────────────────────────
+document.getElementById("platformLogoutBtn")?.addEventListener("click", () => {
+  _platformAuth = false;
+  document.getElementById("platformPage").classList.add("hidden");
+  document.getElementById("loginPage").classList.remove("hidden");
+  document.getElementById("platformPassword").value = "";
+  document.getElementById("platformMsg").textContent = "";
+  switchAuthTab("signin");
+});
+
+// ── Load Platform Dashboard (Orgs tab) ───────────────────────────────────────
+async function loadPlatformDashboard() {
+  const orgs = await fetch("/api/platform/organizations").then(r => r.json());
+  const settingsRes = await fetch("/api/platform/settings").then(r => r.json());
+  const requireApproval = settingsRes.require_approval !== false;
+
+  const total = orgs.length, pending = orgs.filter(o => o.platform_status === "pending").length;
+  const approved = orgs.filter(o => o.platform_status === "approved").length;
+  const totalUsers = orgs.reduce((s, o) => s + (o.user_count || 0), 0);
+  const totalExt   = orgs.reduce((s, o) => s + (o.extinguisher_count || 0), 0);
+
+  const statBox = (label, val, borderColor) =>
+    `<div style="background:var(--bg3);border:1px solid ${borderColor};border-radius:8px;padding:0.8rem 1.2rem;min-width:100px;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:0.6rem;color:${borderColor};letter-spacing:0.1em;text-transform:uppercase;">${label}</div>
+      <div style="font-size:1.5rem;font-weight:700;color:var(--text);">${val}</div>
+    </div>`;
+  document.getElementById("platformStats").innerHTML =
+    statBox("Orgs",total,"var(--border)") + statBox("Pending",pending,"var(--orange)") +
+    statBox("Approved",approved,"var(--teal)") + statBox("Users",totalUsers,"var(--border)") +
+    statBox("Extinguishers",totalExt,"var(--border)");
+
+  // Approval toggle
+  const toggleHtml = `
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:1rem 1.2rem;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.8rem;">
+      <div>
+        <div style="font-weight:600;color:var(--text);font-size:0.9rem;">Require Approval for New Organizations</div>
+        <div style="color:var(--muted);font-size:0.75rem;margin-top:2px;">When ON, new orgs start as "pending." When OFF, auto-approved.</div>
+      </div>
+      <label style="position:relative;display:inline-block;width:52px;height:28px;cursor:pointer;">
+        <input type="checkbox" id="approvalToggle" ${requireApproval ? "checked" : ""} style="opacity:0;width:0;height:0;" onchange="toggleApprovalRequirement(this.checked)">
+        <span style="position:absolute;inset:0;background:${requireApproval?"var(--teal)":"var(--border)"};border-radius:28px;transition:0.3s;" id="approvalSliderBg"></span>
+        <span style="position:absolute;top:3px;left:${requireApproval?"26px":"3px"};width:22px;height:22px;background:#fff;border-radius:50%;transition:0.3s;" id="approvalSliderDot"></span>
+      </label>
+    </div>`;
+
+  // Org table
+  const thS = "padding:10px 8px;text-align:left;color:var(--muted);font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;";
+  let tbl = `<table style="width:100%;border-collapse:collapse;font-size:0.78rem;font-family:'IBM Plex Mono',monospace;">
+    <thead><tr style="border-bottom:2px solid var(--border);">
+      <th style="${thS}">Org</th><th style="${thS}">Status</th><th style="${thS}text-align:center;">Users</th>
+      <th style="${thS}text-align:center;">Ext.</th><th style="${thS}text-align:center;">Reports</th>
+      <th style="${thS}">Created</th><th style="${thS}">Actions</th>
+    </tr></thead><tbody>`;
+  const stMap = { approved:{bg:"rgba(13,148,136,0.15)",color:"var(--teal)",label:"Approved"}, pending:{bg:"rgba(232,93,4,0.15)",color:"var(--orange)",label:"Pending"}, suspended:{bg:"rgba(193,18,31,0.15)",color:"var(--red)",label:"Suspended"}, rejected:{bg:"rgba(107,114,128,0.15)",color:"var(--muted)",label:"Rejected"} };
+  orgs.forEach(o => {
+    const st = stMap[o.platform_status] || stMap.pending;
+    const esc = o.name.replace(/'/g,"\\'");
+    let act = `<button onclick="platformViewOrg(${o.org_id},'${esc}')" style="padding:4px 10px;border:none;border-radius:4px;background:var(--blue);color:#fff;cursor:pointer;font-size:0.7rem;font-weight:600;">View</button> `;
+    if (o.platform_status === "pending") act += `<button onclick="platformOrgAction(${o.org_id},'approved')" style="padding:4px 10px;border:none;border-radius:4px;background:var(--teal);color:#fff;cursor:pointer;font-size:0.7rem;font-weight:600;">Approve</button> <button onclick="platformOrgAction(${o.org_id},'rejected')" style="padding:4px 10px;border:none;border-radius:4px;background:var(--muted);color:#fff;cursor:pointer;font-size:0.7rem;font-weight:600;">Reject</button>`;
+    else if (o.platform_status === "approved") act += `<button onclick="platformOrgAction(${o.org_id},'suspended')" style="padding:4px 10px;border:none;border-radius:4px;background:var(--red);color:#fff;cursor:pointer;font-size:0.7rem;font-weight:600;">Suspend</button>`;
+    else act += `<button onclick="platformOrgAction(${o.org_id},'approved')" style="padding:4px 10px;border:none;border-radius:4px;background:var(--teal);color:#fff;cursor:pointer;font-size:0.7rem;font-weight:600;">Approve</button>`;
+    act += ` <button onclick="platformDeleteOrg(${o.org_id},'${esc}')" style="padding:4px 10px;border:none;border-radius:4px;background:var(--bg3);border:1px solid var(--border);color:var(--red);cursor:pointer;font-size:0.7rem;font-weight:600;">Delete</button>`;
+    tbl += `<tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:10px 8px;"><div style="font-weight:600;color:var(--text);">${o.name}</div><div style="font-size:0.65rem;color:var(--muted);">${[o.city,o.state].filter(Boolean).join(", ")||"—"}</div></td>
+      <td style="padding:10px 8px;"><span style="background:${st.bg};color:${st.color};padding:3px 10px;border-radius:4px;font-size:0.68rem;font-weight:600;">${st.label}</span></td>
+      <td style="padding:10px 8px;text-align:center;">${o.user_count||0}</td>
+      <td style="padding:10px 8px;text-align:center;">${o.extinguisher_count||0}</td>
+      <td style="padding:10px 8px;text-align:center;">${o.report_count||0}</td>
+      <td style="padding:10px 8px;color:var(--muted);font-size:0.7rem;">${o.created_at?o.created_at.split("T")[0]:"—"}</td>
+      <td style="padding:10px 8px;"><div style="display:flex;gap:4px;flex-wrap:wrap;">${act}</div></td></tr>`;
+  });
+  tbl += `</tbody></table>`;
+  document.getElementById("platformOrgTable").innerHTML = toggleHtml + tbl;
+}
+
+// ── Platform actions ─────────────────────────────────────────────────────────
+async function platformOrgAction(orgId, newStatus) {
+  const res = await fetch(`/api/platform/organizations/${orgId}/status`, { method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify({status:newStatus}) });
+  if (res.ok) loadPlatformDashboard(); else alert("Error: " + (await res.json()).error);
+}
+async function platformDeleteOrg(orgId, orgName) {
+  if (!confirm(`PERMANENTLY delete "${orgName}" and ALL its data? This cannot be undone.`)) return;
+  if (!confirm(`Are you absolutely sure?`)) return;
+  const res = await fetch(`/api/platform/organizations/${orgId}`, { method:"DELETE" });
+  if (res.ok) loadPlatformDashboard(); else alert("Error: " + (await res.json()).error);
+}
+async function toggleApprovalRequirement(enabled) {
+  const res = await fetch("/api/platform/settings", { method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify({require_approval:enabled}) });
+  if (res.ok) {
+    document.getElementById("approvalSliderBg").style.background = enabled ? "var(--teal)" : "var(--border)";
+    document.getElementById("approvalSliderDot").style.left = enabled ? "26px" : "3px";
+  } else { alert("Error saving setting."); document.getElementById("approvalToggle").checked = !enabled; }
+}
+
+// ── Platform: View Org Detail (drill-down) ───────────────────────────────────
+async function platformViewOrg(orgId, orgName) {
+  document.getElementById("platformPanelOrgs").style.display = "none";
+  document.getElementById("platformPanelAudit").style.display = "none";
+  document.getElementById("platformPanelOrgDetail").style.display = "";
+  document.getElementById("platformStats").style.display = "none";
+  document.getElementById("platformOrgDetail").innerHTML = `<p style="color:var(--muted);padding:2rem;text-align:center;">Loading ${orgName}...</p>`;
+
+  const data = await fetch(`/api/platform/organizations/${orgId}/details`).then(r => r.json());
+  if (data.error) { alert(data.error); switchPlatformTab("orgs"); return; }
+  const org = data.org;
+
+  const thS = "padding:8px 6px;text-align:left;color:var(--muted);font-size:0.6rem;letter-spacing:0.1em;text-transform:uppercase;border-bottom:1px solid var(--border);";
+  const tdS = "padding:7px 6px;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.78rem;color:var(--text);";
+
+  function miniTable(headers, rows) {
+    if (!rows.length) return `<p style="color:var(--muted);font-size:0.8rem;padding:0.5rem 0;">No data.</p>`;
+    let h = `<table style="width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;"><thead><tr>`;
+    headers.forEach(hd => h += `<th style="${thS}">${hd.label}</th>`);
+    h += `</tr></thead><tbody>`;
+    rows.forEach(r => { h += `<tr>`; headers.forEach(hd => h += `<td style="${tdS}">${r[hd.key] ?? "—"}</td>`); h += `</tr>`; });
+    return h + `</tbody></table>`;
+  }
+
+  const stColors = {approved:"var(--teal)",pending:"var(--orange)",suspended:"var(--red)",rejected:"var(--muted)"};
+  const tabs = [
+    {key:"users",label:"Users",cols:[{label:"ID",key:"user_id"},{label:"Username",key:"username"},{label:"Role",key:"role"}]},
+    {key:"extinguishers",label:"Extinguishers",cols:[{label:"ID",key:"extinguisher_id"},{label:"Company",key:"company_name"},{label:"Building",key:"building_name"},{label:"Floor",key:"floor_number"},{label:"Room",key:"room_number"},{label:"Type",key:"ext_type"},{label:"Status",key:"ext_status"},{label:"Serial",key:"serial_number"},{label:"Due",key:"next_due_date"}]},
+    {key:"assignments",label:"Assignments",cols:[{label:"ID",key:"assignment_id"},{label:"Assigned By",key:"assigned_by"},{label:"Inspector",key:"inspector"},{label:"Status",key:"status"},{label:"Due",key:"due_date"},{label:"Notes",key:"notes"}]},
+    {key:"reports",label:"Reports",cols:[{label:"ID",key:"report_id"},{label:"Inspector",key:"inspector"},{label:"Ext ID",key:"extinguisher_id"},{label:"Date",key:"inspection_date"},{label:"Notes",key:"notes"}]},
+    {key:"companies",label:"Companies",cols:[{label:"ID",key:"company_id"},{label:"Name",key:"name"},{label:"Address",key:"address"},{label:"City",key:"city"},{label:"State",key:"state"}]},
+    {key:"buildings",label:"Buildings",cols:[{label:"ID",key:"building_id"},{label:"Name",key:"name"},{label:"Company",key:"company_name"},{label:"Address",key:"address"},{label:"Floors",key:"floors"}]},
+  ];
+
+  let tabBtns = tabs.map((t,i) =>
+    `<button onclick="switchOrgDetailTab('${t.key}')" id="orgDetailTab_${t.key}" style="padding:0.5rem 1rem;border:none;background:none;color:${i===0?'var(--text)':'var(--muted)'};font-family:'IBM Plex Mono',monospace;font-size:0.72rem;font-weight:600;cursor:pointer;border-bottom:2px solid ${i===0?'var(--orange)':'transparent'};margin-bottom:-2px;white-space:nowrap;flex-shrink:0;">${t.label} (${(data[t.key]||[]).length})</button>`
+  ).join("");
+
+  let tabPanels = tabs.map((t,i) =>
+    `<div id="orgDetailPanel_${t.key}" style="display:${i===0?'':'none'};margin-top:0.8rem;overflow-x:auto;">${miniTable(t.cols, data[t.key]||[])}</div>`
+  ).join("");
+
+  document.getElementById("platformOrgDetail").innerHTML = `
+    <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem;flex-wrap:wrap;">
+      <button onclick="switchPlatformTab('orgs')" style="padding:6px 14px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--text);cursor:pointer;font-size:0.78rem;font-weight:600;">← Back</button>
+      <span style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:0.04em;color:var(--text);">${org.name}</span>
+      <span style="padding:3px 10px;border-radius:4px;font-size:0.68rem;font-weight:600;color:${stColors[org.platform_status]||'var(--muted)'};background:rgba(128,128,128,0.1);">${org.platform_status}</span>
+    </div>
+    <div style="display:flex;gap:0.8rem;flex-wrap:wrap;margin-bottom:1rem;font-size:0.75rem;color:var(--muted);">
+      <span>📍 ${[org.address,org.city,org.state].filter(Boolean).join(", ")||"No address"}</span>
+      <span>📞 ${org.phone||"—"}</span>
+      <span>👤 ${org.contact_name||"—"}</span>
+      <span>📅 ${org.created_at?org.created_at.split("T")[0]:"—"}</span>
+    </div>
+    <div style="display:flex;gap:0;border-bottom:2px solid var(--border);overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin;">${tabBtns}</div>
+    ${tabPanels}`;
+}
+
+function switchOrgDetailTab(tab) {
+  ["users","extinguishers","assignments","reports","companies","buildings"].forEach(t => {
+    const btn = document.getElementById("orgDetailTab_" + t);
+    const panel = document.getElementById("orgDetailPanel_" + t);
+    if (btn) { btn.style.color = t===tab?"var(--text)":"var(--muted)"; btn.style.borderBottomColor = t===tab?"var(--orange)":"transparent"; }
+    if (panel) panel.style.display = t===tab?"":"none";
+  });
+}
+
+// ── Platform: Activity / Audit Log ───────────────────────────────────────────
+async function loadPlatformAuditLog() {
+  const logs = await fetch("/api/platform/audit?limit=200").then(r => r.json());
+  const el = document.getElementById("platformAuditLog");
+  if (!logs.length) { el.innerHTML = `<p style="color:var(--muted);padding:2rem;text-align:center;">No activity logged yet.</p>`; return; }
+
+  const actionColors = { platform_login:"var(--blue)", platform_login_failed:"var(--red)", org_registered:"var(--orange)", org_approved:"var(--teal)", org_rejected:"var(--muted)", org_suspended:"var(--red)", org_deleted:"var(--red)", settings_changed:"var(--purple)", view_org:"var(--muted2)" };
+  const thS = "padding:10px 8px;text-align:left;color:var(--muted);font-size:0.6rem;letter-spacing:0.1em;text-transform:uppercase;border-bottom:2px solid var(--border);";
+  const tdS = "padding:8px;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.78rem;";
+
+  let html = `<table style="width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;">
+    <thead><tr><th style="${thS}">Time</th><th style="${thS}">Actor</th><th style="${thS}">Action</th><th style="${thS}">Target</th><th style="${thS}">Details</th></tr></thead><tbody>`;
+  logs.forEach(l => {
+    const color = actionColors[l.action] || "var(--text)";
+    const time = l.timestamp ? new Date(l.timestamp + "Z").toLocaleString([], {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'}) : "—";
+    html += `<tr><td style="${tdS}color:var(--muted);font-size:0.72rem;white-space:nowrap;">${time}</td>
+      <td style="${tdS}color:var(--text);">${l.actor}</td>
+      <td style="${tdS}"><span style="color:${color};font-weight:600;">${l.action.replace(/_/g," ")}</span></td>
+      <td style="${tdS}color:var(--text);">${l.target||"—"}</td>
+      <td style="${tdS}color:var(--muted);font-size:0.72rem;">${l.details||"—"}</td></tr>`;
+  });
+  el.innerHTML = html + `</tbody></table>`;
+}
+
+// ── Session restore on page load ──────────────────────────────────────────────
+// If the user refreshes the page, restore their session from localStorage
+// so they don't have to log in again.
+(function restoreSession() {
+  try {
+    const saved = localStorage.getItem("fw_session");
+    if (!saved) return;
+    const user = JSON.parse(saved);
+    if (!user?.user_id || !user?.username || !user?.role) return;
+    currentUser = user;
+    showDashboard();
+  } catch(e) {
+    localStorage.removeItem("fw_session"); // corrupt data — clear it
+  }
+})();
 </script>
 </body>
 </html>

@@ -6,6 +6,16 @@
 #include <iostream>
 #include <string>
 #include <vector>
+
+//added for exportReportToPDF() nd pritnPdf(), can take out if that function is moved or changed to not need these
+#include <QPainter>
+#include <QImage>
+#include <QDebug>
+#include <QPrinter>
+#include <QPrintDialog>
+#include <QDesktopServices>
+#include <QUrl>
+
 using namespace std;
 
 // Admin class - extends User class
@@ -139,6 +149,56 @@ class Admin : public User {
                 return newAssignment;
             }
         }
+
+        // export and print report
+        // the placement may be adjusted to whatever file it would be best suited for
+        // i am placing it here since the admin users should be the only ones who should be able to export or print the reports
+        // uses Qt to export the information from the reports (text and images) into a PDF
+
+        bool exportReportToPDF(QString& filename, QString& text, QImage& image){
+            //Create QPrinter instance
+            //feel free to adjust any numbers during testing to ensure proper sizes/placement
+            QPrinter printer(QPrinter::HighResolution);
+            printer.setOutputFormat(QPrinter::PdfFormat);
+            printer.setOutputFileName(filename);
+            printer.setPageSize(QPrinter::A4);
+
+            //Create QPainter instance
+            QPainter painter;
+            if(!painter.begin(&printer)){
+                qWarning("Failed to open file for painting.");
+                return false;
+            }
+
+            //draw text at position (100, 100) 
+            //position to be changed upon testing to ensure proper placement
+            //can also add format options using painter.setFont(QFont("fontStyle", fontSize));
+            painter.drawText(100, 100, text);
+
+            //draw image at position (100, 150) at scale 400x300
+            //position and size can be changed at testing to ensure proper fit and placement
+            QImage scaledImage = image.scaled(400, 300, Qt::KeepAspectRatio);
+            painter.drawImage(100, 150, scaledImage);
+
+            //above steps can be repeated as needed
+            //if new page is needed add pdfWriter.newPage();
+
+            //end
+            painter.end();
+            qDebug() << "PDF exported successfully to: " << filename;
+            return true;
+        }
+            
+        //print function prompts the user using a print dialog allowing them to choose a printer
+        void printPdf(QString& filename){
+            //opens PDF using system viewer
+            //allows user to print manually
+            if(!QDesktopServices::openURL(QUrl::fromLocalFile(filename))){
+                qWarning("Could not open the generated PDF file for printing.");
+            }
+        }
+
+
 };
 
 #endif // ADMIN_H

@@ -1,0 +1,10 @@
+```mermaid
+flowchart TD
+A[Admin Creates Assignment] --> B[Assignment Stored in DB]
+B --> C[Inspector Receives Assignment]
+C --> D[Performs Inspection]
+D --> E[Capture Photos]
+E --> F[generateReport()]
+F --> G[SQLite: REPORT + PHOTO + AUDIT_LOG]
+G --> H[Admin Reviews]
+```
