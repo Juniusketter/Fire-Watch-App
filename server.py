@@ -42,9 +42,12 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)  # create uploads folder if it doesn't ex
 ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "gif", "webp", "heic", "heif"}
 
 # ── Platform Super Admin ──────────────────────────────────────────────────────
-# SHA-256 hash of the platform password. Default: "FireWatch2026!"
-# Change this value to set a new platform password (hash it with SHA-256).
-PLATFORM_PASSWORD_HASH = hashlib.sha256("FireWatch2026!".encode()).hexdigest()
+# Default platform password: FireWatch2026!
+# To override without changing code, set the FW_PLATFORM_HASH environment variable.
+PLATFORM_PASSWORD_HASH = os.environ.get(
+    "FW_PLATFORM_HASH",
+    hashlib.sha256("FireWatch2026!".encode()).hexdigest()
+)
 
 # ── DB helper ──────────────────────────────────────────────────────────────────
 def get_db():
