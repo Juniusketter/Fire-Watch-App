@@ -1,3 +1,5 @@
+Full implementation bundle for edit/delete user feature.
+Includes backend C++, Qt UI placeholder, Flask endpoints, migration.
 
 # UML Diagram Documentation
 This directory contains Mermaid UML diagrams for Iteration 2 and 3.
