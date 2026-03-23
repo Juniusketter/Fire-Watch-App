@@ -384,6 +384,7 @@
       <div class="auth-tabs">
         <button class="auth-tab active" id="tabSignIn"   onclick="switchAuthTab('signin')">Sign In</button>
         <button class="auth-tab"        id="tabRegister" onclick="switchAuthTab('register')">Register Organization</button>
+        <button class="auth-tab"        id="tabPlatform" onclick="switchAuthTab('platform')" style="font-size:0.65rem;color:var(--muted);">⚙ Platform</button>
       </div>
 
       <!-- ── SIGN IN PANEL ── -->
@@ -450,8 +451,62 @@
         <p id="registerMsg"></p>
       </div>
 
+      <!-- ── PLATFORM SUPER ADMIN LOGIN ── -->
+      <div class="auth-panel" id="panelPlatform">
+        <div class="org-badge" style="background:var(--purple);color:#fff;">⚙ Platform Admin</div>
+        <div class="field">
+          <label for="platformPassword">Platform Password</label>
+          <input type="password" id="platformPassword" placeholder="Enter platform password" />
+        </div>
+        <button class="btn-login" id="platformLoginBtn" style="background:var(--purple);">Access Platform Dashboard</button>
+        <p id="platformMsg"></p>
+      </div>
+
     </div>
   </section>
+</div>
+
+<!-- PENDING ORG OVERLAY — shown when org is not yet approved -->
+<div id="pendingOverlay" class="hidden" style="position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;">
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:2rem;max-width:480px;width:90%;text-align:center;">
+    <div style="font-size:2.5rem;margin-bottom:1rem;">⏳</div>
+    <h2 style="color:var(--orange);font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:0.05em;margin-bottom:0.8rem;">Organization Pending Approval</h2>
+    <p style="color:var(--muted2);line-height:1.6;margin-bottom:1.2rem;">Your organization has been registered and is awaiting approval from the FireWatch platform team. You'll be able to access the full dashboard once approved.</p>
+    <p style="color:var(--muted);font-size:0.8rem;margin-bottom:1.5rem;" id="pendingOrgName"></p>
+    <button class="btn-login" onclick="localStorage.removeItem('fw_session');location.reload();" style="background:var(--border);max-width:200px;margin:0 auto;">Logout</button>
+  </div>
+</div>
+
+<!-- PLATFORM ADMIN DASHBOARD — shown after Super Admin login -->
+<div id="platformPage" class="hidden">
+  <div class="topbar" style="background:var(--bg2);border-bottom:1px solid var(--border);">
+    <div style="display:flex;align-items:center;gap:0.8rem;">
+      <span style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:0.08em;color:var(--orange);">🔥 FIREWATCH</span>
+      <span style="background:var(--purple);color:#fff;font-size:0.65rem;padding:2px 8px;border-radius:3px;font-weight:700;letter-spacing:0.1em;">PLATFORM ADMIN</span>
+    </div>
+    <button class="btn-logout" id="platformLogoutBtn">LOGOUT</button>
+  </div>
+  <div style="padding:1.5rem;max-width:1200px;margin:0 auto;">
+    <!-- Platform tabs -->
+    <div style="display:flex;gap:0;margin-bottom:1.2rem;border-bottom:2px solid var(--border);">
+      <button class="platform-tab active" id="ptabOrgs" onclick="switchPlatformTab('orgs')" style="padding:0.6rem 1.2rem;border:none;background:none;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:0.78rem;font-weight:600;cursor:pointer;border-bottom:2px solid var(--orange);margin-bottom:-2px;">🏢 Organizations</button>
+      <button class="platform-tab" id="ptabAudit" onclick="switchPlatformTab('audit')" style="padding:0.6rem 1.2rem;border:none;background:none;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:0.78rem;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;">📋 Activity Log</button>
+    </div>
+    <!-- Stats -->
+    <div style="display:flex;gap:1rem;margin-bottom:1rem;flex-wrap:wrap;" id="platformStats"></div>
+    <!-- Org list panel -->
+    <div id="platformPanelOrgs">
+      <div id="platformOrgTable" style="overflow-x:auto;"></div>
+    </div>
+    <!-- Audit log panel -->
+    <div id="platformPanelAudit" style="display:none;">
+      <div id="platformAuditLog" style="overflow-x:auto;"></div>
+    </div>
+    <!-- Org detail panel (shown when drilling into an org) -->
+    <div id="platformPanelOrgDetail" style="display:none;">
+      <div id="platformOrgDetail"></div>
+    </div>
+  </div>
 </div>
 
 <!-- DASHBOARD -->
@@ -576,6 +631,14 @@
     <div class="panel" id="panelReports">
       <div class="table-toolbar hidden" id="reportToolbar">
         <button class="btn-crud btn-edit" id="btnSubmitReport">＋ Submit Report</button>
+        <div class="export-dropdown" id="exportDropdown" style="display:none;position:relative;">
+          <button class="btn-crud btn-add" id="btnExportToggle">📁 Export File ▾</button>
+          <div class="export-menu hidden" id="exportMenu" style="position:absolute;top:100%;left:0;margin-top:4px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;min-width:160px;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,0.4);overflow:hidden;">
+            <button class="export-option" id="btnExportReports" style="display:flex;align-items:center;gap:8px;width:100%;padding:10px 14px;border:none;background:none;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:0.78rem;cursor:pointer;text-align:left;">📄 Export as PDF</button>
+            <button class="export-option" id="btnExportCSV" style="display:flex;align-items:center;gap:8px;width:100%;padding:10px 14px;border:none;background:none;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:0.78rem;cursor:pointer;text-align:left;border-top:1px solid var(--border);">📊 Export as CSV</button>
+            <button class="export-option" id="btnExportWord" style="display:flex;align-items:center;gap:8px;width:100%;padding:10px 14px;border:none;background:none;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:0.78rem;cursor:pointer;text-align:left;border-top:1px solid var(--border);">📝 Export as Word</button>
+          </div>
+        </div>
         <!-- Filter bar — always visible when reports panel is shown -->
         <div class="filter-bar" id="reportFilterBar">
           <div class="filter-group">
@@ -613,6 +676,8 @@
     <div class="panel" id="panelUsers">
       <div class="table-toolbar hidden" id="userToolbar">
         <button class="btn-crud btn-add" id="btnAddUser">＋ Add User</button>
+        <button class="btn-crud btn-edit" id="btnEditUser">✎ Edit User</button>
+        <button class="btn-crud btn-delete" id="btnDeleteUser">✕ Delete User</button>
       </div>
       <div class="table-scroll-wrap" id="tableUsersWrap"></div>
       <div class="card-list" id="cardUsersWrap"></div>
@@ -866,6 +931,42 @@
     <div class="form-row"><label>Location Description</label><input type="text" id="fLocDesc" placeholder="e.g. Near the elevator" /></div>
     <div class="form-row"><label>Inspection Interval (days)</label><input type="number" id="fInterval" value="30" min="1" /></div>
     <div class="form-row"><label>Next Due Date</label><input type="date" id="fDueDate" /></div>
+
+    <!-- NFPA 10 Compliance Metadata -->
+    <div style="border-top:1px solid var(--border);margin:0.8rem 0 0.5rem;padding-top:0.6rem;">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:0.7rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);">NFPA 10 Metadata</span>
+    </div>
+    <div class="form-row"><label>Type / Class</label>
+      <select id="fExtType">
+        <option value="">— Select —</option>
+        <option value="A">Class A — Ordinary Combustibles</option>
+        <option value="B">Class B — Flammable Liquids</option>
+        <option value="C">Class C — Electrical</option>
+        <option value="ABC">ABC — Multi-Purpose</option>
+        <option value="BC">BC — Gas/Electrical</option>
+        <option value="D">Class D — Combustible Metals</option>
+        <option value="K">Class K — Kitchen/Cooking</option>
+      </select>
+    </div>
+    <div class="form-row"><label>Size (lbs)</label><input type="number" id="fExtSize" min="1" max="350" step="0.5" placeholder="e.g. 5, 10, 20" /></div>
+    <div class="form-row"><label>Serial Number</label><input type="text" id="fSerial" placeholder="e.g. SN-2024-00123" /></div>
+    <div class="form-row"><label>Manufacturer</label><input type="text" id="fManufacturer" placeholder="e.g. Kidde, Amerex, Ansul" /></div>
+    <div class="form-row"><label>Model</label><input type="text" id="fModel" placeholder="e.g. Pro 210, B500" /></div>
+    <div class="form-row"><label>Manufacture Date</label><input type="date" id="fMfgDate" /></div>
+    <div class="form-row"><label>Status</label>
+      <select id="fExtStatus">
+        <option value="Active">Active</option>
+        <option value="Out of Service">Out of Service</option>
+        <option value="Retired">Retired</option>
+        <option value="Missing">Missing</option>
+      </select>
+    </div>
+    <div style="border-top:1px solid var(--border);margin:0.8rem 0 0.5rem;padding-top:0.6rem;">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:0.7rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);">Service History</span>
+    </div>
+    <div class="form-row"><label>Last Annual Maintenance</label><input type="date" id="fAnnualDate" /></div>
+    <div class="form-row"><label>Last 6-Year Service</label><input type="date" id="f6YearDate" /></div>
+    <div class="form-row"><label>Last Hydrostatic Test</label><input type="date" id="fHydroDate" /></div>
     <div class="modal-error" id="modalError"></div>
     <div class="modal-actions">
       <button class="btn-cancel" id="modalCancel">Cancel</button>
@@ -1011,13 +1112,16 @@
   </div>
 </div>
 
-<!-- ADD USER MODAL (Admin only) -->
+<!-- ADD / EDIT USER MODAL (Admin only) -->
 <div class="modal-overlay hidden" id="userModal">
   <div class="modal-box">
-    <h3>Add New User</h3>
+    <h3 id="userModalTitle">Add New User</h3>
     <div class="form-row"><label>Username *</label><input type="text" id="uUsername" placeholder="e.g. JSmith" /></div>
-    <div class="form-row"><label>Password *</label><input type="password" id="uPassword" placeholder="Enter password" /></div>
-    <div class="form-row"><label>Confirm Password *</label><input type="password" id="uConfirm" placeholder="Re-enter password" /></div>
+    <div class="form-row" id="uPasswordRow"><label>Password *</label><input type="password" id="uPassword" placeholder="Enter password" /></div>
+    <div class="form-row" id="uConfirmRow"><label>Confirm Password *</label><input type="password" id="uConfirm" placeholder="Re-enter password" /></div>
+    <div class="form-row" id="uPasswordHint" class="hidden" style="display:none;">
+      <span style="font-size:0.75rem;color:var(--muted);font-style:italic;">Leave password blank to keep current password.</span>
+    </div>
     <div class="form-row">
       <label>Role *</label>
       <select id="uRole">
@@ -1053,8 +1157,10 @@ let editingAssignId  = null;
 function switchAuthTab(tab) {
   document.getElementById("tabSignIn").classList.toggle("active",   tab==="signin");
   document.getElementById("tabRegister").classList.toggle("active", tab==="register");
+  document.getElementById("tabPlatform").classList.toggle("active", tab==="platform");
   document.getElementById("panelSignIn").classList.toggle("active",   tab==="signin");
   document.getElementById("panelRegister").classList.toggle("active", tab==="register");
+  document.getElementById("panelPlatform").classList.toggle("active", tab==="platform");
 }
 
 // Helper: get org_id from currentUser (always pass to API calls)
@@ -1155,6 +1261,27 @@ async function doRegister() {
 
 // ── Dashboard setup ───────────────────────────────────────────────────────────
 function showDashboard() {
+  // ── Check if org is pending/suspended/rejected ──────────────────────────
+  const ps = currentUser.platform_status;
+  if (ps && ps !== "approved") {
+    document.getElementById("loginPage").classList.add("hidden");
+    document.getElementById("appPage").classList.add("hidden");
+    const overlay = document.getElementById("pendingOverlay");
+    overlay.classList.remove("hidden");
+    overlay.style.display = "flex";
+    const statusMessages = {
+      pending:   "Your organization has been registered and is awaiting approval from the FireWatch platform team.",
+      suspended: "Your organization has been suspended. Please contact the FireWatch platform team for assistance.",
+      rejected:  "Your organization registration has been declined. Please contact the FireWatch platform team."
+    };
+    overlay.querySelector("h2").textContent =
+      ps === "pending" ? "Organization Pending Approval" :
+      ps === "suspended" ? "Organization Suspended" : "Organization Declined";
+    overlay.querySelector("p").textContent = statusMessages[ps] || statusMessages.pending;
+    document.getElementById("pendingOrgName").textContent = currentUser.org_name ? `Organization: ${currentUser.org_name}` : "";
+    return;
+  }
+
   document.getElementById("loginPage").classList.add("hidden");
   document.getElementById("appPage").classList.remove("hidden");
   document.getElementById("welcomeLabel").textContent = currentUser.username + " · " + currentUser.role.toUpperCase();
@@ -1202,6 +1329,7 @@ function buildTabs() {
     document.getElementById("extToolbar").classList.remove("hidden");
     document.getElementById("assignToolbar").classList.remove("hidden");
     document.getElementById("reportToolbar").classList.remove("hidden");
+    document.getElementById("exportDropdown").style.display = "";
     document.getElementById("userToolbar").classList.remove("hidden");
   } else if (isInv()) {
     tabs = [{id:"panelAssignments",label:"My Assignments"},{id:"panelReports",label:"My Reports"}];
@@ -1483,12 +1611,21 @@ async function loadReports() {
   applyReportFilters();
 }
 
+let selectedUserId = null;
+let editingUserId  = null;
+window._lastUserRows = [];
+
 async function loadUsers() {
   const oid = orgId();
   let rows=await fetch(`/api/users${oid?`?org_id=${oid}`:""}`).then(r=>r.json());
   if (isThirdAdmin()) rows=rows.filter(u=>u.role==="3rd_Party_Inspector");
-  renderTable("tableUsersWrap",["user_id","username","role"],rows);
-  renderCards("cardUsersWrap",rows,"user");
+  window._lastUserRows = rows;
+  renderTable("tableUsersWrap",["user_id","username","role"],rows, row => {
+    selectedUserId = row.user_id;
+  });
+  renderCards("cardUsersWrap",rows,"user", row => {
+    selectedUserId = row.user_id;
+  });
 }
 
 // ── Table renderer ────────────────────────────────────────────────────────────
@@ -1524,7 +1661,8 @@ function renderTable(wrapperId,cols,rows,onRowClick) {
       if(onRowClick) onRowClick(rows.find(r=>
         String(r.extinguisher_id)===tr.dataset.id||
         String(r.assignment_id)===tr.dataset.id||
-        String(r.report_id)===tr.dataset.id
+        String(r.report_id)===tr.dataset.id||
+        String(r.user_id)===tr.dataset.id
       ));
     });
   });
@@ -1759,6 +1897,17 @@ document.getElementById("btnEdit").addEventListener("click", async () => {
   document.getElementById("fLocDesc").value  = ext.location_description || "";
   document.getElementById("fInterval").value = ext.inspection_interval_days || 30;
   document.getElementById("fDueDate").value  = ext.next_due_date || "";
+  // NFPA metadata
+  document.getElementById("fExtType").value     = ext.ext_type || "";
+  document.getElementById("fExtSize").value     = ext.ext_size_lbs || "";
+  document.getElementById("fSerial").value      = ext.serial_number || "";
+  document.getElementById("fManufacturer").value= ext.manufacturer || "";
+  document.getElementById("fModel").value       = ext.model || "";
+  document.getElementById("fMfgDate").value     = ext.manufacture_date || "";
+  document.getElementById("fExtStatus").value   = ext.ext_status || "Active";
+  document.getElementById("fAnnualDate").value  = ext.last_annual_date || "";
+  document.getElementById("f6YearDate").value   = ext.last_6year_date || "";
+  document.getElementById("fHydroDate").value   = ext.last_hydro_date || "";
   document.getElementById("modalError").textContent = "";
   await populateExtModalDropdowns(ext.company_id_fk || _selectedCompany?.company_id, ext.building_id);
   document.getElementById("extModal").classList.remove("hidden");
@@ -1794,6 +1943,17 @@ document.getElementById("modalSave").addEventListener("click", async () => {
     next_due_date:          document.getElementById("fDueDate").value,
     building_id:            buildingId,
     org_id:                 orgId(),
+    // NFPA 10 metadata
+    ext_type:               document.getElementById("fExtType").value,
+    ext_size_lbs:           parseFloat(document.getElementById("fExtSize").value) || null,
+    serial_number:          document.getElementById("fSerial").value.trim(),
+    manufacturer:           document.getElementById("fManufacturer").value.trim(),
+    model:                  document.getElementById("fModel").value.trim(),
+    manufacture_date:       document.getElementById("fMfgDate").value || null,
+    ext_status:             document.getElementById("fExtStatus").value,
+    last_annual_date:       document.getElementById("fAnnualDate").value || null,
+    last_6year_date:        document.getElementById("f6YearDate").value || null,
+    last_hydro_date:        document.getElementById("fHydroDate").value || null,
   };
   const url    = editingExtId ? "/api/extinguishers/"+editingExtId : "/api/extinguishers";
   const method = editingExtId ? "PUT" : "POST";
@@ -1806,9 +1966,12 @@ document.getElementById("modalSave").addEventListener("click", async () => {
 });
 
 function clearModal() {
-  ["fRoom","fLocDesc","fDueDate"].forEach(id => document.getElementById(id).value="");
+  ["fRoom","fLocDesc","fDueDate","fSerial","fManufacturer","fModel","fMfgDate","fAnnualDate","f6YearDate","fHydroDate"].forEach(id => document.getElementById(id).value="");
   document.getElementById("fFloor").value    = 1;
   document.getElementById("fInterval").value = 30;
+  document.getElementById("fExtType").value  = "";
+  document.getElementById("fExtSize").value  = "";
+  document.getElementById("fExtStatus").value = "Active";
   document.getElementById("modalError").textContent = "";
 }
 
@@ -2217,16 +2380,71 @@ async function loadUserPreferences() {
     applyTheme("dark");
   }
 }
+// ── Add User button ──────────────────────────────────────────────────────────
 document.getElementById("btnAddUser").addEventListener("click", () => {
+  editingUserId = null;
+  document.getElementById("userModalTitle").textContent = "Add New User";
+  document.getElementById("userModalSave").textContent  = "Create User";
   ["uUsername","uPassword","uConfirm"].forEach(id => document.getElementById(id).value = "");
+  document.getElementById("uUsername").disabled = false;
   document.getElementById("uRole").value = "Inspector";
   document.getElementById("userModalError").textContent = "";
+  // Show password fields as required for new user
+  document.getElementById("uPasswordRow").style.display = "";
+  document.getElementById("uConfirmRow").style.display  = "";
+  document.getElementById("uPasswordHint").style.display = "none";
   document.getElementById("userModal").classList.remove("hidden");
+});
+
+// ── Edit User button ─────────────────────────────────────────────────────────
+document.getElementById("btnEditUser").addEventListener("click", () => {
+  if (!selectedUserId) { alert("Select a user first."); return; }
+  const user = (window._lastUserRows || []).find(u => u.user_id === selectedUserId);
+  if (!user) return;
+
+  editingUserId = selectedUserId;
+  document.getElementById("userModalTitle").textContent = "Edit User";
+  document.getElementById("userModalSave").textContent  = "Save Changes";
+  document.getElementById("uUsername").value    = user.username;
+  document.getElementById("uUsername").disabled = false;
+  document.getElementById("uRole").value        = user.role;
+  document.getElementById("uPassword").value    = "";
+  document.getElementById("uConfirm").value     = "";
+  document.getElementById("userModalError").textContent = "";
+  // Password optional for edit
+  document.getElementById("uPasswordRow").style.display  = "";
+  document.getElementById("uConfirmRow").style.display   = "";
+  document.getElementById("uPasswordHint").style.display = "";
+  document.getElementById("userModal").classList.remove("hidden");
+});
+
+// ── Delete User button ───────────────────────────────────────────────────────
+document.getElementById("btnDeleteUser").addEventListener("click", async () => {
+  if (!selectedUserId) { alert("Select a user first."); return; }
+  const user = (window._lastUserRows || []).find(u => u.user_id === selectedUserId);
+  if (!user) return;
+
+  // Don't allow deleting yourself
+  if (selectedUserId === currentUser.user_id) {
+    alert("You cannot delete your own account.");
+    return;
+  }
+
+  if (!confirm(`Delete user "${user.username}" (${user.role})?\n\nTheir assignments will be unassigned. Reports will be kept for audit trail.`)) return;
+
+  const res = await fetch("/api/users/" + selectedUserId, { method: "DELETE" });
+  if (res.ok) {
+    selectedUserId = null;
+    loadUsers(); loadStats();
+  } else {
+    alert("Delete failed: " + (await res.json()).error);
+  }
 });
 
 document.getElementById("userModalCancel").addEventListener("click", () => document.getElementById("userModal").classList.add("hidden"));
 document.getElementById("userModal").addEventListener("click", e => { if(e.target === document.getElementById("userModal")) document.getElementById("userModal").classList.add("hidden"); });
 
+// ── Save handler (works for both Add and Edit) ──────────────────────────────
 document.getElementById("userModalSave").addEventListener("click", async () => {
   const username = document.getElementById("uUsername").value.trim();
   const password = document.getElementById("uPassword").value;
@@ -2234,24 +2452,50 @@ document.getElementById("userModalSave").addEventListener("click", async () => {
   const role     = document.getElementById("uRole").value;
   const errEl    = document.getElementById("userModalError");
 
-  if (!username)              { errEl.textContent = "Username is required."; return; }
-  if (!password)              { errEl.textContent = "Password is required."; return; }
-  if (password !== confirm)   { errEl.textContent = "Passwords do not match."; return; }
-  if (password.length < 6)   { errEl.textContent = "Password must be at least 6 characters."; return; }
+  if (!username) { errEl.textContent = "Username is required."; return; }
 
-  const hashed = await sha256(password);
+  if (editingUserId) {
+    // ── EDIT MODE ──
+    // Password is optional — only validate if provided
+    if (password || confirm) {
+      if (password !== confirm) { errEl.textContent = "Passwords do not match."; return; }
+      if (password.length < 6)  { errEl.textContent = "Password must be at least 6 characters."; return; }
+    }
 
-  const res = await fetch("/api/users", {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({ username, password: hashed, role, org_id: orgId() })
-  });
+    const body = { username, role };
+    if (password) body.password = await sha256(password);
 
-  if (res.ok) {
-    document.getElementById("userModal").classList.add("hidden");
-    loadUsers(); loadStats();
+    const res = await fetch("/api/users/" + editingUserId, {
+      method: "PUT",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(body)
+    });
+
+    if (res.ok) {
+      document.getElementById("userModal").classList.add("hidden");
+      loadUsers(); loadStats();
+    } else {
+      errEl.textContent = "Error: " + (await res.json()).error;
+    }
   } else {
-    errEl.textContent = "Error: " + (await res.json()).error;
+    // ── ADD MODE ──
+    if (!password)            { errEl.textContent = "Password is required."; return; }
+    if (password !== confirm) { errEl.textContent = "Passwords do not match."; return; }
+    if (password.length < 6)  { errEl.textContent = "Password must be at least 6 characters."; return; }
+
+    const hashed = await sha256(password);
+    const res = await fetch("/api/users", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ username, password: hashed, role, org_id: orgId() })
+    });
+
+    if (res.ok) {
+      document.getElementById("userModal").classList.add("hidden");
+      loadUsers(); loadStats();
+    } else {
+      errEl.textContent = "Error: " + (await res.json()).error;
+    }
   }
 });
 
@@ -2504,10 +2748,31 @@ function openExtDetail(row) {
     { label: "Last Report",  value: row.last_report_id ? `Report #${row.last_report_id}` : "No reports yet", full: false },
   ];
 
+  // NFPA 10 metadata — only show fields that have data
+  const nfpaFields = [
+    { label: "Type / Class",   value: row.ext_type },
+    { label: "Size",           value: row.ext_size_lbs ? `${row.ext_size_lbs} lbs` : null },
+    { label: "Serial Number",  value: row.serial_number },
+    { label: "Manufacturer",   value: row.manufacturer },
+    { label: "Model",          value: row.model },
+    { label: "Mfg Date",       value: row.manufacture_date },
+    { label: "Status",         value: row.ext_status, cls: row.ext_status === "Active" ? "ok" : row.ext_status === "Missing" ? "overdue" : "due-soon" },
+    { label: "Annual Maint.",  value: row.last_annual_date },
+    { label: "6-Year Service", value: row.last_6year_date },
+    { label: "Hydro Test",     value: row.last_hydro_date },
+  ];
+  const hasNfpa = nfpaFields.some(f => f.value);
+  if (hasNfpa) {
+    fields.push({ label: "", value: "<span style='font-family:IBM Plex Mono,monospace;font-size:0.6rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);'>NFPA 10 Compliance</span>", full: true, raw: true });
+    nfpaFields.forEach(f => {
+      if (f.value) fields.push({ label: f.label, value: f.value, full: false, cls: f.cls || "" });
+    });
+  }
+
   document.getElementById("detailExtGrid").innerHTML = fields.map(f => `
     <div class="${f.full ? "ext-detail-field-full" : "ext-detail-field"}">
-      <div class="ext-detail-label">${f.label}</div>
-      <div class="ext-detail-value ${f.cls || ""}">${f.value}</div>
+      ${f.raw ? `<div>${f.value}</div>` : `<div class="ext-detail-label">${f.label}</div>
+      <div class="ext-detail-value ${f.cls || ""}">${f.value}</div>`}
     </div>
   `).join("");
 
@@ -2787,6 +3052,451 @@ document.getElementById("btnClearFilter")?.addEventListener("click", () => {
   _lastReportHash = "";
   applyReportFilters();
 });
+// ── Export File dropdown toggle ───────────────────────────────────────────────
+document.getElementById("btnExportToggle")?.addEventListener("click", (e) => {
+  e.stopPropagation();
+  document.getElementById("exportMenu").classList.toggle("hidden");
+});
+// Close dropdown when clicking anywhere else
+document.addEventListener("click", () => {
+  document.getElementById("exportMenu")?.classList.add("hidden");
+});
+// Hover effect on export options
+document.querySelectorAll(".export-option").forEach(btn => {
+  btn.addEventListener("mouseenter", () => btn.style.background = "var(--bg3)");
+  btn.addEventListener("mouseleave", () => btn.style.background = "none");
+});
+
+// Shared helper: get filtered report rows
+function getFilteredReports() {
+  const rows = window._allReports || [];
+  if (rows.length === 0) return [];
+  const dateFrom  = document.getElementById("filterDateFrom")?.value  || "";
+  const dateTo    = document.getElementById("filterDateTo")?.value    || "";
+  const inspector = document.getElementById("filterInspector")?.value || "";
+  const status    = document.getElementById("filterStatus")?.value    || "";
+  return rows.filter(r => {
+    const date = r.inspection_date || "";
+    if (dateFrom && date && date < dateFrom) return false;
+    if (dateTo   && date && date > dateTo)   return false;
+    if (inspector && r.inspector !== inspector) return false;
+    if (status === "photo"   && !r.photo_path)                return false;
+    if (status === "nophoto" && r.photo_path)                 return false;
+    if (status === "notes"   && !(r.notes && r.notes.trim())) return false;
+    return true;
+  });
+}
+
+// ── Export as CSV ─────────────────────────────────────────────────────────────
+document.getElementById("btnExportCSV")?.addEventListener("click", () => {
+  document.getElementById("exportMenu").classList.add("hidden");
+  const filtered = getFilteredReports();
+  if (filtered.length === 0) { alert("No reports to export."); return; }
+
+  const headers = ["Report ID","Extinguisher ID","Company","Building","Floor","Room","Inspector","Date","Notes"];
+  const csvRows = [headers.join(",")];
+  filtered.forEach(r => {
+    csvRows.push([
+      r.report_id || "",
+      r.extinguisher_id || "",
+      `"${(r.company_name || "").replace(/"/g,'""')}"`,
+      `"${(r.building_name || "").replace(/"/g,'""')}"`,
+      r.floor_number || "",
+      r.room_number || "",
+      `"${(r.inspector || "").replace(/"/g,'""')}"`,
+      r.inspection_date || "",
+      `"${(r.notes || "").replace(/"/g,'""')}"`
+    ].join(","));
+  });
+
+  const blob = new Blob([csvRows.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href     = url;
+  a.download = "FireWatch_Reports.csv";
+  a.style.display = "none";
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
+});
+
+// ── Export as Word (.doc HTML) ────────────────────────────────────────────────
+document.getElementById("btnExportWord")?.addEventListener("click", () => {
+  document.getElementById("exportMenu").classList.add("hidden");
+  const filtered = getFilteredReports();
+  if (filtered.length === 0) { alert("No reports to export."); return; }
+
+  const orgName = currentUser.org_name || "FireWatch";
+  const now = new Date().toLocaleString();
+
+  let tableRows = filtered.map((r, i) =>
+    `<tr>
+      <td style="padding:6px 8px;border:1px solid #ccc;">${i + 1}</td>
+      <td style="padding:6px 8px;border:1px solid #ccc;">${r.report_id || ""}</td>
+      <td style="padding:6px 8px;border:1px solid #ccc;">${r.extinguisher_id || ""}</td>
+      <td style="padding:6px 8px;border:1px solid #ccc;">${r.company_name || ""}</td>
+      <td style="padding:6px 8px;border:1px solid #ccc;">${r.building_name || ""}</td>
+      <td style="padding:6px 8px;border:1px solid #ccc;">${r.inspector || ""}</td>
+      <td style="padding:6px 8px;border:1px solid #ccc;">${r.inspection_date || ""}</td>
+      <td style="padding:6px 8px;border:1px solid #ccc;">${r.notes || "—"}</td>
+    </tr>`
+  ).join("");
+
+  const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office"
+    xmlns:w="urn:schemas-microsoft-com:office:word"
+    xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="UTF-8">
+<style>
+  body { font-family: Calibri, Arial, sans-serif; margin: 40px; }
+  h1 { color: #1f3864; font-size: 22pt; margin-bottom: 4px; }
+  .meta { color: #666; font-size: 10pt; margin-bottom: 20px; }
+  table { border-collapse: collapse; width: 100%; font-size: 10pt; }
+  th { background-color: #1f3864; color: white; padding: 8px; border: 1px solid #ccc; text-align: left; }
+  td { padding: 6px 8px; border: 1px solid #ccc; vertical-align: top; }
+  tr:nth-child(even) td { background-color: #f2f5f9; }
+  .footer { margin-top: 20px; border-top: 2px solid #1f3864; padding-top: 8px; font-size: 9pt; color: #888; }
+</style></head><body>
+  <h1>🔥 FireWatch — Inspection Reports</h1>
+  <div class="meta">${orgName} — Generated: ${now} — ${filtered.length} report(s)</div>
+  <table>
+    <thead><tr>
+      <th>#</th><th>Report</th><th>Ext ID</th><th>Company</th><th>Building</th><th>Inspector</th><th>Date</th><th>Notes</th>
+    </tr></thead>
+    <tbody>${tableRows}</tbody>
+  </table>
+  <div class="footer">FireWatch — NFPA Compliance Tracking</div>
+</body></html>`;
+
+  const blob = new Blob(['\ufeff' + html], { type: "application/msword" });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href     = url;
+  a.download = "FireWatch_Reports.doc";
+  a.style.display = "none";
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
+});
+
+// ── Export as PDF ─────────────────────────────────────────────────────────────
+// Downloads a print-ready HTML file. On desktop, also opens a print window.
+// On mobile, the downloaded file can be opened and printed/saved as PDF.
+// Original export concept by Lillian Bowen — adapted for web by Junius Ketter.
+document.getElementById("btnExportReports")?.addEventListener("click", () => {
+  document.getElementById("exportMenu").classList.add("hidden");
+  const rows = window._allReports || [];
+  if (rows.length === 0) { alert("No reports to export."); return; }
+
+  let filtered = getFilteredReports();
+
+  if (filtered.length === 0) { alert("No reports match current filters."); return; }
+
+  const orgName = currentUser.org_name || "FireWatch";
+  const now = new Date().toLocaleString();
+
+  let tableRows = filtered.map((r, i) =>
+    `<tr>
+      <td>${i + 1}</td>
+      <td>${r.report_id || ""}</td>
+      <td>${r.extinguisher_id || ""}</td>
+      <td>${r.company_name || ""}</td>
+      <td>${r.building_name || ""}</td>
+      <td>Floor ${r.floor_number || "—"}, Room ${r.room_number || "—"}</td>
+      <td>${r.inspector || ""}</td>
+      <td>${r.inspection_date || ""}</td>
+      <td>${r.notes || "—"}</td>
+    </tr>`
+  ).join("");
+
+  const html = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FireWatch — Report Export</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: Arial, Helvetica, sans-serif; color:#1a1a1a; padding:20px; }
+  .header { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:flex-start; margin-bottom:24px; padding-bottom:16px; border-bottom:3px solid #1f3864; }
+  .header h1 { font-size:20px; color:#1f3864; }
+  .header .meta { font-size:11px; color:#666; text-align:right; }
+  table { width:100%; border-collapse:collapse; font-size:10px; }
+  th { background:#1f3864; color:#fff; padding:6px 4px; text-align:left; font-weight:600; }
+  td { padding:5px 4px; border-bottom:1px solid #ddd; vertical-align:top; }
+  tr:nth-child(even) td { background:#f5f7fa; }
+  .footer { margin-top:24px; padding-top:12px; border-top:2px solid #1f3864; font-size:10px; color:#888; display:flex; justify-content:space-between; }
+  .print-btn { display:block; margin:0 auto 20px; padding:12px 32px; background:#1f3864; color:#fff; border:none; border-radius:6px; font-weight:bold; cursor:pointer; font-size:16px; }
+  @media print { .no-print { display:none !important; } body { padding:10px; } }
+</style></head><body>
+  <div class="no-print" style="text-align:center;margin-bottom:16px;">
+    <button class="print-btn" onclick="window.print()">🖨 Print / Save as PDF</button>
+    <p style="font-size:12px;color:#666;">Tap the button above, then choose "Save as PDF" or select your printer.</p>
+  </div>
+  <div class="header">
+    <div>
+      <h1>🔥 FireWatch — Inspection Reports</h1>
+      <div style="font-size:13px;color:#444;margin-top:4px;">${orgName}</div>
+    </div>
+    <div class="meta">
+      Generated: ${now}<br>
+      Reports: ${filtered.length} of ${(window._allReports||[]).length} total
+    </div>
+  </div>
+  <table>
+    <thead><tr>
+      <th>#</th><th>Report</th><th>Ext ID</th><th>Company</th><th>Building</th><th>Location</th><th>Inspector</th><th>Date</th><th>Notes</th>
+    </tr></thead>
+    <tbody>${tableRows}</tbody>
+  </table>
+  <div class="footer">
+    <span>FireWatch — NFPA Compliance Tracking</span>
+    <span>Page 1</span>
+  </div>
+</body></html>`;
+
+  // Try opening a new window first (works on desktop)
+  // Fall back to downloading as HTML file (works on mobile)
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  if (!isMobile) {
+    const w = window.open("", "_blank");
+    if (w) {
+      w.document.write(html);
+      w.document.close();
+      return;
+    }
+  }
+  // Mobile fallback: download as HTML file
+  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href     = url;
+  a.download = "FireWatch_Reports.html";
+  a.style.display = "none";
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  PLATFORM SUPER ADMIN
+// ══════════════════════════════════════════════════════════════════════════════
+
+let _platformAuth = false;
+
+// ── Platform Tab Switcher ────────────────────────────────────────────────────
+function switchPlatformTab(tab) {
+  document.getElementById("ptabOrgs").style.borderBottomColor  = tab === "orgs"  ? "var(--orange)" : "transparent";
+  document.getElementById("ptabOrgs").style.color              = tab === "orgs"  ? "var(--text)"   : "var(--muted)";
+  document.getElementById("ptabAudit").style.borderBottomColor = tab === "audit" ? "var(--orange)" : "transparent";
+  document.getElementById("ptabAudit").style.color             = tab === "audit" ? "var(--text)"   : "var(--muted)";
+  document.getElementById("platformPanelOrgs").style.display      = tab === "orgs"  ? "" : "none";
+  document.getElementById("platformPanelAudit").style.display     = tab === "audit" ? "" : "none";
+  document.getElementById("platformPanelOrgDetail").style.display = "none";
+  document.getElementById("platformStats").style.display          = tab === "orgs" ? "flex" : "none";
+  if (tab === "audit") loadPlatformAuditLog();
+  if (tab === "orgs")  loadPlatformDashboard();
+}
+
+// ── Platform Login ───────────────────────────────────────────────────────────
+document.getElementById("platformLoginBtn")?.addEventListener("click", async () => {
+  const pw    = document.getElementById("platformPassword").value;
+  const msgEl = document.getElementById("platformMsg");
+  if (!pw) { msgEl.textContent = "Password is required."; msgEl.style.color = "var(--red)"; return; }
+  const hashed = await sha256(pw);
+  const res = await fetch("/api/platform/login", {
+    method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ password: hashed })
+  });
+  const data = await res.json();
+  if (data.success) {
+    _platformAuth = true;
+    document.getElementById("loginPage").classList.add("hidden");
+    document.getElementById("platformPage").classList.remove("hidden");
+    loadPlatformDashboard();
+  } else { msgEl.textContent = data.error || "Invalid password."; msgEl.style.color = "var(--red)"; }
+});
+
+// ── Platform Logout ──────────────────────────────────────────────────────────
+document.getElementById("platformLogoutBtn")?.addEventListener("click", () => {
+  _platformAuth = false;
+  document.getElementById("platformPage").classList.add("hidden");
+  document.getElementById("loginPage").classList.remove("hidden");
+  document.getElementById("platformPassword").value = "";
+  document.getElementById("platformMsg").textContent = "";
+  switchAuthTab("signin");
+});
+
+// ── Load Platform Dashboard (Orgs tab) ───────────────────────────────────────
+async function loadPlatformDashboard() {
+  const orgs = await fetch("/api/platform/organizations").then(r => r.json());
+  const settingsRes = await fetch("/api/platform/settings").then(r => r.json());
+  const requireApproval = settingsRes.require_approval !== false;
+
+  const total = orgs.length, pending = orgs.filter(o => o.platform_status === "pending").length;
+  const approved = orgs.filter(o => o.platform_status === "approved").length;
+  const totalUsers = orgs.reduce((s, o) => s + (o.user_count || 0), 0);
+  const totalExt   = orgs.reduce((s, o) => s + (o.extinguisher_count || 0), 0);
+
+  const statBox = (label, val, borderColor) =>
+    `<div style="background:var(--bg3);border:1px solid ${borderColor};border-radius:8px;padding:0.8rem 1.2rem;min-width:100px;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:0.6rem;color:${borderColor};letter-spacing:0.1em;text-transform:uppercase;">${label}</div>
+      <div style="font-size:1.5rem;font-weight:700;color:var(--text);">${val}</div>
+    </div>`;
+  document.getElementById("platformStats").innerHTML =
+    statBox("Orgs",total,"var(--border)") + statBox("Pending",pending,"var(--orange)") +
+    statBox("Approved",approved,"var(--teal)") + statBox("Users",totalUsers,"var(--border)") +
+    statBox("Extinguishers",totalExt,"var(--border)");
+
+  // Approval toggle
+  const toggleHtml = `
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:1rem 1.2rem;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.8rem;">
+      <div>
+        <div style="font-weight:600;color:var(--text);font-size:0.9rem;">Require Approval for New Organizations</div>
+        <div style="color:var(--muted);font-size:0.75rem;margin-top:2px;">When ON, new orgs start as "pending." When OFF, auto-approved.</div>
+      </div>
+      <label style="position:relative;display:inline-block;width:52px;height:28px;cursor:pointer;">
+        <input type="checkbox" id="approvalToggle" ${requireApproval ? "checked" : ""} style="opacity:0;width:0;height:0;" onchange="toggleApprovalRequirement(this.checked)">
+        <span style="position:absolute;inset:0;background:${requireApproval?"var(--teal)":"var(--border)"};border-radius:28px;transition:0.3s;" id="approvalSliderBg"></span>
+        <span style="position:absolute;top:3px;left:${requireApproval?"26px":"3px"};width:22px;height:22px;background:#fff;border-radius:50%;transition:0.3s;" id="approvalSliderDot"></span>
+      </label>
+    </div>`;
+
+  // Org table
+  const thS = "padding:10px 8px;text-align:left;color:var(--muted);font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;";
+  let tbl = `<table style="width:100%;border-collapse:collapse;font-size:0.78rem;font-family:'IBM Plex Mono',monospace;">
+    <thead><tr style="border-bottom:2px solid var(--border);">
+      <th style="${thS}">Org</th><th style="${thS}">Status</th><th style="${thS}text-align:center;">Users</th>
+      <th style="${thS}text-align:center;">Ext.</th><th style="${thS}text-align:center;">Reports</th>
+      <th style="${thS}">Created</th><th style="${thS}">Actions</th>
+    </tr></thead><tbody>`;
+  const stMap = { approved:{bg:"rgba(13,148,136,0.15)",color:"var(--teal)",label:"Approved"}, pending:{bg:"rgba(232,93,4,0.15)",color:"var(--orange)",label:"Pending"}, suspended:{bg:"rgba(193,18,31,0.15)",color:"var(--red)",label:"Suspended"}, rejected:{bg:"rgba(107,114,128,0.15)",color:"var(--muted)",label:"Rejected"} };
+  orgs.forEach(o => {
+    const st = stMap[o.platform_status] || stMap.pending;
+    const esc = o.name.replace(/'/g,"\\'");
+    let act = `<button onclick="platformViewOrg(${o.org_id},'${esc}')" style="padding:4px 10px;border:none;border-radius:4px;background:var(--blue);color:#fff;cursor:pointer;font-size:0.7rem;font-weight:600;">View</button> `;
+    if (o.platform_status === "pending") act += `<button onclick="platformOrgAction(${o.org_id},'approved')" style="padding:4px 10px;border:none;border-radius:4px;background:var(--teal);color:#fff;cursor:pointer;font-size:0.7rem;font-weight:600;">Approve</button> <button onclick="platformOrgAction(${o.org_id},'rejected')" style="padding:4px 10px;border:none;border-radius:4px;background:var(--muted);color:#fff;cursor:pointer;font-size:0.7rem;font-weight:600;">Reject</button>`;
+    else if (o.platform_status === "approved") act += `<button onclick="platformOrgAction(${o.org_id},'suspended')" style="padding:4px 10px;border:none;border-radius:4px;background:var(--red);color:#fff;cursor:pointer;font-size:0.7rem;font-weight:600;">Suspend</button>`;
+    else act += `<button onclick="platformOrgAction(${o.org_id},'approved')" style="padding:4px 10px;border:none;border-radius:4px;background:var(--teal);color:#fff;cursor:pointer;font-size:0.7rem;font-weight:600;">Approve</button>`;
+    act += ` <button onclick="platformDeleteOrg(${o.org_id},'${esc}')" style="padding:4px 10px;border:none;border-radius:4px;background:var(--bg3);border:1px solid var(--border);color:var(--red);cursor:pointer;font-size:0.7rem;font-weight:600;">Delete</button>`;
+    tbl += `<tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:10px 8px;"><div style="font-weight:600;color:var(--text);">${o.name}</div><div style="font-size:0.65rem;color:var(--muted);">${[o.city,o.state].filter(Boolean).join(", ")||"—"}</div></td>
+      <td style="padding:10px 8px;"><span style="background:${st.bg};color:${st.color};padding:3px 10px;border-radius:4px;font-size:0.68rem;font-weight:600;">${st.label}</span></td>
+      <td style="padding:10px 8px;text-align:center;">${o.user_count||0}</td>
+      <td style="padding:10px 8px;text-align:center;">${o.extinguisher_count||0}</td>
+      <td style="padding:10px 8px;text-align:center;">${o.report_count||0}</td>
+      <td style="padding:10px 8px;color:var(--muted);font-size:0.7rem;">${o.created_at?o.created_at.split("T")[0]:"—"}</td>
+      <td style="padding:10px 8px;"><div style="display:flex;gap:4px;flex-wrap:wrap;">${act}</div></td></tr>`;
+  });
+  tbl += `</tbody></table>`;
+  document.getElementById("platformOrgTable").innerHTML = toggleHtml + tbl;
+}
+
+// ── Platform actions ─────────────────────────────────────────────────────────
+async function platformOrgAction(orgId, newStatus) {
+  const res = await fetch(`/api/platform/organizations/${orgId}/status`, { method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify({status:newStatus}) });
+  if (res.ok) loadPlatformDashboard(); else alert("Error: " + (await res.json()).error);
+}
+async function platformDeleteOrg(orgId, orgName) {
+  if (!confirm(`PERMANENTLY delete "${orgName}" and ALL its data? This cannot be undone.`)) return;
+  if (!confirm(`Are you absolutely sure?`)) return;
+  const res = await fetch(`/api/platform/organizations/${orgId}`, { method:"DELETE" });
+  if (res.ok) loadPlatformDashboard(); else alert("Error: " + (await res.json()).error);
+}
+async function toggleApprovalRequirement(enabled) {
+  const res = await fetch("/api/platform/settings", { method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify({require_approval:enabled}) });
+  if (res.ok) {
+    document.getElementById("approvalSliderBg").style.background = enabled ? "var(--teal)" : "var(--border)";
+    document.getElementById("approvalSliderDot").style.left = enabled ? "26px" : "3px";
+  } else { alert("Error saving setting."); document.getElementById("approvalToggle").checked = !enabled; }
+}
+
+// ── Platform: View Org Detail (drill-down) ───────────────────────────────────
+async function platformViewOrg(orgId, orgName) {
+  document.getElementById("platformPanelOrgs").style.display = "none";
+  document.getElementById("platformPanelAudit").style.display = "none";
+  document.getElementById("platformPanelOrgDetail").style.display = "";
+  document.getElementById("platformStats").style.display = "none";
+  document.getElementById("platformOrgDetail").innerHTML = `<p style="color:var(--muted);padding:2rem;text-align:center;">Loading ${orgName}...</p>`;
+
+  const data = await fetch(`/api/platform/organizations/${orgId}/details`).then(r => r.json());
+  if (data.error) { alert(data.error); switchPlatformTab("orgs"); return; }
+  const org = data.org;
+
+  const thS = "padding:8px 6px;text-align:left;color:var(--muted);font-size:0.6rem;letter-spacing:0.1em;text-transform:uppercase;border-bottom:1px solid var(--border);";
+  const tdS = "padding:7px 6px;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.78rem;color:var(--text);";
+
+  function miniTable(headers, rows) {
+    if (!rows.length) return `<p style="color:var(--muted);font-size:0.8rem;padding:0.5rem 0;">No data.</p>`;
+    let h = `<table style="width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;"><thead><tr>`;
+    headers.forEach(hd => h += `<th style="${thS}">${hd.label}</th>`);
+    h += `</tr></thead><tbody>`;
+    rows.forEach(r => { h += `<tr>`; headers.forEach(hd => h += `<td style="${tdS}">${r[hd.key] ?? "—"}</td>`); h += `</tr>`; });
+    return h + `</tbody></table>`;
+  }
+
+  const stColors = {approved:"var(--teal)",pending:"var(--orange)",suspended:"var(--red)",rejected:"var(--muted)"};
+  const tabs = [
+    {key:"users",label:"Users",cols:[{label:"ID",key:"user_id"},{label:"Username",key:"username"},{label:"Role",key:"role"}]},
+    {key:"extinguishers",label:"Extinguishers",cols:[{label:"ID",key:"extinguisher_id"},{label:"Company",key:"company_name"},{label:"Building",key:"building_name"},{label:"Floor",key:"floor_number"},{label:"Room",key:"room_number"},{label:"Type",key:"ext_type"},{label:"Status",key:"ext_status"},{label:"Serial",key:"serial_number"},{label:"Due",key:"next_due_date"}]},
+    {key:"assignments",label:"Assignments",cols:[{label:"ID",key:"assignment_id"},{label:"Assigned By",key:"assigned_by"},{label:"Inspector",key:"inspector"},{label:"Status",key:"status"},{label:"Due",key:"due_date"},{label:"Notes",key:"notes"}]},
+    {key:"reports",label:"Reports",cols:[{label:"ID",key:"report_id"},{label:"Inspector",key:"inspector"},{label:"Ext ID",key:"extinguisher_id"},{label:"Date",key:"inspection_date"},{label:"Notes",key:"notes"}]},
+    {key:"companies",label:"Companies",cols:[{label:"ID",key:"company_id"},{label:"Name",key:"name"},{label:"Address",key:"address"},{label:"City",key:"city"},{label:"State",key:"state"}]},
+    {key:"buildings",label:"Buildings",cols:[{label:"ID",key:"building_id"},{label:"Name",key:"name"},{label:"Company",key:"company_name"},{label:"Address",key:"address"},{label:"Floors",key:"floors"}]},
+  ];
+
+  let tabBtns = tabs.map((t,i) =>
+    `<button onclick="switchOrgDetailTab('${t.key}')" id="orgDetailTab_${t.key}" style="padding:0.5rem 1rem;border:none;background:none;color:${i===0?'var(--text)':'var(--muted)'};font-family:'IBM Plex Mono',monospace;font-size:0.72rem;font-weight:600;cursor:pointer;border-bottom:2px solid ${i===0?'var(--orange)':'transparent'};margin-bottom:-2px;white-space:nowrap;flex-shrink:0;">${t.label} (${(data[t.key]||[]).length})</button>`
+  ).join("");
+
+  let tabPanels = tabs.map((t,i) =>
+    `<div id="orgDetailPanel_${t.key}" style="display:${i===0?'':'none'};margin-top:0.8rem;overflow-x:auto;">${miniTable(t.cols, data[t.key]||[])}</div>`
+  ).join("");
+
+  document.getElementById("platformOrgDetail").innerHTML = `
+    <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem;flex-wrap:wrap;">
+      <button onclick="switchPlatformTab('orgs')" style="padding:6px 14px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--text);cursor:pointer;font-size:0.78rem;font-weight:600;">← Back</button>
+      <span style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:0.04em;color:var(--text);">${org.name}</span>
+      <span style="padding:3px 10px;border-radius:4px;font-size:0.68rem;font-weight:600;color:${stColors[org.platform_status]||'var(--muted)'};background:rgba(128,128,128,0.1);">${org.platform_status}</span>
+    </div>
+    <div style="display:flex;gap:0.8rem;flex-wrap:wrap;margin-bottom:1rem;font-size:0.75rem;color:var(--muted);">
+      <span>📍 ${[org.address,org.city,org.state].filter(Boolean).join(", ")||"No address"}</span>
+      <span>📞 ${org.phone||"—"}</span>
+      <span>👤 ${org.contact_name||"—"}</span>
+      <span>📅 ${org.created_at?org.created_at.split("T")[0]:"—"}</span>
+    </div>
+    <div style="display:flex;gap:0;border-bottom:2px solid var(--border);overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin;">${tabBtns}</div>
+    ${tabPanels}`;
+}
+
+function switchOrgDetailTab(tab) {
+  ["users","extinguishers","assignments","reports","companies","buildings"].forEach(t => {
+    const btn = document.getElementById("orgDetailTab_" + t);
+    const panel = document.getElementById("orgDetailPanel_" + t);
+    if (btn) { btn.style.color = t===tab?"var(--text)":"var(--muted)"; btn.style.borderBottomColor = t===tab?"var(--orange)":"transparent"; }
+    if (panel) panel.style.display = t===tab?"":"none";
+  });
+}
+
+// ── Platform: Activity / Audit Log ───────────────────────────────────────────
+async function loadPlatformAuditLog() {
+  const logs = await fetch("/api/platform/audit?limit=200").then(r => r.json());
+  const el = document.getElementById("platformAuditLog");
+  if (!logs.length) { el.innerHTML = `<p style="color:var(--muted);padding:2rem;text-align:center;">No activity logged yet.</p>`; return; }
+
+  const actionColors = { platform_login:"var(--blue)", platform_login_failed:"var(--red)", org_registered:"var(--orange)", org_approved:"var(--teal)", org_rejected:"var(--muted)", org_suspended:"var(--red)", org_deleted:"var(--red)", settings_changed:"var(--purple)", view_org:"var(--muted2)" };
+  const thS = "padding:10px 8px;text-align:left;color:var(--muted);font-size:0.6rem;letter-spacing:0.1em;text-transform:uppercase;border-bottom:2px solid var(--border);";
+  const tdS = "padding:8px;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.78rem;";
+
+  let html = `<table style="width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;">
+    <thead><tr><th style="${thS}">Time</th><th style="${thS}">Actor</th><th style="${thS}">Action</th><th style="${thS}">Target</th><th style="${thS}">Details</th></tr></thead><tbody>`;
+  logs.forEach(l => {
+    const color = actionColors[l.action] || "var(--text)";
+    const time = l.timestamp ? new Date(l.timestamp + "Z").toLocaleString([], {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'}) : "—";
+    html += `<tr><td style="${tdS}color:var(--muted);font-size:0.72rem;white-space:nowrap;">${time}</td>
+      <td style="${tdS}color:var(--text);">${l.actor}</td>
+      <td style="${tdS}"><span style="color:${color};font-weight:600;">${l.action.replace(/_/g," ")}</span></td>
+      <td style="${tdS}color:var(--text);">${l.target||"—"}</td>
+      <td style="${tdS}color:var(--muted);font-size:0.72rem;">${l.details||"—"}</td></tr>`;
+  });
+  el.innerHTML = html + `</tbody></table>`;
+}
+
 // ── Session restore on page load ──────────────────────────────────────────────
 // If the user refreshes the page, restore their session from localStorage
 // so they don't have to log in again.
