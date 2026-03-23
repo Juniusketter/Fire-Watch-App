@@ -5,6 +5,7 @@
 #include "assigndialog.h"
 #include "reportdialog.h"
 #include "adduserdialog.h"
+#include "exportdialog.h"
 
 #include <QHeaderView>
 #include <QMessageBox>
@@ -59,6 +60,7 @@ void Dashboard::setupTabsForRole()
         setWindowTitle("FireWatch — Admin Dashboard");
         setupExtinguisherToolbar();
         setupAssignmentToolbar();
+        setupReportExportToolbar();
         setupUserToolbar();
         loadExtinguishers();
         loadAssignments();
@@ -210,6 +212,49 @@ void Dashboard::setupReportToolbar()
     }
 
     connect(btnReport, &QPushButton::clicked, this, &Dashboard::onGenerateReport);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Report Export toolbar — Export PDF / Print buttons (Admin only)
+//  Original export logic by Lillian Bowen — moved from Admin.h to ExportDialog
+// ─────────────────────────────────────────────────────────────────────────────
+void Dashboard::setupReportExportToolbar()
+{
+    QWidget     *bar  = new QWidget(this);
+    QHBoxLayout *hbox = new QHBoxLayout(bar);
+    hbox->setContentsMargins(0, 4, 0, 4);
+    hbox->setSpacing(8);
+
+    QPushButton *btnExport = new QPushButton("📄 Export / Print Reports", bar);
+    btnExport->setStyleSheet(
+        "QPushButton { border-radius: 4px; padding: 5px 14px; font-weight: bold;"
+        " background: #1f3864; color: white; }"
+        "QPushButton:hover { opacity: 0.85; }");
+
+    hbox->addWidget(btnExport);
+    hbox->addStretch();
+
+    // Insert into Reports tab
+    for (int i = 0; i < ui->tabWidget->count(); ++i) {
+        if (ui->tabWidget->tabText(i).contains("Report", Qt::CaseInsensitive)) {
+            QVBoxLayout *tabLayout = qobject_cast<QVBoxLayout*>(
+                ui->tabWidget->widget(i)->layout());
+            if (tabLayout)
+                tabLayout->insertWidget(0, bar);
+            break;
+        }
+    }
+
+    connect(btnExport, &QPushButton::clicked, this, &Dashboard::onExportReports);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Export Reports — opens ExportDialog
+// ─────────────────────────────────────────────────────────────────────────────
+void Dashboard::onExportReports()
+{
+    ExportDialog dlg(m_db, this);
+    dlg.exec();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

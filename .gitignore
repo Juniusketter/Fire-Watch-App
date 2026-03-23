@@ -20,3 +20,6 @@ compile_commands.json
 # OS
 .DS_Store
 Thumbs.db
+src/frontend/Fire-Watch-UI/build/
+src/frontend/Fire-Watch-UI/.qtcreator/
+src/frontend/Fire-Watch-UI/.qtc_clangd/
