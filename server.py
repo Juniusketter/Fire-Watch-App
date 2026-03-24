@@ -1,10 +1,36 @@
-# Flask server endpoints for edit/delete
-from flask import Flask, request, jsonify
+"""
+FireWatch Backend Server
+========================
+Run this file to start the local backend server.
+
+Requirements:
+    pip install flask
+
+Usage:
+    python server.py
+
+Then open your browser to:
+    http://localhost:5000
+
+The server reads/writes directly from src/database/FireWatch.db
+Any changes you make to the database will appear live after login.
+"""
+
+from flask import Flask, request, jsonify, send_from_directory
+import sqlite3
+import os
+import hashlib
+import logging
+import uuid
+
+# Silence per-request logs — errors still print, routine GET/POST lines do not
+logging.getLogger("werkzeug").setLevel(logging.ERROR)
+
+def hash_password(pw: str) -> str:
+    """SHA-256 hash a password. Matches Qt's QCryptographicHash::Sha256."""
+    return hashlib.sha256(pw.encode()).hexdigest()
+
 app = Flask(__name__)
-@app.route('/api/user/<uid>', methods=['PUT'])
-def update_user(uid): return jsonify(ok=True)
-@app.route('/api/user/<uid>', methods=['DELETE'])
-def delete_user(uid): return jsonify(ok=True)
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
 BASE_DIR    = os.path.dirname(os.path.abspath(__file__))
