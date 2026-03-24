@@ -335,8 +335,8 @@
       .topbar{padding:0 var(--pad-mobile);gap:0.4rem;}
       .topbar-logo{font-size:1.3rem;}
       .topbar-user-text{display:none;}
-      .search-container{max-width:140px !important;margin:0 0.2rem !important;}
-      .search-container input{font-size:0.68rem !important;padding:5px 8px !important;}
+      .search-desktop{display:none !important;}
+      .search-mobile{display:block !important;}
       .role-pill{font-size:0.62rem;padding:2px 7px;}
       .btn-bar{padding:5px 10px;font-size:0.68rem;letter-spacing:0;}
       .stats-row{flex-wrap:wrap;}
@@ -519,11 +519,12 @@
     <span class="topbar-user"><span class="topbar-user-text"><strong id="welcomeLabel"></strong></span></span>
     <span class="role-pill" id="roleLabel"></span>
     <span class="org-name-pill" id="orgNamePill"></span>
-    <div class="search-container" id="searchContainer" style="position:relative;flex:1;max-width:320px;margin:0 0.5rem;">
-      <input type="text" id="globalSearch" placeholder="🔍 Search extinguishers, assignments, users..."
+    <!-- Search bar: shows inline on desktop, hidden here on mobile (moved below stats) -->
+    <div class="search-container search-desktop" id="searchContainerDesktop" style="position:relative;flex:1;max-width:320px;margin:0 0.5rem;">
+      <input type="text" class="global-search-input" placeholder="🔍 Search..."
         style="width:100%;padding:6px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:0.75rem;outline:none;"
         autocomplete="off" />
-      <div id="searchResults" class="hidden" style="position:absolute;top:100%;left:0;right:0;margin-top:4px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;max-height:400px;overflow-y:auto;z-index:200;box-shadow:0 12px 32px rgba(0,0,0,0.5);"></div>
+      <div class="search-results-dropdown hidden" style="position:absolute;top:100%;left:0;right:0;margin-top:4px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;max-height:400px;overflow-y:auto;z-index:200;box-shadow:0 12px 32px rgba(0,0,0,0.5);"></div>
     </div>
     <span class="last-updated" id="lastUpdated"></span>
     <button class="btn-bar btn-refresh" id="btnRefresh" title="Refresh">↻</button>
@@ -572,6 +573,13 @@
           <div class="stat-box color-teal" id="statBoxAssign"><div class="stat-label" id="statLabelAssign">Assignments</div><div class="stat-val" id="statAssign">—</div></div>
           <div class="stat-box color-blue" id="statBoxReports"><div class="stat-label" id="statLabelReports">Reports</div><div class="stat-val" id="statReports">—</div></div>
           <div class="stat-box color-purple" id="statBoxUsers"><div class="stat-label" id="statLabelUsers">Users</div><div class="stat-val" id="statUsers">—</div></div>
+        </div>
+        <!-- Mobile search bar — hidden on desktop, shown on mobile -->
+        <div class="search-container search-mobile" id="searchContainerMobile" style="position:relative;padding:0.5rem var(--pad-mobile);display:none;">
+          <input type="text" class="global-search-input" placeholder="🔍 Search extinguishers, assignments, users..."
+            style="width:100%;padding:8px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:0.8rem;outline:none;"
+            autocomplete="off" />
+          <div class="search-results-dropdown hidden" style="position:absolute;top:100%;left:0.5rem;right:0.5rem;margin-top:4px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;max-height:400px;overflow-y:auto;z-index:200;box-shadow:0 12px 32px rgba(0,0,0,0.5);"></div>
         </div>
         <div class="tab-bar" id="tabBar"></div>
         <div class="tab-panels">
@@ -3287,30 +3295,32 @@ document.getElementById("btnExportReports")?.addEventListener("click", () => {
 // ══════════════════════════════════════════════════════════════════════════════
 
 let _searchTimer = null;
-const searchInput   = document.getElementById("globalSearch");
-const searchResults = document.getElementById("searchResults");
+const searchInputs   = document.querySelectorAll(".global-search-input");
+const searchDropdowns = document.querySelectorAll(".search-results-dropdown");
 
-searchInput?.addEventListener("input", () => {
-  clearTimeout(_searchTimer);
-  const q = searchInput.value.trim();
-  if (q.length < 2) { searchResults.classList.add("hidden"); return; }
-  _searchTimer = setTimeout(() => runSearch(q), 250);
-});
+searchInputs.forEach(input => {
+  input.addEventListener("input", () => {
+    clearTimeout(_searchTimer);
+    const q = input.value.trim();
+    // Sync the other search bar's value
+    searchInputs.forEach(si => { if (si !== input) si.value = input.value; });
+    if (q.length < 2) { searchDropdowns.forEach(d => d.classList.add("hidden")); return; }
+    _searchTimer = setTimeout(() => runSearch(q), 250);
+  });
 
-searchInput?.addEventListener("focus", () => {
-  if (searchInput.value.trim().length >= 2) runSearch(searchInput.value.trim());
+  input.addEventListener("focus", () => {
+    if (input.value.trim().length >= 2) runSearch(input.value.trim());
+  });
+
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { searchDropdowns.forEach(d => d.classList.add("hidden")); input.blur(); }
+  });
 });
 
 // Close search on click outside
 document.addEventListener("click", (e) => {
-  if (!document.getElementById("searchContainer")?.contains(e.target)) {
-    searchResults?.classList.add("hidden");
-  }
-});
-
-// Close search on Escape
-searchInput?.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") { searchResults.classList.add("hidden"); searchInput.blur(); }
+  const inSearch = e.target.closest(".search-container");
+  if (!inSearch) searchDropdowns.forEach(d => d.classList.add("hidden"));
 });
 
 async function runSearch(q) {
@@ -3319,8 +3329,8 @@ async function runSearch(q) {
   try {
     const results = await fetch(`/api/search?q=${encodeURIComponent(q)}&org_id=${oid}`).then(r => r.json());
     if (!results.length) {
-      searchResults.innerHTML = `<div style="padding:1rem;text-align:center;color:var(--muted);font-size:0.78rem;">No results for "${q}"</div>`;
-      searchResults.classList.remove("hidden");
+      searchDropdowns.forEach(d => d.innerHTML = `<div style="padding:1rem;text-align:center;color:var(--muted);font-size:0.78rem;">No results for "${q}"</div>`);
+      searchDropdowns.forEach(d => d.classList.remove("hidden"));
       return;
     }
 
@@ -3364,17 +3374,17 @@ async function runSearch(q) {
         </div>`;
       });
     }
-    searchResults.innerHTML = html;
-    searchResults.classList.remove("hidden");
+    searchDropdowns.forEach(d => d.innerHTML = html);
+    searchDropdowns.forEach(d => d.classList.remove("hidden"));
   } catch(e) {
-    searchResults.innerHTML = `<div style="padding:1rem;text-align:center;color:var(--red);font-size:0.78rem;">Search error</div>`;
-    searchResults.classList.remove("hidden");
+    searchDropdowns.forEach(d => d.innerHTML = `<div style="padding:1rem;text-align:center;color:var(--red);font-size:0.78rem;">Search error</div>`);
+    searchDropdowns.forEach(d => d.classList.remove("hidden"));
   }
 }
 
 function handleSearchClick(type, id, data) {
-  searchResults.classList.add("hidden");
-  searchInput.value = "";
+  searchDropdowns.forEach(d => d.classList.add("hidden"));
+  searchInputs.forEach(si => si.value = "");
 
   // Navigate to the appropriate view and open the detail popup
   showView("dashboard");
