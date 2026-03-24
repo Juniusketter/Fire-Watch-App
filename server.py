@@ -973,6 +973,147 @@ def delete_user(user_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# ── SEARCH ─────────────────────────────────────────────────────────────────────
+@app.route("/api/search", methods=["GET"])
+def search():
+    """Search across all org data — extinguishers, assignments, reports, users, companies, buildings."""
+    q = (request.args.get("q") or "").strip().lower()
+    org_id = request.args.get("org_id")
+    if not q or len(q) < 2:
+        return jsonify([])
+
+    results = []
+    like = f"%{q}%"
+
+    with get_db() as conn:
+        # Extinguishers
+        rows = conn.execute("""
+            SELECT e.extinguisher_id, e.floor_number, e.room_number, e.location_description,
+                   e.ext_type, e.serial_number, e.ext_status, e.next_due_date,
+                   b.name AS building_name, c.name AS company_name
+            FROM Extinguishers e
+            LEFT JOIN Buildings b ON b.building_id = e.building_id
+            LEFT JOIN Companies c ON c.company_id = b.company_id
+            WHERE e.org_id=? AND (
+                LOWER(e.serial_number) LIKE ? OR LOWER(e.location_description) LIKE ?
+                OR LOWER(e.ext_type) LIKE ? OR LOWER(e.room_number) LIKE ?
+                OR LOWER(b.name) LIKE ? OR LOWER(c.name) LIKE ?
+                OR CAST(e.extinguisher_id AS TEXT) LIKE ?
+                OR LOWER(e.ext_status) LIKE ?
+            ) LIMIT 10
+        """, (org_id, like, like, like, like, like, like, like, like)).fetchall()
+        for r in rows:
+            results.append({
+                "type": "extinguisher", "id": r["extinguisher_id"],
+                "title": f"Ext #{r['extinguisher_id']}" + (f" — {r['serial_number']}" if r["serial_number"] else ""),
+                "subtitle": " · ".join(filter(None, [r["company_name"], r["building_name"],
+                    f"Floor {r['floor_number']}" if r["floor_number"] else None,
+                    f"Room {r['room_number']}" if r["room_number"] else None])),
+                "badge": r["ext_status"] or "Active",
+                "data": dict(r)
+            })
+
+        # Assignments
+        rows = conn.execute("""
+            SELECT a.assignment_id, a.status, a.due_date, a.notes,
+                   u_admin.username AS assigned_by, u_insp.username AS inspector,
+                   e.extinguisher_id, b.name AS building_name, c.name AS company_name
+            FROM Assignments a
+            LEFT JOIN Users u_admin ON a.admin_id = u_admin.user_id
+            LEFT JOIN Users u_insp ON a.inspector_id = u_insp.user_id
+            LEFT JOIN Extinguishers e ON a.extinguisher_id = e.extinguisher_id
+            LEFT JOIN Buildings b ON e.building_id = b.building_id
+            LEFT JOIN Companies c ON b.company_id = c.company_id
+            WHERE a.org_id=? AND (
+                LOWER(a.status) LIKE ? OR LOWER(a.notes) LIKE ?
+                OR LOWER(u_insp.username) LIKE ? OR LOWER(u_admin.username) LIKE ?
+                OR CAST(a.assignment_id AS TEXT) LIKE ?
+            ) LIMIT 10
+        """, (org_id, like, like, like, like, like)).fetchall()
+        for r in rows:
+            results.append({
+                "type": "assignment", "id": r["assignment_id"],
+                "title": f"Assignment #{r['assignment_id']}",
+                "subtitle": " · ".join(filter(None, [f"Inspector: {r['inspector']}" if r["inspector"] else None,
+                    r["company_name"], r["building_name"], f"Due: {r['due_date']}" if r["due_date"] else None])),
+                "badge": r["status"] or "Pending",
+                "data": dict(r)
+            })
+
+        # Reports
+        rows = conn.execute("""
+            SELECT r.report_id, r.inspection_date, r.notes,
+                   u.username AS inspector, e.extinguisher_id,
+                   b.name AS building_name, c.name AS company_name
+            FROM Reports r
+            LEFT JOIN Users u ON r.inspector_id = u.user_id
+            LEFT JOIN Extinguishers e ON r.extinguisher_id = e.extinguisher_id
+            LEFT JOIN Buildings b ON e.building_id = b.building_id
+            LEFT JOIN Companies c ON b.company_id = c.company_id
+            WHERE r.org_id=? AND (
+                LOWER(r.notes) LIKE ? OR LOWER(u.username) LIKE ?
+                OR CAST(r.report_id AS TEXT) LIKE ?
+                OR r.inspection_date LIKE ?
+            ) LIMIT 10
+        """, (org_id, like, like, like, like)).fetchall()
+        for r in rows:
+            results.append({
+                "type": "report", "id": r["report_id"],
+                "title": f"Report #{r['report_id']}",
+                "subtitle": " · ".join(filter(None, [f"Inspector: {r['inspector']}" if r["inspector"] else None,
+                    r["inspection_date"], r["company_name"]])),
+                "badge": "Report",
+                "data": dict(r)
+            })
+
+        # Users
+        rows = conn.execute("""
+            SELECT user_id, username, role FROM Users
+            WHERE org_id=? AND (LOWER(username) LIKE ? OR LOWER(role) LIKE ?)
+            LIMIT 10
+        """, (org_id, like, like)).fetchall()
+        for r in rows:
+            results.append({
+                "type": "user", "id": r["user_id"],
+                "title": r["username"],
+                "subtitle": r["role"].replace("_", " "),
+                "badge": r["role"].split("_")[0] if "_" in r["role"] else r["role"],
+                "data": dict(r)
+            })
+
+        # Companies
+        rows = conn.execute("""
+            SELECT company_id, name, address, city, state FROM Companies
+            WHERE org_id=? AND (LOWER(name) LIKE ? OR LOWER(address) LIKE ? OR LOWER(city) LIKE ?)
+            LIMIT 5
+        """, (org_id, like, like, like)).fetchall()
+        for r in rows:
+            results.append({
+                "type": "company", "id": r["company_id"],
+                "title": r["name"],
+                "subtitle": " · ".join(filter(None, [r["address"], r["city"], r["state"]])),
+                "badge": "Company",
+                "data": dict(r)
+            })
+
+        # Buildings
+        rows = conn.execute("""
+            SELECT b.building_id, b.name, b.address, c.name AS company_name FROM Buildings b
+            LEFT JOIN Companies c ON c.company_id = b.company_id
+            WHERE b.org_id=? AND (LOWER(b.name) LIKE ? OR LOWER(b.address) LIKE ?)
+            LIMIT 5
+        """, (org_id, like, like)).fetchall()
+        for r in rows:
+            results.append({
+                "type": "building", "id": r["building_id"],
+                "title": r["name"],
+                "subtitle": r["company_name"] or r["address"] or "",
+                "badge": "Building",
+                "data": dict(r)
+            })
+
+    return jsonify(results)
+
 # ── NOTIFICATIONS ─────────────────────────────────────────────────────────────
 @app.route("/api/notifications", methods=["GET"])
 def get_notifications():

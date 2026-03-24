@@ -335,6 +335,8 @@
       .topbar{padding:0 var(--pad-mobile);gap:0.4rem;}
       .topbar-logo{font-size:1.3rem;}
       .topbar-user-text{display:none;}
+      .search-container{max-width:140px !important;margin:0 0.2rem !important;}
+      .search-container input{font-size:0.68rem !important;padding:5px 8px !important;}
       .role-pill{font-size:0.62rem;padding:2px 7px;}
       .btn-bar{padding:5px 10px;font-size:0.68rem;letter-spacing:0;}
       .stats-row{flex-wrap:wrap;}
@@ -517,6 +519,12 @@
     <span class="topbar-user"><span class="topbar-user-text"><strong id="welcomeLabel"></strong></span></span>
     <span class="role-pill" id="roleLabel"></span>
     <span class="org-name-pill" id="orgNamePill"></span>
+    <div class="search-container" id="searchContainer" style="position:relative;flex:1;max-width:320px;margin:0 0.5rem;">
+      <input type="text" id="globalSearch" placeholder="🔍 Search extinguishers, assignments, users..."
+        style="width:100%;padding:6px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:0.75rem;outline:none;"
+        autocomplete="off" />
+      <div id="searchResults" class="hidden" style="position:absolute;top:100%;left:0;right:0;margin-top:4px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;max-height:400px;overflow-y:auto;z-index:200;box-shadow:0 12px 32px rgba(0,0,0,0.5);"></div>
+    </div>
     <span class="last-updated" id="lastUpdated"></span>
     <button class="btn-bar btn-refresh" id="btnRefresh" title="Refresh">↻</button>
     <button class="btn-bar btn-logout" id="btnLogout">Logout</button>
@@ -3272,6 +3280,136 @@ document.getElementById("btnExportReports")?.addEventListener("click", () => {
   a.click();
   setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
 });
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════════
+//  GLOBAL SEARCH
+// ══════════════════════════════════════════════════════════════════════════════
+
+let _searchTimer = null;
+const searchInput   = document.getElementById("globalSearch");
+const searchResults = document.getElementById("searchResults");
+
+searchInput?.addEventListener("input", () => {
+  clearTimeout(_searchTimer);
+  const q = searchInput.value.trim();
+  if (q.length < 2) { searchResults.classList.add("hidden"); return; }
+  _searchTimer = setTimeout(() => runSearch(q), 250);
+});
+
+searchInput?.addEventListener("focus", () => {
+  if (searchInput.value.trim().length >= 2) runSearch(searchInput.value.trim());
+});
+
+// Close search on click outside
+document.addEventListener("click", (e) => {
+  if (!document.getElementById("searchContainer")?.contains(e.target)) {
+    searchResults?.classList.add("hidden");
+  }
+});
+
+// Close search on Escape
+searchInput?.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") { searchResults.classList.add("hidden"); searchInput.blur(); }
+});
+
+async function runSearch(q) {
+  const oid = orgId();
+  if (!oid) return;
+  try {
+    const results = await fetch(`/api/search?q=${encodeURIComponent(q)}&org_id=${oid}`).then(r => r.json());
+    if (!results.length) {
+      searchResults.innerHTML = `<div style="padding:1rem;text-align:center;color:var(--muted);font-size:0.78rem;">No results for "${q}"</div>`;
+      searchResults.classList.remove("hidden");
+      return;
+    }
+
+    // Group by type
+    const groups = {};
+    results.forEach(r => {
+      if (!groups[r.type]) groups[r.type] = [];
+      groups[r.type].push(r);
+    });
+
+    const typeLabels = {
+      extinguisher: "🧯 Extinguishers",
+      assignment: "📋 Assignments",
+      report: "📄 Reports",
+      user: "👤 Users",
+      company: "🏢 Companies",
+      building: "🏗 Buildings"
+    };
+
+    const badgeColors = {
+      Active: "var(--teal)", Pending: "var(--orange)", "Out of Service": "var(--red)",
+      Missing: "var(--red)", Retired: "var(--muted)", Complete: "var(--teal)",
+      Completed: "var(--teal)", Admin: "var(--orange)", Inspector: "var(--teal)",
+      "3rd": "var(--purple)", Company: "var(--blue)", Building: "var(--blue)", Report: "var(--blue)"
+    };
+
+    let html = "";
+    for (const [type, items] of Object.entries(groups)) {
+      html += `<div style="padding:6px 12px;font-family:'IBM Plex Mono',monospace;font-size:0.6rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);background:var(--bg3);">${typeLabels[type] || type}</div>`;
+      items.forEach(item => {
+        const bc = badgeColors[item.badge] || "var(--muted)";
+        html += `<div class="search-result-item" data-type="${item.type}" data-id="${item.id}"
+          style="padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.04);cursor:pointer;transition:background 0.1s;"
+          onmouseenter="this.style.background='var(--bg3)'" onmouseleave="this.style.background='none'"
+          onclick="handleSearchClick('${item.type}',${item.id},${JSON.stringify(item.data).replace(/'/g,"&#39;").replace(/"/g,"&quot;")})">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+            <div style="font-size:0.82rem;font-weight:600;color:var(--text);">${item.title}</div>
+            <span style="font-size:0.62rem;padding:2px 8px;border-radius:3px;background:rgba(128,128,128,0.15);color:${bc};font-weight:600;white-space:nowrap;">${item.badge}</span>
+          </div>
+          <div style="font-size:0.72rem;color:var(--muted);margin-top:2px;">${item.subtitle || ""}</div>
+        </div>`;
+      });
+    }
+    searchResults.innerHTML = html;
+    searchResults.classList.remove("hidden");
+  } catch(e) {
+    searchResults.innerHTML = `<div style="padding:1rem;text-align:center;color:var(--red);font-size:0.78rem;">Search error</div>`;
+    searchResults.classList.remove("hidden");
+  }
+}
+
+function handleSearchClick(type, id, data) {
+  searchResults.classList.add("hidden");
+  searchInput.value = "";
+
+  // Navigate to the appropriate view and open the detail popup
+  showView("dashboard");
+
+  if (type === "extinguisher") {
+    // Switch to extinguishers tab and open detail
+    const tabBtn = [...document.querySelectorAll(".tab-btn")].find(b => b.textContent.includes("Extinguisher"));
+    if (tabBtn) tabBtn.click();
+    setTimeout(() => openExtDetail(data), 200);
+  }
+  else if (type === "assignment") {
+    const tabBtn = [...document.querySelectorAll(".tab-btn")].find(b => b.textContent.includes("Assignment"));
+    if (tabBtn) tabBtn.click();
+    setTimeout(() => openAssignDetail(data), 200);
+  }
+  else if (type === "report") {
+    const tabBtn = [...document.querySelectorAll(".tab-btn")].find(b => b.textContent.includes("Report"));
+    if (tabBtn) tabBtn.click();
+    setTimeout(() => openReportDetail(data), 200);
+  }
+  else if (type === "user") {
+    const tabBtn = [...document.querySelectorAll(".tab-btn")].find(b => b.textContent.includes("User"));
+    if (tabBtn) tabBtn.click();
+  }
+  else if (type === "company") {
+    const tabBtn = [...document.querySelectorAll(".tab-btn")].find(b => b.textContent.includes("Extinguisher"));
+    if (tabBtn) tabBtn.click();
+    // Drill into this company
+    setTimeout(() => drillTo("buildings", data), 200);
+  }
+  else if (type === "building") {
+    const tabBtn = [...document.querySelectorAll(".tab-btn")].find(b => b.textContent.includes("Extinguisher"));
+    if (tabBtn) tabBtn.click();
+  }
+}
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  PLATFORM SUPER ADMIN
