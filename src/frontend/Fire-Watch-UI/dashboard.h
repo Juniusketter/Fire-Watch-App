@@ -41,6 +41,9 @@ private slots:
     // ── Admin: Add User ───────────────────────────────────────────────────
     void onAddUser();
 
+    // ── Admin: Export Reports ────────────────────────────────────────────
+    void onExportReports();
+
 private:
     Ui::Dashboard *ui;
 
@@ -66,6 +69,9 @@ private:
 
     // ── Report toolbar (Inspector) ────────────────────────────────────────
     void setupReportToolbar();
+
+    // ── Report Export toolbar (Admin) ───────────────────────────────────
+    void setupReportExportToolbar();
 
     // ── User toolbar (Admin) ──────────────────────────────────────────────
     void setupUserToolbar();

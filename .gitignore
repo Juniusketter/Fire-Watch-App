@@ -23,3 +23,22 @@ Thumbs.db
 src/frontend/Fire-Watch-UI/build/
 src/frontend/Fire-Watch-UI/.qtcreator/
 src/frontend/Fire-Watch-UI/.qtc_clangd/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Uploads (user photos — don't commit binary blobs)
+src/uploads/*.png
+src/uploads/*.jpg
+src/uploads/*.jpeg
+!src/uploads/.gitkeep
+
+# Database files (local state — don't overwrite teammates)
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Don't commit standalone databases at root
+/database.db
