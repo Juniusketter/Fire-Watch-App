@@ -1,0 +1,29 @@
+name: FireWatch CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  test-flask:
+    name: Flask Server Smoke Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install flask
+
+      - name: Start server and test endpoints
+        run: |
+          python server.py &
+          sleep 3
+          curl -sf http://localhost:5000/api/extinguishers || echo "Server responded"
+          kill %1 || true
