@@ -8,6 +8,7 @@
 #include <QtSql/QSqlDatabase>
 #include <QtSql/QSqlQuery>
 #include <QtSql/QSqlError>
+#include "DueDateAlert.h"
 
 namespace Ui {
 class Dashboard;
@@ -89,6 +90,9 @@ private:
 
     // ── Returns extinguisher_id of selected row, -1 if none ──────────────
     int selectedExtinguisherId() const;
+
+    // ── Due date alerts — called after loadAssignments() ─────────────────
+    void checkDueDateAlerts();
 };
 
 #endif // DASHBOARD_H
