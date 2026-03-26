@@ -574,6 +574,10 @@
           <div class="stat-box color-blue" id="statBoxReports"><div class="stat-label" id="statLabelReports">Reports</div><div class="stat-val" id="statReports">—</div></div>
           <div class="stat-box color-purple" id="statBoxUsers"><div class="stat-label" id="statLabelUsers">Users</div><div class="stat-val" id="statUsers">—</div></div>
         </div>
+        <!-- Due Date Alert Banner — compact single bar -->
+        <div id="dueDateAlertBanner" class="hidden" style="display:none;padding:0.5rem var(--pad-desk);border-bottom:1px solid var(--border);background:var(--bg2);">
+          <div id="dueDateAlertContent" style="display:flex;align-items:flex-start;gap:0.5rem;font-family:'IBM Plex Mono',monospace;flex-wrap:wrap;"></div>
+        </div>
         <!-- Mobile search bar — hidden on desktop, shown on mobile -->
         <div class="search-container search-mobile" id="searchContainerMobile" style="position:relative;padding:0.5rem var(--pad-mobile);display:none;">
           <input type="text" class="global-search-input" placeholder="🔍 Search extinguishers, assignments, users..."
@@ -753,7 +757,7 @@
             <div class="settings-row">
               <div>
                 <div class="settings-label">Version</div>
-                <div class="settings-desc">Sprint 3  ·  March 2026</div>
+                <div class="settings-desc">Sprint 2  ·  March 2026</div>
               </div>
             </div>
             <div class="settings-row">
@@ -1323,6 +1327,8 @@ function showDashboard() {
   captureBaseline();
   startPolling();
   fetchNotifications();
+  // Check for overdue/due-soon assignments on login
+  setTimeout(() => checkDueDateAlerts(), 1500);
   // Update sidebar user info
   document.getElementById("sidebarUsername").textContent = currentUser.username;
   document.getElementById("sidebarRole").textContent = currentUser.role.replace(/_/g," ");
@@ -3290,6 +3296,84 @@ document.getElementById("btnExportReports")?.addEventListener("click", () => {
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════════
+//  DUE DATE ALERTS — matches Lillian's DueDateAlert.h logic for web
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function checkDueDateAlerts() {
+  const oid = orgId();
+  if (!oid) return;
+
+  try {
+    let url = `/api/assignments?org_id=${oid}`;
+    if (isInv() || isThirdInv()) url += `&user_id=${currentUser.user_id}`;
+    const assignments = await fetch(url).then(r => r.json());
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const overdue = [], dueSoon = [], dueWeek = [];
+
+    assignments.forEach(a => {
+      if (!a.due_date) return;
+      if (a.status && a.status.toLowerCase().includes("complete")) return;
+      const diffDays = Math.ceil((new Date(a.due_date + "T00:00:00") - today) / 86400000);
+      const info = { id: a.assignment_id, days: diffDays, inspector: a.inspector || "Unassigned" };
+      if (diffDays <= 0) overdue.push(info);
+      else if (diffDays <= 3) dueSoon.push(info);
+      else if (diffDays <= 7) dueWeek.push(info);
+    });
+
+    const banner = document.getElementById("dueDateAlertBanner");
+    const content = document.getElementById("dueDateAlertContent");
+
+    if (overdue.length === 0 && dueSoon.length === 0 && dueWeek.length === 0) {
+      banner.style.display = "none"; return;
+    }
+
+    let html = "";
+
+    if (overdue.length > 0) {
+      html += `<div style="background:rgba(193,18,31,0.1);border:1px solid var(--red);border-radius:6px;padding:0.5rem 0.7rem;width:200px;">
+        <div style="font-size:0.68rem;font-weight:700;color:var(--red);margin-bottom:2px;">🚨 ${overdue.length} OVERDUE</div>
+        <div style="font-size:0.65rem;color:var(--muted2);line-height:1.4;">
+          ${overdue.slice(0, 3).map(a => `#${a.id} — ${a.inspector} (${a.days < 0 ? Math.abs(a.days) + 'd overdue' : 'due today'})`).join("<br>")}
+          ${overdue.length > 3 ? `<br><span style="color:var(--red);">+${overdue.length - 3} more</span>` : ""}
+        </div>
+      </div>`;
+    }
+
+    if (dueSoon.length > 0) {
+      html += `<div style="background:rgba(232,93,4,0.08);border:1px solid var(--orange);border-radius:6px;padding:0.5rem 0.7rem;width:200px;">
+        <div style="font-size:0.68rem;font-weight:700;color:var(--orange);margin-bottom:2px;">⚠️ ${dueSoon.length} DUE SOON</div>
+        <div style="font-size:0.65rem;color:var(--muted2);line-height:1.4;">
+          ${dueSoon.slice(0, 3).map(a => `#${a.id} — ${a.inspector} (${a.days}d)`).join("<br>")}
+          ${dueSoon.length > 3 ? `<br><span style="color:var(--orange);">+${dueSoon.length - 3} more</span>` : ""}
+        </div>
+      </div>`;
+    }
+
+    if (dueWeek.length > 0) {
+      html += `<div style="background:rgba(29,78,216,0.06);border:1px solid var(--blue);border-radius:6px;padding:0.5rem 0.7rem;width:200px;">
+        <div style="font-size:0.68rem;font-weight:700;color:var(--blue);margin-bottom:2px;">📋 ${dueWeek.length} DUE THIS WEEK</div>
+        <div style="font-size:0.65rem;color:var(--muted2);line-height:1.4;">
+          ${dueWeek.slice(0, 3).map(a => `#${a.id} — ${a.inspector} (${a.days}d)`).join("<br>")}
+          ${dueWeek.length > 3 ? `<br><span style="color:var(--blue);">+${dueWeek.length - 3} more</span>` : ""}
+        </div>
+      </div>`;
+    }
+
+    html += `<button onclick="document.getElementById('dueDateAlertBanner').style.display='none';"
+      style="align-self:flex-start;border:none;background:none;color:var(--muted);cursor:pointer;font-size:0.75rem;padding:2px 4px;flex-shrink:0;">✕</button>`;
+
+    content.innerHTML = html;
+    banner.style.display = "";
+    banner.classList.remove("hidden");
+  } catch (e) {
+    console.error("Due date alert check failed:", e);
+  }
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 //  GLOBAL SEARCH
 // ══════════════════════════════════════════════════════════════════════════════

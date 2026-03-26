@@ -13,6 +13,7 @@
 #include <QHBoxLayout>
 #include <QWidget>
 #include <QCryptographicHash>
+#include <QDate>
 #include <QtSql/QSqlQuery>
 #include <QtSql/QSqlError>
 #include <QtSql/QSqlRecord>
@@ -646,13 +647,13 @@ void Dashboard::loadAssignments()
     QSqlQuery q(m_db);
     if (isAdmin() || isThirdPAdmin()) {
         q.exec("SELECT a.assignment_id, u_admin.username AS assigned_by, "
-               "u_insp.username AS inspector, a.extinguisher_id, a.status "
+               "u_insp.username AS inspector, a.extinguisher_id, a.status, a.due_date "
                "FROM Assignments a "
                "LEFT JOIN Users u_admin ON a.admin_id = u_admin.user_id "
                "LEFT JOIN Users u_insp  ON a.inspector_id = u_insp.user_id");
     } else {
         q.prepare("SELECT a.assignment_id, u_admin.username AS assigned_by, "
-                  "a.extinguisher_id, a.status "
+                  "a.extinguisher_id, a.status, a.due_date "
                   "FROM Assignments a "
                   "LEFT JOIN Users u_admin ON a.admin_id = u_admin.user_id "
                   "WHERE a.inspector_id = :userId");
@@ -663,6 +664,52 @@ void Dashboard::loadAssignments()
     if (ui->tableAssignments->rowCount() == 0)
         showEmptyMessage(ui->tableAssignments,
             (isAdmin() || isThirdPAdmin()) ? "No assignments yet." : "You have no assignments.");
+
+    // Check due date alerts for all loaded assignments
+    checkDueDateAlerts();
+}
+
+// -----------------------------------------------------------------------------
+//  checkDueDateAlerts()
+//
+//  Iterates over every pending assignment currently displayed in the table
+//  and calls checkDueDateAlert() for any that are due within 7 days or overdue.
+//  Called automatically at the end of loadAssignments() so alerts fire on
+//  login and on every manual Refresh.
+// -----------------------------------------------------------------------------
+void Dashboard::checkDueDateAlerts()
+{
+    QDate today = QDate::currentDate();
+    QSqlQuery q(m_db);
+
+    // Fetch all pending assignments that have a due date set
+    if (isAdmin() || isThirdPAdmin()) {
+        q.exec("SELECT assignment_id, status, due_date FROM Assignments "
+               "WHERE status != 'Inspection Complete' AND due_date IS NOT NULL AND due_date != ''");
+    } else {
+        q.prepare("SELECT assignment_id, status, due_date FROM Assignments "
+                  "WHERE inspector_id = :userId "
+                  "AND status != 'Inspection Complete' "
+                  "AND due_date IS NOT NULL AND due_date != ''");
+        q.bindValue(":userId", m_userId);
+        q.exec();
+    }
+
+    while (q.next()) {
+        int     assignmentId = q.value("assignment_id").toInt();
+        QString status       = q.value("status").toString();
+        QString dueDateStr   = q.value("due_date").toString();
+
+        QDate dueDate = QDate::fromString(dueDateStr, Qt::ISODate);
+        if (!dueDate.isValid()) continue;  // skip rows with unparseable dates
+
+        int daysTillDue = today.daysTo(dueDate);  // negative if overdue
+
+        // Only alert if within 7 days or overdue
+        if (daysTillDue <= 7) {
+            checkDueDateAlert(assignmentId, status, daysTillDue);
+        }
+    }
 }
 
 void Dashboard::loadReports()
