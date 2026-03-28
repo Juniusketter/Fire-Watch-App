@@ -468,6 +468,7 @@ def login():
             if org:
                 org_name = org["name"]
                 platform_status = org["platform_status"] or "approved"
+        platform_log(row["username"], "user_login", org_name, f"role={row['role']}")
         return jsonify({
             "success":  True,
             "user_id":  row["user_id"],
@@ -477,6 +478,7 @@ def login():
             "org_name": org_name,
             "platform_status": platform_status,
         })
+    platform_log("unknown", "login_failed", username, "Invalid credentials")
     return jsonify({"success": False, "error": "Invalid username or password"}), 401
 
 
@@ -516,6 +518,7 @@ def add_company():
                 (org_id, name, d.get("address",""), d.get("city",""), d.get("state",""),
                  d.get("zip",""), d.get("phone",""), d.get("contact_name",""))
             )
+        platform_log("admin", "company_created", name, f"org_id={org_id}")
         return jsonify({"success": True}), 201
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -531,6 +534,7 @@ def update_company(company_id):
                 (d.get("name"), d.get("address",""), d.get("city",""), d.get("state",""),
                  d.get("zip",""), d.get("phone",""), d.get("contact_name",""), company_id)
             )
+        platform_log("admin", "company_updated", str(company_id), "Updated")
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -556,6 +560,7 @@ def delete_company(company_id):
                 conn.execute("DELETE FROM Extinguishers WHERE building_id=?", (bid,))
             conn.execute("DELETE FROM Buildings WHERE company_id=?", (company_id,))
             conn.execute("DELETE FROM Companies WHERE company_id=?", (company_id,))
+        platform_log("admin", "company_deleted", str(company_id), "Cascade delete")
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -612,6 +617,7 @@ def add_building():
                 "INSERT INTO Buildings (org_id, company_id, name, address, floors, notes) VALUES (?,?,?,?,?,?)",
                 (org_id, company_id, name, d.get("address",""), d.get("floors",1), d.get("notes",""))
             )
+        platform_log("admin", "building_created", name, f"org_id={d.get('org_id')}")
         return jsonify({"success": True}), 201
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -625,6 +631,7 @@ def update_building(building_id):
                 "UPDATE Buildings SET name=?, address=?, floors=?, notes=? WHERE building_id=?",
                 (d.get("name"), d.get("address",""), d.get("floors",1), d.get("notes",""), building_id)
             )
+        platform_log("admin", "building_updated", str(building_id), "Updated")
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -642,6 +649,7 @@ def delete_building(building_id):
                 conn.execute("DELETE FROM Assignments WHERE extinguisher_id=?", (eid,))
             conn.execute("DELETE FROM Extinguishers WHERE building_id=?", (building_id,))
             conn.execute("DELETE FROM Buildings WHERE building_id=?", (building_id,))
+        platform_log("admin", "building_deleted", str(building_id), "Cascade delete")
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -709,6 +717,7 @@ def add_extinguisher():
                  d.get("last_hydro_date"),
                  d.get("ext_status", "Active"))
             )
+        platform_log("admin", "extinguisher_created", "new", f"org_id={d.get('org_id')}")
         return jsonify({"success": True}), 201
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -743,6 +752,7 @@ def update_extinguisher(ext_id):
                  d.get("ext_status", "Active"),
                  ext_id)
             )
+        platform_log("admin", "extinguisher_updated", str(ext_id), "Updated")
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -754,6 +764,7 @@ def delete_extinguisher(ext_id):
             conn.execute("DELETE FROM Reports     WHERE extinguisher_id=?", (ext_id,))
             conn.execute("DELETE FROM Assignments WHERE extinguisher_id=?", (ext_id,))
             conn.execute("DELETE FROM Extinguishers WHERE extinguisher_id=?", (ext_id,))
+        platform_log("admin", "extinguisher_deleted", str(ext_id), "Cascade delete")
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -813,6 +824,7 @@ def create_assignment():
                 (d.get("admin_id"), d.get("inspector_id"), d.get("extinguisher_id"),
                  d.get("due_date",""), d.get("notes",""), d.get("org_id"))
             )
+        platform_log("admin", "assignment_created", "new", f"org_id={d.get('org_id')}")
         return jsonify({"success": True}), 201
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -830,6 +842,7 @@ def update_assignment(assign_id):
                  d.get("due_date", ""), d.get("notes", ""),
                  d.get("status", "Pending Inspection"), assign_id)
             )
+        platform_log("admin", "assignment_updated", str(assign_id), "Updated")
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -899,6 +912,7 @@ def create_report():
                     "UPDATE Assignments SET status='Inspection Complete' WHERE assignment_id=?",
                     (d.get("assignment_id"),)
                 )
+        platform_log("inspector", "report_submitted", "new", f"ext_id={d.get('extinguisher_id')}")
         return jsonify({"success": True}), 201
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -1007,6 +1021,7 @@ def create_user():
                 "INSERT INTO Users (username, password_hash, role, org_id) VALUES (?,?,?,?)",
                 (username, password, role, org_id)
             )
+        platform_log(username, "user_created", username, f"role={role}")
         return jsonify({"success": True}), 201
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -1050,6 +1065,7 @@ def update_user(user_id):
                 params.append(user_id)
                 conn.execute(f"UPDATE Users SET {', '.join(updates)} WHERE user_id=?", params)
 
+        platform_log("admin", "user_updated", str(user_id), "Updated")
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -1069,6 +1085,7 @@ def delete_user(user_id):
             conn.execute("UPDATE Assignments SET inspector_id=NULL WHERE inspector_id=?", (user_id,))
             # Keep their reports for audit trail, but delete the user
             conn.execute("DELETE FROM Users WHERE user_id=?", (user_id,))
+        platform_log("admin", "user_deleted", str(user_id), "Deleted")
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500

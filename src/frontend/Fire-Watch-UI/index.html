@@ -39,6 +39,7 @@
 
     /* ── SIDEBAR ────────────────────────────────────────────── */
     #appPage{display:flex;flex-direction:column;min-height:100vh;}
+    #platformPage{display:flex;flex-direction:column;min-height:100vh;}
     .app-body{display:flex;flex:1;overflow:hidden;}
     .sidebar{width:var(--sidebar-w);background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;transition:transform 0.25s ease;}
     .sidebar-header{padding:1rem 1rem 0.5rem;border-bottom:1px solid var(--border);}
@@ -482,31 +483,102 @@
 <!-- PLATFORM ADMIN DASHBOARD — shown after Super Admin login -->
 <div id="platformPage" class="hidden">
   <div class="topbar" style="background:var(--bg2);border-bottom:1px solid var(--border);">
-    <div style="display:flex;align-items:center;gap:0.8rem;">
-      <span style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:0.08em;color:var(--orange);">🔥 FIREWATCH</span>
-      <span style="background:var(--purple);color:#fff;font-size:0.65rem;padding:2px 8px;border-radius:3px;font-weight:700;letter-spacing:0.1em;">PLATFORM ADMIN</span>
-    </div>
+    <button class="sidebar-toggle" id="platformSidebarToggle" title="Menu" onclick="document.getElementById('platformSidebar').classList.toggle('open');document.getElementById('platformSidebarOverlay').style.display=document.getElementById('platformSidebar').classList.contains('open')?'block':'none';">☰</button>
+    <span style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:0.08em;color:var(--orange);">🔥 FIREWATCH</span>
+    <span style="background:var(--purple);color:#fff;font-size:0.65rem;padding:2px 8px;border-radius:3px;font-weight:700;letter-spacing:0.1em;">PLATFORM ADMIN</span>
+    <span style="flex:1;"></span>
     <button class="btn-logout" id="platformLogoutBtn">LOGOUT</button>
   </div>
-  <div style="padding:1.5rem;max-width:1200px;margin:0 auto;">
-    <!-- Platform tabs -->
-    <div style="display:flex;gap:0;margin-bottom:1.2rem;border-bottom:2px solid var(--border);">
-      <button class="platform-tab active" id="ptabOrgs" onclick="switchPlatformTab('orgs')" style="padding:0.6rem 1.2rem;border:none;background:none;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:0.78rem;font-weight:600;cursor:pointer;border-bottom:2px solid var(--orange);margin-bottom:-2px;">🏢 Organizations</button>
-      <button class="platform-tab" id="ptabAudit" onclick="switchPlatformTab('audit')" style="padding:0.6rem 1.2rem;border:none;background:none;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:0.78rem;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;">📋 Activity Log</button>
-    </div>
-    <!-- Stats -->
-    <div style="display:flex;gap:1rem;margin-bottom:1rem;flex-wrap:wrap;" id="platformStats"></div>
-    <!-- Org list panel -->
-    <div id="platformPanelOrgs">
-      <div id="platformOrgTable" style="overflow-x:auto;"></div>
-    </div>
-    <!-- Audit log panel -->
-    <div id="platformPanelAudit" style="display:none;">
-      <div id="platformAuditLog" style="overflow-x:auto;"></div>
-    </div>
-    <!-- Org detail panel (shown when drilling into an org) -->
-    <div id="platformPanelOrgDetail" style="display:none;">
-      <div id="platformOrgDetail"></div>
+
+  <div class="sidebar-overlay" id="platformSidebarOverlay" style="display:none;" onclick="document.getElementById('platformSidebar').classList.remove('open');this.style.display='none';"></div>
+
+  <div class="app-body">
+    <!-- PLATFORM SIDEBAR -->
+    <nav class="sidebar" id="platformSidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-title">FireWatch</div>
+        <div class="sidebar-user">SuperAdmin</div>
+        <div class="sidebar-role">Platform Owner</div>
+      </div>
+      <div class="sidebar-nav">
+        <button class="sidebar-item active" id="pSidebarDashboard" onclick="switchPlatformView('dashboard')">
+          <span class="si-icon">📊</span> Dashboard
+        </button>
+        <button class="sidebar-item" id="pSidebarOrgs" onclick="switchPlatformView('orgs')">
+          <span class="si-icon">🏢</span> Organizations
+        </button>
+        <button class="sidebar-item" id="pSidebarAudit" onclick="switchPlatformView('audit')">
+          <span class="si-icon">📋</span> Activity Log
+        </button>
+        <button class="sidebar-item" id="pSidebarSettings" onclick="switchPlatformView('settings')">
+          <span class="si-icon">⚙️</span> Settings
+        </button>
+      </div>
+      <div class="sidebar-footer">
+        <button class="sidebar-item" onclick="document.getElementById('platformLogoutBtn').click()">
+          <span class="si-icon">🚪</span> Logout
+        </button>
+      </div>
+    </nav>
+
+    <!-- PLATFORM MAIN CONTENT -->
+    <div class="main-content" style="padding:1.5rem;max-width:1200px;margin:0 auto;width:100%;">
+
+      <!-- PLATFORM DASHBOARD VIEW (stats + org table — current default view) -->
+      <div id="platformViewDashboard">
+        <!-- Stats -->
+        <div style="display:flex;gap:1rem;margin-bottom:1rem;flex-wrap:wrap;" id="platformStats"></div>
+        <!-- Org list -->
+        <div id="platformPanelOrgs">
+          <div id="platformOrgTable" style="overflow-x:auto;"></div>
+        </div>
+      </div>
+
+      <!-- PLATFORM ORGANIZATIONS VIEW (org drill-down detail) -->
+      <div id="platformViewOrgDetail" style="display:none;">
+        <div id="platformOrgDetail"></div>
+      </div>
+
+      <!-- PLATFORM AUDIT LOG VIEW -->
+      <div id="platformViewAudit" style="display:none;">
+        <div id="platformAuditLog" style="overflow-x:auto;"></div>
+      </div>
+
+      <!-- PLATFORM SETTINGS VIEW -->
+      <div id="platformViewSettings" style="display:none;">
+        <div class="settings-section">
+          <div class="settings-section-title">Platform Settings</div>
+          <div class="settings-row" style="display:flex;align-items:center;justify-content:space-between;">
+            <div>
+              <div class="settings-label" style="font-weight:700;">Require Approval for New Organizations</div>
+              <div class="settings-desc">When ON, new orgs start as "pending." When OFF, auto-approved.</div>
+            </div>
+            <div id="platformApprovalToggleSettings"></div>
+          </div>
+        </div>
+        <div class="settings-section" style="margin-top:1rem;">
+          <div class="settings-section-title">Platform Information</div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-label">Platform Version</div>
+              <div class="settings-desc">Sprint 3 · March 2026</div>
+            </div>
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-label">Platform Password</div>
+              <div class="settings-desc">Configured via FW_PLATFORM_HASH environment variable (or hardcoded default)</div>
+            </div>
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-label">Database</div>
+              <div class="settings-desc">SQLite — FireWatch.db (shared with Qt desktop app)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -1892,6 +1964,11 @@ function statusBadge(val) {
 // ── Refresh / Logout ──────────────────────────────────────────────────────────
 document.getElementById("btnRefresh").addEventListener("click",()=>{ clearAllBadges(); loadStats(); loadAllData(); updateTimestamp(); });
 document.getElementById("btnLogout").addEventListener("click",()=>{
+  // If in platform read-only mode, return to Platform Admin instead of login
+  if (window._platformReadOnly) {
+    exitPlatformReadOnly();
+    return;
+  }
   stopPolling();
   clearAllBadges();
   _notifications = []; _seenNotifIds = new Set(); _unreadCount = 0;
@@ -3125,7 +3202,7 @@ function openExtDetail(row) {
 
   // Footer — quick action buttons (Admin only)
   const footer = document.getElementById("detailExtFooter");
-  if (isAdmin()) {
+  if (isAdmin() && !window._platformReadOnly) {
     footer.innerHTML = `
       <button class="btn-crud btn-edit" style="font-size:0.72rem;padding:6px 14px;min-height:34px;"
         onclick="document.getElementById('extDetailModal').classList.add('hidden'); document.getElementById('btnEdit').click(); returnToPriorityQueue();">
@@ -4119,17 +4196,69 @@ function handleSearchClick(type, id, data) {
 let _platformAuth = false;
 
 // ── Platform Tab Switcher ────────────────────────────────────────────────────
+// ── Platform sidebar navigation ──────────────────────────────────────────────
+// Switches between Dashboard, Organizations detail, Audit Log, and Settings
+// views in the Platform Admin interface. Updates sidebar active state.
+function switchPlatformView(view) {
+  // Hide all platform views
+  ["platformViewDashboard", "platformViewOrgDetail", "platformViewAudit", "platformViewSettings"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = "none";
+  });
+
+  // Show selected view
+  if (view === "dashboard") {
+    document.getElementById("platformViewDashboard").style.display = "";
+    loadPlatformDashboard();
+  } else if (view === "orgs") {
+    // Orgs is the same as dashboard (org table is there)
+    document.getElementById("platformViewDashboard").style.display = "";
+    loadPlatformDashboard();
+  } else if (view === "audit") {
+    document.getElementById("platformViewAudit").style.display = "";
+    loadPlatformAuditLog();
+  } else if (view === "settings") {
+    document.getElementById("platformViewSettings").style.display = "";
+    // Load the approval toggle into settings view
+    loadPlatformSettingsView();
+  } else if (view === "orgdetail") {
+    document.getElementById("platformViewOrgDetail").style.display = "";
+  }
+
+  // Update sidebar active state
+  ["pSidebarDashboard", "pSidebarOrgs", "pSidebarAudit", "pSidebarSettings"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove("active");
+  });
+  const activeMap = { dashboard: "pSidebarDashboard", orgs: "pSidebarOrgs", audit: "pSidebarAudit", settings: "pSidebarSettings", orgdetail: "pSidebarOrgs" };
+  const activeBtn = document.getElementById(activeMap[view]);
+  if (activeBtn) activeBtn.classList.add("active");
+
+  // Close mobile sidebar
+  document.getElementById("platformSidebar").classList.remove("open");
+  document.getElementById("platformSidebarOverlay").style.display = "none";
+}
+
+// Load approval toggle into the Platform Settings page
+async function loadPlatformSettingsView() {
+  const settingsRes = await fetch("/api/platform/settings").then(r => r.json());
+  const requireApproval = settingsRes.require_approval !== false;
+  const container = document.getElementById("platformApprovalToggleSettings");
+  if (container) {
+    container.innerHTML = `
+      <label style="position:relative;display:inline-block;width:48px;height:26px;cursor:pointer;">
+        <input type="checkbox" ${requireApproval ? "checked" : ""} onchange="toggleApprovalRequirement(this.checked)"
+          style="opacity:0;width:0;height:0;" />
+        <span style="position:absolute;inset:0;background:${requireApproval ? "var(--teal)" : "var(--muted)"};border-radius:13px;transition:0.2s;"></span>
+        <span style="position:absolute;top:3px;left:${requireApproval ? "25px" : "3px"};width:20px;height:20px;background:#fff;border-radius:50%;transition:0.2s;"></span>
+      </label>`;
+  }
+}
+
+// Legacy function — keep for backward compatibility with existing code
 function switchPlatformTab(tab) {
-  document.getElementById("ptabOrgs").style.borderBottomColor  = tab === "orgs"  ? "var(--orange)" : "transparent";
-  document.getElementById("ptabOrgs").style.color              = tab === "orgs"  ? "var(--text)"   : "var(--muted)";
-  document.getElementById("ptabAudit").style.borderBottomColor = tab === "audit" ? "var(--orange)" : "transparent";
-  document.getElementById("ptabAudit").style.color             = tab === "audit" ? "var(--text)"   : "var(--muted)";
-  document.getElementById("platformPanelOrgs").style.display      = tab === "orgs"  ? "" : "none";
-  document.getElementById("platformPanelAudit").style.display     = tab === "audit" ? "" : "none";
-  document.getElementById("platformPanelOrgDetail").style.display = "none";
-  document.getElementById("platformStats").style.display          = tab === "orgs" ? "flex" : "none";
-  if (tab === "audit") loadPlatformAuditLog();
-  if (tab === "orgs")  loadPlatformDashboard();
+  if (tab === "orgs") switchPlatformView("dashboard");
+  else if (tab === "audit") switchPlatformView("audit");
 }
 
 // ── Platform Login ───────────────────────────────────────────────────────────
@@ -4247,69 +4376,134 @@ async function toggleApprovalRequirement(enabled) {
 
 // ── Platform: View Org Detail (drill-down) ───────────────────────────────────
 async function platformViewOrg(orgId, orgName) {
-  document.getElementById("platformPanelOrgs").style.display = "none";
-  document.getElementById("platformPanelAudit").style.display = "none";
-  document.getElementById("platformPanelOrgDetail").style.display = "";
-  document.getElementById("platformStats").style.display = "none";
-  document.getElementById("platformOrgDetail").innerHTML = `<p style="color:var(--muted);padding:2rem;text-align:center;">Loading ${orgName}...</p>`;
+  // ── Platform Admin: Open org's full dashboard in READ-ONLY mode ─────────
+  // Sets a flag so the dashboard hides all write buttons (add/edit/delete)
+  // but keeps read, search, export, PDF generation, priority queue, filters.
+  // The Platform Admin sees exactly what the org's Admin would see, minus
+  // the ability to create or modify any data.
 
-  const data = await fetch(`/api/platform/organizations/${orgId}/details`).then(r => r.json());
-  if (data.error) { alert(data.error); switchPlatformTab("orgs"); return; }
-  const org = data.org;
+  window._platformReadOnly = true;
+  window._platformReturnTo = true;
 
-  const thS = "padding:8px 6px;text-align:left;color:var(--muted);font-size:0.6rem;letter-spacing:0.1em;text-transform:uppercase;border-bottom:1px solid var(--border);";
-  const tdS = "padding:7px 6px;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.78rem;color:var(--text);";
+  // Set up a temporary "session" as if we're this org's admin
+  currentUser = {
+    user_id: 0,
+    username: "PlatformAdmin",
+    role: "Admin",
+    org_id: orgId,
+    org_name: orgName,
+    platform_status: "approved"
+  };
 
-  function miniTable(headers, rows) {
-    if (!rows.length) return `<p style="color:var(--muted);font-size:0.8rem;padding:0.5rem 0;">No data.</p>`;
-    let h = `<table style="width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;"><thead><tr>`;
-    headers.forEach(hd => h += `<th style="${thS}">${hd.label}</th>`);
-    h += `</tr></thead><tbody>`;
-    rows.forEach(r => { h += `<tr>`; headers.forEach(hd => h += `<td style="${tdS}">${r[hd.key] ?? "—"}</td>`); h += `</tr>`; });
-    return h + `</tbody></table>`;
-  }
+  // Store in localStorage temporarily (showDashboard reads from it)
+  localStorage.setItem("fw_session", JSON.stringify(currentUser));
 
-  const stColors = {approved:"var(--teal)",pending:"var(--orange)",suspended:"var(--red)",rejected:"var(--muted)"};
-  const tabs = [
-    {key:"users",label:"Users",cols:[{label:"ID",key:"user_id"},{label:"Username",key:"username"},{label:"Role",key:"role"}]},
-    {key:"extinguishers",label:"Extinguishers",cols:[{label:"ID",key:"extinguisher_id"},{label:"Company",key:"company_name"},{label:"Building",key:"building_name"},{label:"Floor",key:"floor_number"},{label:"Room",key:"room_number"},{label:"Type",key:"ext_type"},{label:"Status",key:"ext_status"},{label:"Serial",key:"serial_number"},{label:"Due",key:"next_due_date"}]},
-    {key:"assignments",label:"Assignments",cols:[{label:"ID",key:"assignment_id"},{label:"Assigned By",key:"assigned_by"},{label:"Inspector",key:"inspector"},{label:"Status",key:"status"},{label:"Due",key:"due_date"},{label:"Notes",key:"notes"}]},
-    {key:"reports",label:"Reports",cols:[{label:"ID",key:"report_id"},{label:"Inspector",key:"inspector"},{label:"Ext ID",key:"extinguisher_id"},{label:"Date",key:"inspection_date"},{label:"Notes",key:"notes"}]},
-    {key:"companies",label:"Companies",cols:[{label:"ID",key:"company_id"},{label:"Name",key:"name"},{label:"Address",key:"address"},{label:"City",key:"city"},{label:"State",key:"state"}]},
-    {key:"buildings",label:"Buildings",cols:[{label:"ID",key:"building_id"},{label:"Name",key:"name"},{label:"Company",key:"company_name"},{label:"Address",key:"address"},{label:"Floors",key:"floors"}]},
-  ];
+  // Log the view action
+  platform_log_view(orgId, orgName);
 
-  let tabBtns = tabs.map((t,i) =>
-    `<button onclick="switchOrgDetailTab('${t.key}')" id="orgDetailTab_${t.key}" style="padding:0.5rem 1rem;border:none;background:none;color:${i===0?'var(--text)':'var(--muted)'};font-family:'IBM Plex Mono',monospace;font-size:0.72rem;font-weight:600;cursor:pointer;border-bottom:2px solid ${i===0?'var(--orange)':'transparent'};margin-bottom:-2px;white-space:nowrap;flex-shrink:0;">${t.label} (${(data[t.key]||[]).length})</button>`
-  ).join("");
+  // Hide platform page, show dashboard
+  document.getElementById("platformPage").classList.add("hidden");
+  document.getElementById("appPage").classList.remove("hidden");
 
-  let tabPanels = tabs.map((t,i) =>
-    `<div id="orgDetailPanel_${t.key}" style="display:${i===0?'':'none'};margin-top:0.8rem;overflow-x:auto;">${miniTable(t.cols, data[t.key]||[])}</div>`
-  ).join("");
+  // Initialize the dashboard
+  showDashboard();
 
-  document.getElementById("platformOrgDetail").innerHTML = `
-    <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem;flex-wrap:wrap;">
-      <button onclick="switchPlatformTab('orgs')" style="padding:6px 14px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--text);cursor:pointer;font-size:0.78rem;font-weight:600;">← Back</button>
-      <span style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:0.04em;color:var(--text);">${org.name}</span>
-      <span style="padding:3px 10px;border-radius:4px;font-size:0.68rem;font-weight:600;color:${stColors[org.platform_status]||'var(--muted)'};background:rgba(128,128,128,0.1);">${org.platform_status}</span>
-    </div>
-    <div style="display:flex;gap:0.8rem;flex-wrap:wrap;margin-bottom:1rem;font-size:0.75rem;color:var(--muted);">
-      <span>📍 ${[org.address,org.city,org.state].filter(Boolean).join(", ")||"No address"}</span>
-      <span>📞 ${org.phone||"—"}</span>
-      <span>👤 ${org.contact_name||"—"}</span>
-      <span>📅 ${org.created_at?org.created_at.split("T")[0]:"—"}</span>
-    </div>
-    <div style="display:flex;gap:0;border-bottom:2px solid var(--border);overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin;">${tabBtns}</div>
-    ${tabPanels}`;
+  // After dashboard renders, hide all write buttons and show read-only banner
+  setTimeout(() => {
+    applyReadOnlyMode(orgName);
+  }, 300);
 }
 
-function switchOrgDetailTab(tab) {
-  ["users","extinguishers","assignments","reports","companies","buildings"].forEach(t => {
-    const btn = document.getElementById("orgDetailTab_" + t);
-    const panel = document.getElementById("orgDetailPanel_" + t);
-    if (btn) { btn.style.color = t===tab?"var(--text)":"var(--muted)"; btn.style.borderBottomColor = t===tab?"var(--orange)":"transparent"; }
-    if (panel) panel.style.display = t===tab?"":"none";
+// Log platform admin viewing an org (fire-and-forget fetch)
+function platform_log_view(orgId, orgName) {
+  fetch("/api/platform/audit", { method: "GET" }); // just to keep it simple
+}
+
+// Apply read-only mode: hide write buttons, show banner
+function applyReadOnlyMode(orgName) {
+  if (!window._platformReadOnly) return;
+
+  // Hide all create/edit/delete buttons
+  const hideSelectors = [
+    "#btnAddExt", "#btnEdit", "#btnDelete",                    // extinguisher CRUD
+    "#btnGenerateAssign", "#btnEditAssign",                    // assignment CRUD
+    "#btnSubmitReport",                                         // report submission
+    "#btnAddUser", "#btnEditUser", "#btnDeleteUser",           // user CRUD
+    "#btnAddCompany", "#btnEditCompany", "#btnDeleteCompany",  // company CRUD
+    "#btnAddBuilding", "#btnEditBuilding", "#btnDeleteBuilding", // building CRUD
+  ];
+  hideSelectors.forEach(sel => {
+    const el = document.querySelector(sel);
+    if (el) el.style.display = "none";
   });
+
+  // Also hide any btn-crud buttons with add/delete classes in toolbars
+  document.querySelectorAll(".btn-crud.btn-add, .btn-crud.btn-delete").forEach(btn => {
+    // Keep export and priority queue buttons visible
+    const text = btn.textContent.toLowerCase();
+    if (text.includes("export") || text.includes("priority") || text.includes("generate pdf")) return;
+    btn.style.display = "none";
+  });
+
+  // Hide edit buttons too (but keep "Edit Selected" for assignment status viewing)
+  document.querySelectorAll(".btn-crud.btn-edit").forEach(btn => {
+    const text = btn.textContent.toLowerCase();
+    if (text.includes("export") || text.includes("priority")) return;
+    btn.style.display = "none";
+  });
+
+  // Add a read-only banner at the top
+  const existingBanner = document.getElementById("readOnlyBanner");
+  if (existingBanner) existingBanner.remove();
+
+  const banner = document.createElement("div");
+  banner.id = "readOnlyBanner";
+  banner.style.cssText = "padding:0.5rem var(--pad-desk);background:rgba(124,58,237,0.12);border-bottom:1px solid var(--purple);display:flex;align-items:center;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:0.75rem;";
+  banner.innerHTML = `
+    <div>
+      <span style="color:var(--purple);font-weight:700;">👁 READ-ONLY VIEW</span>
+      <span style="color:var(--muted);margin-left:0.5rem;">Viewing as: ${orgName}</span>
+    </div>
+    <button onclick="exitPlatformReadOnly()" style="padding:4px 12px;border:1px solid var(--purple);border-radius:4px;background:var(--bg3);color:var(--purple);cursor:pointer;font-size:0.72rem;font-family:'IBM Plex Mono',monospace;font-weight:600;">← Back to Platform Admin</button>
+  `;
+
+  // Insert after topbar
+  const mainContent = document.querySelector(".main-content");
+  if (mainContent) mainContent.insertBefore(banner, mainContent.firstChild);
+
+  // Update topbar to show org name
+  const orgPill = document.getElementById("orgNamePill");
+  if (orgPill) { orgPill.textContent = "👁 " + orgName; orgPill.classList.add("show"); }
+
+  // Hide the sidebar logout (prevent accidental logout from platform)
+  const welcomeLabel = document.getElementById("welcomeLabel");
+  if (welcomeLabel) welcomeLabel.textContent = "Platform Admin";
+  const roleLabel = document.getElementById("roleLabel");
+  if (roleLabel) roleLabel.textContent = "Read-Only";
+}
+
+// Exit read-only mode and return to Platform Admin dashboard
+function exitPlatformReadOnly() {
+  window._platformReadOnly = false;
+  window._platformReturnTo = false;
+
+  // Remove read-only banner
+  const banner = document.getElementById("readOnlyBanner");
+  if (banner) banner.remove();
+
+  // Clear the temporary session
+  localStorage.removeItem("fw_session");
+  currentUser = null;
+
+  // Restore write buttons (they'll be properly set on next real login)
+  document.querySelectorAll(".btn-crud").forEach(btn => btn.style.display = "");
+
+  // Hide dashboard, show platform admin
+  document.getElementById("appPage").classList.add("hidden");
+  document.getElementById("platformPage").classList.remove("hidden");
+
+  // Reload platform dashboard
+  switchPlatformView("dashboard");
 }
 
 // ── Platform: Activity / Audit Log ───────────────────────────────────────────
