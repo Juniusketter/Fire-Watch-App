@@ -549,7 +549,7 @@
         <!-- Platform-wide stats -->
         <div style="display:flex;gap:1rem;margin-bottom:1.2rem;flex-wrap:wrap;" id="platformDashStats"></div>
         <!-- Per-org summary cards -->
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:0.7rem;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:0.8rem;">Organization Overview</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:0.7rem;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:0.6rem;">Organization Overview</div>
         <div id="platformDashOrgCards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1rem;"></div>
       </div>
 
@@ -4539,10 +4539,23 @@ async function loadPlatformDashboardOverview() {
     } catch { o.company_count = 0; o.building_count = 0; }
   }
 
-  // Platform-wide stat boxes
-  const statBoxStyle = "flex:1;min-width:110px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:1rem;text-align:center;";
-  const statNumStyle = "font-size:2rem;font-weight:700;font-family:'IBM Plex Mono',monospace;";
-  const statLabelStyle = "font-size:0.62rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-top:0.3rem;font-family:'IBM Plex Mono',monospace;";
+  // Platform-wide stat boxes — compact on mobile
+  const isMobile = window.innerWidth < 768;
+  const statBoxStyle = isMobile
+    ? "flex:1;min-width:80px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:0.5rem 0.3rem;text-align:center;"
+    : "flex:1;min-width:110px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:1rem;text-align:center;";
+  const statNumStyle = isMobile
+    ? "font-size:1.2rem;font-weight:700;font-family:'IBM Plex Mono',monospace;"
+    : "font-size:2rem;font-weight:700;font-family:'IBM Plex Mono',monospace;";
+  const statLabelStyle = isMobile
+    ? "font-size:0.5rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-top:0.15rem;font-family:'IBM Plex Mono',monospace;"
+    : "font-size:0.62rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-top:0.3rem;font-family:'IBM Plex Mono',monospace;";
+
+  // On mobile, use a 3+3+1 grid layout for 7 stats
+  const statsWrap = document.getElementById("platformDashStats");
+  statsWrap.style.gap = isMobile ? "0.4rem" : "1rem";
+  statsWrap.style.display = "flex";
+  statsWrap.style.flexWrap = "wrap";
 
   document.getElementById("platformDashStats").innerHTML = `
     <div style="${statBoxStyle}"><div style="${statNumStyle}color:var(--orange);">${orgs.length}</div><div style="${statLabelStyle}">Organizations</div></div>
@@ -4554,45 +4567,55 @@ async function loadPlatformDashboardOverview() {
     <div style="${statBoxStyle}"><div style="${statNumStyle}color:var(--red);">${totalReports}</div><div style="${statLabelStyle}">Reports</div></div>
   `;
 
-  // Per-org summary cards
+  // Per-org summary cards — compact on mobile
   const stColors = {approved:"var(--teal)",pending:"var(--orange)",suspended:"var(--red)",rejected:"var(--muted)"};
+  const cardsContainer = document.getElementById("platformDashOrgCards");
+  cardsContainer.style.gridTemplateColumns = isMobile ? "1fr" : "repeat(auto-fill,minmax(320px,1fr))";
+  cardsContainer.style.gap = isMobile ? "0.6rem" : "1rem";
 
+  const cardPad = isMobile ? "0.7rem" : "1rem";
+  const cardTitleSize = isMobile ? "0.88rem" : "1rem";
+  const cardAddrSize = isMobile ? "0.65rem" : "0.72rem";
+  const gridGap = isMobile ? "0.35rem" : "0.5rem";
+  const countSize = isMobile ? "0.9rem" : "1.1rem";
+  const countLabelSize = isMobile ? "0.48rem" : "0.55rem";
+  const countPad = isMobile ? "0.35rem 0.2rem" : "0.5rem 0.3rem";
   let cardsHtml = "";
   orgs.forEach(o => {
     const stColor = stColors[o.platform_status] || "var(--muted)";
     cardsHtml += `
-    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:1rem;cursor:pointer;transition:border-color 0.15s;"
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:${isMobile?'6':'8'}px;padding:${cardPad};cursor:pointer;transition:border-color 0.15s;"
       onmouseenter="this.style.borderColor='var(--orange)'" onmouseleave="this.style.borderColor='var(--border)'"
       onclick="platformViewOrg(${o.org_id},'${(o.name||"").replace(/'/g,"\\'")}')">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.6rem;">
-        <div style="font-size:1rem;font-weight:700;color:var(--text);">${o.name}</div>
-        <span style="padding:2px 8px;border-radius:4px;font-size:0.62rem;font-weight:600;color:${stColor};background:rgba(128,128,128,0.1);">${o.platform_status}</span>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${isMobile?'0.3':'0.6'}rem;">
+        <div style="font-size:${cardTitleSize};font-weight:700;color:var(--text);">${o.name}</div>
+        <span style="padding:2px 6px;border-radius:4px;font-size:${isMobile?'0.55':'0.62'}rem;font-weight:600;color:${stColor};background:rgba(128,128,128,0.1);">${o.platform_status}</span>
       </div>
-      <div style="font-size:0.72rem;color:var(--muted);margin-bottom:0.8rem;">${[o.address, o.city, o.state].filter(Boolean).join(", ") || "No address"}</div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.5rem;text-align:center;">
-        <div style="background:var(--bg3);border-radius:6px;padding:0.5rem 0.3rem;">
-          <div style="font-size:1.1rem;font-weight:700;color:var(--orange);font-family:'IBM Plex Mono',monospace;">${o.company_count || 0}</div>
-          <div style="font-size:0.55rem;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;">Companies</div>
+      <div style="font-size:${cardAddrSize};color:var(--muted);margin-bottom:${isMobile?'0.4':'0.8'}rem;">${[o.address, o.city, o.state].filter(Boolean).join(", ") || "No address"}</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:${gridGap};text-align:center;">
+        <div style="background:var(--bg3);border-radius:${isMobile?'4':'6'}px;padding:${countPad};">
+          <div style="font-size:${countSize};font-weight:700;color:var(--orange);font-family:'IBM Plex Mono',monospace;">${o.company_count || 0}</div>
+          <div style="font-size:${countLabelSize};color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;">Companies</div>
         </div>
-        <div style="background:var(--bg3);border-radius:6px;padding:0.5rem 0.3rem;">
-          <div style="font-size:1.1rem;font-weight:700;color:var(--teal);font-family:'IBM Plex Mono',monospace;">${o.building_count || 0}</div>
-          <div style="font-size:0.55rem;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;">Buildings</div>
+        <div style="background:var(--bg3);border-radius:${isMobile?'4':'6'}px;padding:${countPad};">
+          <div style="font-size:${countSize};font-weight:700;color:var(--teal);font-family:'IBM Plex Mono',monospace;">${o.building_count || 0}</div>
+          <div style="font-size:${countLabelSize};color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;">Buildings</div>
         </div>
-        <div style="background:var(--bg3);border-radius:6px;padding:0.5rem 0.3rem;">
-          <div style="font-size:1.1rem;font-weight:700;color:var(--blue);font-family:'IBM Plex Mono',monospace;">${o.extinguisher_count || 0}</div>
-          <div style="font-size:0.55rem;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;">Extinguishers</div>
+        <div style="background:var(--bg3);border-radius:${isMobile?'4':'6'}px;padding:${countPad};">
+          <div style="font-size:${countSize};font-weight:700;color:var(--blue);font-family:'IBM Plex Mono',monospace;">${o.extinguisher_count || 0}</div>
+          <div style="font-size:${countLabelSize};color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;">Extinguishers</div>
         </div>
-        <div style="background:var(--bg3);border-radius:6px;padding:0.5rem 0.3rem;">
-          <div style="font-size:1.1rem;font-weight:700;color:var(--purple);font-family:'IBM Plex Mono',monospace;">${o.user_count || 0}</div>
-          <div style="font-size:0.55rem;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;">Users</div>
+        <div style="background:var(--bg3);border-radius:${isMobile?'4':'6'}px;padding:${countPad};">
+          <div style="font-size:${countSize};font-weight:700;color:var(--purple);font-family:'IBM Plex Mono',monospace;">${o.user_count || 0}</div>
+          <div style="font-size:${countLabelSize};color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;">Users</div>
         </div>
-        <div style="background:var(--bg3);border-radius:6px;padding:0.5rem 0.3rem;">
-          <div style="font-size:1.1rem;font-weight:700;color:var(--red);font-family:'IBM Plex Mono',monospace;">${o.report_count || 0}</div>
-          <div style="font-size:0.55rem;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;">Reports</div>
+        <div style="background:var(--bg3);border-radius:${isMobile?'4':'6'}px;padding:${countPad};">
+          <div style="font-size:${countSize};font-weight:700;color:var(--red);font-family:'IBM Plex Mono',monospace;">${o.report_count || 0}</div>
+          <div style="font-size:${countLabelSize};color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;">Reports</div>
         </div>
-        <div style="background:var(--bg3);border-radius:6px;padding:0.5rem 0.3rem;">
-          <div style="font-size:1.1rem;font-weight:700;color:${o.pending_assignments > 0 ? 'var(--orange)' : 'var(--muted)'};font-family:'IBM Plex Mono',monospace;">${o.pending_assignments || 0}</div>
-          <div style="font-size:0.55rem;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;">Active Assigns</div>
+        <div style="background:var(--bg3);border-radius:${isMobile?'4':'6'}px;padding:${countPad};">
+          <div style="font-size:${countSize};font-weight:700;color:${o.pending_assignments > 0 ? 'var(--orange)' : 'var(--muted)'};font-family:'IBM Plex Mono',monospace;">${o.pending_assignments || 0}</div>
+          <div style="font-size:${countLabelSize};color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;">Active Assigns</div>
         </div>
       </div>
     </div>`;
