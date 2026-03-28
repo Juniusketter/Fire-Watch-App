@@ -510,9 +510,29 @@
         <button class="sidebar-item" id="pSidebarAudit" onclick="switchPlatformView('audit')">
           <span class="si-icon">📋</span> Activity Log
         </button>
-        <button class="sidebar-item" id="pSidebarSettings" onclick="switchPlatformView('settings')">
+        <button class="sidebar-item" id="pSidebarSettings" onclick="togglePlatformSettingsMenu()">
           <span class="si-icon">⚙️</span> Settings
         </button>
+        <!-- Platform Settings sub-items -->
+        <div id="pSidebarSettingsSub" class="hidden" style="padding-left:1.2rem;">
+          <button class="sidebar-item sidebar-sub" onclick="showPlatformSettingsPage('theme')" id="pSidebarTheme" style="font-size:0.78rem;padding:6px 12px;">
+            <span class="si-icon">🎨</span> Theme
+          </button>
+          <button class="sidebar-item sidebar-sub" onclick="togglePlatformGeneralMenu()" id="pSidebarGeneral" style="font-size:0.78rem;padding:6px 12px;">
+            <span class="si-icon">📋</span> General ›
+          </button>
+          <div id="pSidebarGeneralSub" class="hidden" style="padding-left:1.2rem;">
+            <button class="sidebar-item sidebar-sub" onclick="showPlatformSettingsPage('about')" id="pSidebarAbout" style="font-size:0.72rem;padding:5px 12px;">
+              <span class="si-icon">ℹ️</span> About FireWatch
+            </button>
+            <button class="sidebar-item sidebar-sub" onclick="showPlatformSettingsPage('team')" id="pSidebarTeam" style="font-size:0.72rem;padding:5px 12px;">
+              <span class="si-icon">👥</span> Development Team
+            </button>
+            <button class="sidebar-item sidebar-sub" onclick="showPlatformSettingsPage('techstack')" id="pSidebarTechstack" style="font-size:0.72rem;padding:5px 12px;">
+              <span class="si-icon">🔧</span> Tech Stack
+            </button>
+          </div>
+        </div>
       </div>
       <div class="sidebar-footer">
         <button class="sidebar-item" onclick="document.getElementById('platformLogoutBtn').click()">
@@ -524,17 +544,24 @@
     <!-- PLATFORM MAIN CONTENT -->
     <div class="main-content" style="padding:1.5rem;max-width:1200px;margin:0 auto;width:100%;">
 
-      <!-- PLATFORM DASHBOARD VIEW (stats + org table — current default view) -->
+      <!-- PLATFORM DASHBOARD VIEW — bird's eye view of all platform data -->
       <div id="platformViewDashboard">
-        <!-- Stats -->
+        <!-- Platform-wide stats -->
+        <div style="display:flex;gap:1rem;margin-bottom:1.2rem;flex-wrap:wrap;" id="platformDashStats"></div>
+        <!-- Per-org summary cards -->
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:0.7rem;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:0.8rem;">Organization Overview</div>
+        <div id="platformDashOrgCards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1rem;"></div>
+      </div>
+
+      <!-- PLATFORM ORGANIZATIONS VIEW — management table with actions -->
+      <div id="platformViewOrgs" style="display:none;">
         <div style="display:flex;gap:1rem;margin-bottom:1rem;flex-wrap:wrap;" id="platformStats"></div>
-        <!-- Org list -->
         <div id="platformPanelOrgs">
           <div id="platformOrgTable" style="overflow-x:auto;"></div>
         </div>
       </div>
 
-      <!-- PLATFORM ORGANIZATIONS VIEW (org drill-down detail) -->
+      <!-- PLATFORM ORG DETAIL VIEW (read-only drill-down) -->
       <div id="platformViewOrgDetail" style="display:none;">
         <div id="platformOrgDetail"></div>
       </div>
@@ -544,39 +571,185 @@
         <div id="platformAuditLog" style="overflow-x:auto;"></div>
       </div>
 
-      <!-- PLATFORM SETTINGS VIEW -->
+      <!-- PLATFORM SETTINGS VIEW — with sub-pages -->
       <div id="platformViewSettings" style="display:none;">
-        <div class="settings-section">
-          <div class="settings-section-title">Platform Settings</div>
-          <div class="settings-row" style="display:flex;align-items:center;justify-content:space-between;">
-            <div>
-              <div class="settings-label" style="font-weight:700;">Require Approval for New Organizations</div>
-              <div class="settings-desc">When ON, new orgs start as "pending." When OFF, auto-approved.</div>
+
+        <!-- PLATFORM SETTINGS: THEME PAGE (default) -->
+        <div class="platform-settings-page" id="pSettingsPageTheme">
+          <div class="settings-section">
+            <div class="settings-section-title">Appearance — Theme</div>
+            <div class="theme-grid">
+              <div class="theme-card" data-theme="dark" onclick="selectTheme('dark')">
+                <div class="theme-card-preview">
+                  <div class="theme-swatch" style="background:#0d0f12"></div>
+                  <div class="theme-swatch" style="background:#e85d04"></div>
+                  <div class="theme-swatch" style="background:#e8eaf0"></div>
+                </div>
+                <div class="theme-card-name">Dark</div>
+              </div>
+              <div class="theme-card" data-theme="light" onclick="selectTheme('light')">
+                <div class="theme-card-preview">
+                  <div class="theme-swatch" style="background:#f5f0e8"></div>
+                  <div class="theme-swatch" style="background:#c45400"></div>
+                  <div class="theme-swatch" style="background:#1a1410"></div>
+                </div>
+                <div class="theme-card-name">Light</div>
+              </div>
+              <div class="theme-card" data-theme="navy" onclick="selectTheme('navy')">
+                <div class="theme-card-preview">
+                  <div class="theme-swatch" style="background:#0a1628"></div>
+                  <div class="theme-swatch" style="background:#f0a030"></div>
+                  <div class="theme-swatch" style="background:#d8e8f8"></div>
+                </div>
+                <div class="theme-card-name">Navy Blue</div>
+              </div>
+              <div class="theme-card" data-theme="contrast" onclick="selectTheme('contrast')">
+                <div class="theme-card-preview">
+                  <div class="theme-swatch" style="background:#000000"></div>
+                  <div class="theme-swatch" style="background:#ffaa00"></div>
+                  <div class="theme-swatch" style="background:#ffffff"></div>
+                </div>
+                <div class="theme-card-name">High Contrast</div>
+              </div>
             </div>
-            <div id="platformApprovalToggleSettings"></div>
+          </div>
+          <div class="settings-section" style="margin-top:1rem;">
+            <div class="settings-section-title">Platform Settings</div>
+            <div class="settings-row" style="display:flex;align-items:center;justify-content:space-between;">
+              <div>
+                <div class="settings-label" style="font-weight:700;">Require Approval for New Organizations</div>
+                <div class="settings-desc">When ON, new orgs start as "pending." When OFF, auto-approved.</div>
+              </div>
+              <div id="platformApprovalToggleSettings"></div>
+            </div>
           </div>
         </div>
-        <div class="settings-section" style="margin-top:1rem;">
-          <div class="settings-section-title">Platform Information</div>
-          <div class="settings-row">
-            <div>
-              <div class="settings-label">Platform Version</div>
-              <div class="settings-desc">Sprint 3 · March 2026</div>
+
+        <!-- PLATFORM SETTINGS: ABOUT PAGE -->
+        <div class="platform-settings-page hidden" id="pSettingsPageAbout">
+          <div class="settings-section">
+            <div class="settings-section-title">About FireWatch</div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Application</div>
+                <div class="settings-desc">FireWatch — NFPA Fire Extinguisher Compliance Tracking System</div>
+              </div>
             </div>
-          </div>
-          <div class="settings-row">
-            <div>
-              <div class="settings-label">Platform Password</div>
-              <div class="settings-desc">Configured via FW_PLATFORM_HASH environment variable (or hardcoded default)</div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Version</div>
+                <div class="settings-desc">Sprint 3 · March 2026</div>
+              </div>
             </div>
-          </div>
-          <div class="settings-row">
-            <div>
-              <div class="settings-label">Database</div>
-              <div class="settings-desc">SQLite — FireWatch.db (shared with Qt desktop app)</div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Purpose</div>
+                <div class="settings-desc">Built to track fire extinguisher inspections, assignments, and compliance reporting across multiple user roles in accordance with NFPA standards.</div>
+              </div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Course</div>
+                <div class="settings-desc">CSC480B — Computer Science Capstone Project II · National University, San Diego</div>
+              </div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Instructor</div>
+                <div class="settings-desc">Professor Mila Hose</div>
+              </div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Platform Password</div>
+                <div class="settings-desc">Configured via FW_PLATFORM_HASH environment variable (or hardcoded default)</div>
+              </div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Database</div>
+                <div class="settings-desc">SQLite — FireWatch.db (shared with Qt desktop app)</div>
+              </div>
             </div>
           </div>
         </div>
+
+        <!-- PLATFORM SETTINGS: TEAM PAGE -->
+        <div class="platform-settings-page hidden" id="pSettingsPageTeam">
+          <div class="settings-section">
+            <div class="settings-section-title">Development Team — Fire Wardens Safety</div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Lillian Bowen</div>
+                <div class="settings-desc">Project Manager & Backend Lead</div>
+              </div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Junius Ketter</div>
+                <div class="settings-desc">Database & Frontend Developer</div>
+              </div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Rafael G. Santiago Montalvo</div>
+                <div class="settings-desc">Frontend Developer</div>
+              </div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Quinci Walker</div>
+                <div class="settings-desc">Backend Developer</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PLATFORM SETTINGS: TECH STACK PAGE -->
+        <div class="platform-settings-page hidden" id="pSettingsPageTechstack">
+          <div class="settings-section">
+            <div class="settings-section-title">Tech Stack</div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Desktop App</div>
+                <div class="settings-desc">Qt Creator 6.10.2 · C++ · MinGW 64-bit</div>
+              </div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Web Frontend</div>
+                <div class="settings-desc">HTML · CSS · Vanilla JavaScript</div>
+              </div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Backend</div>
+                <div class="settings-desc">Python Flask · REST API · SHA-256 Authentication</div>
+              </div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Database</div>
+                <div class="settings-desc">SQLite · FireWatch.db</div>
+              </div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Cloud Hosting</div>
+                <div class="settings-desc">Render.com · Starter Plan · Auto-deploy via GitHub</div>
+              </div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Repository</div>
+                <div class="settings-desc">
+                  <a href="https://github.com/Juniusketter/Fire-Watch-App" target="_blank" style="color:var(--orange);text-decoration:none;">github.com/Juniusketter/Fire-Watch-App</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
 
     </div>
@@ -4195,13 +4368,14 @@ function handleSearchClick(type, id, data) {
 
 let _platformAuth = false;
 
-// ── Platform Tab Switcher ────────────────────────────────────────────────────
 // ── Platform sidebar navigation ──────────────────────────────────────────────
-// Switches between Dashboard, Organizations detail, Audit Log, and Settings
-// views in the Platform Admin interface. Updates sidebar active state.
+// Dashboard: bird's eye stats + per-org summary cards
+// Organizations: management table with View/Approve/Suspend/Delete actions
+// Audit Log: activity log across entire platform
+// Settings: approval toggle + platform info
 function switchPlatformView(view) {
   // Hide all platform views
-  ["platformViewDashboard", "platformViewOrgDetail", "platformViewAudit", "platformViewSettings"].forEach(id => {
+  ["platformViewDashboard", "platformViewOrgs", "platformViewOrgDetail", "platformViewAudit", "platformViewSettings"].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = "none";
   });
@@ -4209,17 +4383,15 @@ function switchPlatformView(view) {
   // Show selected view
   if (view === "dashboard") {
     document.getElementById("platformViewDashboard").style.display = "";
-    loadPlatformDashboard();
+    loadPlatformDashboardOverview();
   } else if (view === "orgs") {
-    // Orgs is the same as dashboard (org table is there)
-    document.getElementById("platformViewDashboard").style.display = "";
+    document.getElementById("platformViewOrgs").style.display = "";
     loadPlatformDashboard();
   } else if (view === "audit") {
     document.getElementById("platformViewAudit").style.display = "";
     loadPlatformAuditLog();
   } else if (view === "settings") {
     document.getElementById("platformViewSettings").style.display = "";
-    // Load the approval toggle into settings view
     loadPlatformSettingsView();
   } else if (view === "orgdetail") {
     document.getElementById("platformViewOrgDetail").style.display = "";
@@ -4240,6 +4412,46 @@ function switchPlatformView(view) {
 }
 
 // Load approval toggle into the Platform Settings page
+// ── Platform Settings sidebar drill-down ─────────────────────────────────────
+function togglePlatformSettingsMenu() {
+  const sub = document.getElementById("pSidebarSettingsSub");
+  const isHidden = sub.classList.contains("hidden");
+  if (isHidden) {
+    sub.classList.remove("hidden");
+    showPlatformSettingsPage("theme");
+  } else {
+    sub.classList.add("hidden");
+    document.getElementById("pSidebarGeneralSub").classList.add("hidden");
+  }
+}
+
+function togglePlatformGeneralMenu() {
+  document.getElementById("pSidebarGeneralSub").classList.toggle("hidden");
+}
+
+function showPlatformSettingsPage(page) {
+  switchPlatformView("settings");
+  // Hide all platform settings pages
+  document.querySelectorAll(".platform-settings-page").forEach(p => p.classList.add("hidden"));
+  // Show selected
+  const pageMap = { theme: "pSettingsPageTheme", about: "pSettingsPageAbout", team: "pSettingsPageTeam", techstack: "pSettingsPageTechstack" };
+  const target = document.getElementById(pageMap[page]);
+  if (target) target.classList.remove("hidden");
+  // Highlight active sub-item
+  ["pSidebarTheme","pSidebarAbout","pSidebarTeam","pSidebarTechstack"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove("active");
+  });
+  const btnMap = { theme: "pSidebarTheme", about: "pSidebarAbout", team: "pSidebarTeam", techstack: "pSidebarTechstack" };
+  const activeBtn = document.getElementById(btnMap[page]);
+  if (activeBtn) activeBtn.classList.add("active");
+  // Load approval toggle if on theme page
+  if (page === "theme") loadPlatformSettingsView();
+  // Close mobile sidebar
+  document.getElementById("platformSidebar").classList.remove("open");
+  document.getElementById("platformSidebarOverlay").style.display = "none";
+}
+
 async function loadPlatformSettingsView() {
   const settingsRes = await fetch("/api/platform/settings").then(r => r.json());
   const requireApproval = settingsRes.require_approval !== false;
@@ -4276,7 +4488,7 @@ document.getElementById("platformLoginBtn")?.addEventListener("click", async () 
     _platformAuth = true;
     document.getElementById("loginPage").classList.add("hidden");
     document.getElementById("platformPage").classList.remove("hidden");
-    loadPlatformDashboard();
+    switchPlatformView("dashboard");
   } else { msgEl.textContent = data.error || "Invalid password."; msgEl.style.color = "var(--red)"; }
 });
 
@@ -4291,6 +4503,105 @@ document.getElementById("platformLogoutBtn")?.addEventListener("click", () => {
 });
 
 // ── Load Platform Dashboard (Orgs tab) ───────────────────────────────────────
+// ── Platform Dashboard Overview — bird's eye view with per-org cards ─────────
+async function loadPlatformDashboardOverview() {
+  const orgs = await fetch("/api/platform/organizations").then(r => r.json());
+
+  // Calculate platform-wide totals
+  let totalUsers = 0, totalExt = 0, totalReports = 0, totalAssignments = 0;
+  orgs.forEach(o => {
+    totalUsers += o.user_count || 0;
+    totalExt += o.extinguisher_count || 0;
+    totalReports += o.report_count || 0;
+  });
+
+  // Fetch assignment count from all orgs
+  for (const o of orgs) {
+    try {
+      const assignments = await fetch(`/api/assignments?org_id=${o.org_id}`).then(r => r.json());
+      o.assignment_count = assignments.length;
+      o.pending_assignments = assignments.filter(a => !a.status || !a.status.toLowerCase().includes("complete")).length;
+      totalAssignments += o.assignment_count;
+    } catch { o.assignment_count = 0; o.pending_assignments = 0; }
+  }
+
+  // Also get company/building counts per org
+  let totalCompanies = 0, totalBuildings = 0;
+  for (const o of orgs) {
+    try {
+      const companies = await fetch(`/api/companies?org_id=${o.org_id}`).then(r => r.json());
+      o.company_count = companies.length;
+      let bCount = 0;
+      companies.forEach(c => bCount += c.building_count || 0);
+      o.building_count = bCount;
+      totalCompanies += o.company_count;
+      totalBuildings += o.building_count;
+    } catch { o.company_count = 0; o.building_count = 0; }
+  }
+
+  // Platform-wide stat boxes
+  const statBoxStyle = "flex:1;min-width:110px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:1rem;text-align:center;";
+  const statNumStyle = "font-size:2rem;font-weight:700;font-family:'IBM Plex Mono',monospace;";
+  const statLabelStyle = "font-size:0.62rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-top:0.3rem;font-family:'IBM Plex Mono',monospace;";
+
+  document.getElementById("platformDashStats").innerHTML = `
+    <div style="${statBoxStyle}"><div style="${statNumStyle}color:var(--orange);">${orgs.length}</div><div style="${statLabelStyle}">Organizations</div></div>
+    <div style="${statBoxStyle}"><div style="${statNumStyle}color:var(--teal);">${totalCompanies}</div><div style="${statLabelStyle}">Companies</div></div>
+    <div style="${statBoxStyle}"><div style="${statNumStyle}color:var(--blue);">${totalBuildings}</div><div style="${statLabelStyle}">Buildings</div></div>
+    <div style="${statBoxStyle}"><div style="${statNumStyle}color:var(--purple);">${totalExt}</div><div style="${statLabelStyle}">Extinguishers</div></div>
+    <div style="${statBoxStyle}"><div style="${statNumStyle}color:var(--teal);">${totalUsers}</div><div style="${statLabelStyle}">Users</div></div>
+    <div style="${statBoxStyle}"><div style="${statNumStyle}color:var(--orange);">${totalAssignments}</div><div style="${statLabelStyle}">Assignments</div></div>
+    <div style="${statBoxStyle}"><div style="${statNumStyle}color:var(--red);">${totalReports}</div><div style="${statLabelStyle}">Reports</div></div>
+  `;
+
+  // Per-org summary cards
+  const stColors = {approved:"var(--teal)",pending:"var(--orange)",suspended:"var(--red)",rejected:"var(--muted)"};
+
+  let cardsHtml = "";
+  orgs.forEach(o => {
+    const stColor = stColors[o.platform_status] || "var(--muted)";
+    cardsHtml += `
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:1rem;cursor:pointer;transition:border-color 0.15s;"
+      onmouseenter="this.style.borderColor='var(--orange)'" onmouseleave="this.style.borderColor='var(--border)'"
+      onclick="platformViewOrg(${o.org_id},'${(o.name||"").replace(/'/g,"\\'")}')">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.6rem;">
+        <div style="font-size:1rem;font-weight:700;color:var(--text);">${o.name}</div>
+        <span style="padding:2px 8px;border-radius:4px;font-size:0.62rem;font-weight:600;color:${stColor};background:rgba(128,128,128,0.1);">${o.platform_status}</span>
+      </div>
+      <div style="font-size:0.72rem;color:var(--muted);margin-bottom:0.8rem;">${[o.address, o.city, o.state].filter(Boolean).join(", ") || "No address"}</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.5rem;text-align:center;">
+        <div style="background:var(--bg3);border-radius:6px;padding:0.5rem 0.3rem;">
+          <div style="font-size:1.1rem;font-weight:700;color:var(--orange);font-family:'IBM Plex Mono',monospace;">${o.company_count || 0}</div>
+          <div style="font-size:0.55rem;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;">Companies</div>
+        </div>
+        <div style="background:var(--bg3);border-radius:6px;padding:0.5rem 0.3rem;">
+          <div style="font-size:1.1rem;font-weight:700;color:var(--teal);font-family:'IBM Plex Mono',monospace;">${o.building_count || 0}</div>
+          <div style="font-size:0.55rem;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;">Buildings</div>
+        </div>
+        <div style="background:var(--bg3);border-radius:6px;padding:0.5rem 0.3rem;">
+          <div style="font-size:1.1rem;font-weight:700;color:var(--blue);font-family:'IBM Plex Mono',monospace;">${o.extinguisher_count || 0}</div>
+          <div style="font-size:0.55rem;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;">Extinguishers</div>
+        </div>
+        <div style="background:var(--bg3);border-radius:6px;padding:0.5rem 0.3rem;">
+          <div style="font-size:1.1rem;font-weight:700;color:var(--purple);font-family:'IBM Plex Mono',monospace;">${o.user_count || 0}</div>
+          <div style="font-size:0.55rem;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;">Users</div>
+        </div>
+        <div style="background:var(--bg3);border-radius:6px;padding:0.5rem 0.3rem;">
+          <div style="font-size:1.1rem;font-weight:700;color:var(--red);font-family:'IBM Plex Mono',monospace;">${o.report_count || 0}</div>
+          <div style="font-size:0.55rem;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;">Reports</div>
+        </div>
+        <div style="background:var(--bg3);border-radius:6px;padding:0.5rem 0.3rem;">
+          <div style="font-size:1.1rem;font-weight:700;color:${o.pending_assignments > 0 ? 'var(--orange)' : 'var(--muted)'};font-family:'IBM Plex Mono',monospace;">${o.pending_assignments || 0}</div>
+          <div style="font-size:0.55rem;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;">Active Assigns</div>
+        </div>
+      </div>
+    </div>`;
+  });
+
+  document.getElementById("platformDashOrgCards").innerHTML = cardsHtml;
+}
+
+// ── Load Platform Organizations Management View ─────────────────────────────
 async function loadPlatformDashboard() {
   const orgs = await fetch("/api/platform/organizations").then(r => r.json());
   const settingsRes = await fetch("/api/platform/settings").then(r => r.json());
