@@ -1272,6 +1272,11 @@ let _prevReportCount = null;
 let _currentTheme    = "dark";
 
 // ── Role helpers ───────────────────────────────────────────────────────────────
+// ── Role check helpers ─────────────────────────────────────────────────────────
+// These return true/false based on the logged-in user's role.
+// Used throughout the UI to show/hide features (tabs, buttons, modals).
+// Four roles: Admin (full access), Inspector (assigned work), 
+// 3rd_Party_Admin (manage external team), 3rd_Party_Inspector (external worker).
 const isAdmin      = () => currentUser?.role === "Admin";
 const isInv        = () => currentUser?.role === "Inspector";
 const isThirdAdmin = () => currentUser?.role === "3rd_Party_Admin";
@@ -1282,6 +1287,9 @@ document.getElementById("loginBtn").addEventListener("click", doLogin);
 document.getElementById("password").addEventListener("keydown", e => { if(e.key==="Enter") doLogin(); });
 document.getElementById("username").addEventListener("keydown", e => { if(e.key==="Enter") document.getElementById("password").focus(); });
 
+// Authenticate user: hash password client-side with SHA-256, send to /api/login.
+// On success, store session in localStorage and show dashboard.
+// On failure, display error message. Checks platform_status for pending orgs.
 async function doLogin() {
   const username = document.getElementById("username").value.trim();
   const password = document.getElementById("password").value;
@@ -1347,6 +1355,9 @@ async function doRegister() {
 }
 
 // ── Dashboard setup ───────────────────────────────────────────────────────────
+// Initialize the main dashboard after successful login.
+// Sets up tabs based on user role, loads all data, starts auto-polling,
+// checks for due date alerts, and restores saved preferences (theme, etc.).
 function showDashboard() {
   // ── Check if org is pending/suspended/rejected ──────────────────────────
   const ps = currentUser.platform_status;
@@ -1404,6 +1415,11 @@ function showDashboard() {
 }
 
 // ── Build tabs by role ────────────────────────────────────────────────────────
+// Create the tab bar based on user role.
+// Admin: Extinguishers, Assignments, Reports, All Users
+// Inspector: My Assignments, My Reports
+// 3rd Party Admin: Assignments, My Team
+// 3rd Party Inspector: My Assignments only
 function buildTabs() {
   const tabBar = document.getElementById("tabBar");
   tabBar.innerHTML = "";
@@ -1458,6 +1474,9 @@ function switchTab(panelId, clickedBtn, tabBar) {
 }
 
 // ── Stats ─────────────────────────────────────────────────────────────────────
+// Fetch and display the four stat boxes at the top of the dashboard:
+// Extinguisher count, Assignment count, Report count, User count.
+// Stats are scoped to the logged-in user's organization.
 async function loadStats() {
   try {
     const oid = orgId();
@@ -1486,6 +1505,9 @@ async function loadStats() {
 }
 
 // ── Load data ─────────────────────────────────────────────────────────────────
+// Load all data for the current user's role.
+// Admin loads everything; Inspector loads only their assignments and reports.
+// Called on login, refresh, and every 5-second auto-poll cycle.
 function loadAllData() {
   if (isAdmin())           { loadExtinguishers(); loadAssignments(); loadReports(); loadUsers(); }
   else if (isInv())        { loadAssignments(); loadReports(); }
@@ -1513,6 +1535,10 @@ async function loadExtinguishers() {
 
 // ── DRILL-DOWN: Company → Building → Extinguisher ─────────────────────────────
 
+// Navigate the Company → Building → Extinguisher drill-down hierarchy.
+// Three levels: "companies" (grid of company cards), "buildings" (grid of
+// building cards for a company), "extinguishers" (table of extinguishers
+// in a building). Breadcrumb nav updates at each level.
 async function drillTo(level, data) {
   _drillLevel = level;
 
@@ -1661,6 +1687,10 @@ async function renderExtinguisherTable(buildingId) {
   });
 }
 
+// Fetch assignments from the API and render them in table + card views.
+// Applies the status filter (Active Only vs All Assignments).
+// Admin/3rd Party Admin see all org assignments; Inspectors see only theirs.
+// Stores all assignments in window._allAssignments for the Priority Queue.
 async function loadAssignments() {
   const oid = orgId();
   let url = `/api/assignments?org_id=${oid}`;
@@ -1694,6 +1724,9 @@ async function loadAssignments() {
   });
 }
 
+// Fetch reports from the API and populate the inspector filter dropdown.
+// Stores all reports in window._allReports for filtering and PDF generation.
+// Then calls applyReportFilters() to render with any active filters.
 async function loadReports() {
   const oid = orgId();
   let url = `/api/reports?org_id=${oid}`;
@@ -1735,6 +1768,11 @@ async function loadUsers() {
 // ── Table renderer ────────────────────────────────────────────────────────────
 const headerMap={extinguisher_id:"ID",assignment_id:"ID",report_id:"ID",user_id:"ID",address:"Address",building_number:"Building",floor_number:"Floor",room_number:"Room",location_description:"Location",inspection_interval_days:"Interval",next_due_date:"Due Date",due_date:"Due Date",assigned_by:"Assigned By",inspector:"Inspector",status:"Status",inspection_date:"Date",notes:"Notes",username:"Username",role:"Role",photo_path:"Photo"};
 
+// Generic table renderer used by all tabs (Extinguishers, Assignments,
+// Reports, Users). Takes a wrapper element ID, column list, row data,
+// and an optional row-click callback. Generates <table> HTML with
+// header mapping (e.g. "extinguisher_id" → "ID"), status badges,
+// and photo thumbnails. Click on a row to select it and open detail popup.
 function renderTable(wrapperId,cols,rows,onRowClick) {
   const wrap=document.getElementById(wrapperId);
   if (!rows.length) { wrap.innerHTML=`<p class="empty-msg">[ NO DATA TO DISPLAY ]</p>`; return; }
@@ -1773,6 +1811,9 @@ function renderTable(wrapperId,cols,rows,onRowClick) {
 }
 
 // ── Card renderer ─────────────────────────────────────────────────────────────
+// Mobile card view renderer — creates card-style layouts for small screens.
+// Each card shows key fields with labels and a status badge.
+// Used as an alternative to tables on mobile viewports.
 function renderCards(wrapperId,rows,type,onCardClick) {
   const wrap=document.getElementById(wrapperId);
   if(!rows||!rows.length){ wrap.innerHTML=`<p class="empty-msg">[ NO DATA TO DISPLAY ]</p>`; return; }
@@ -1949,6 +1990,10 @@ document.getElementById("buildingModalSave").addEventListener("click", async () 
 });
 
 // ── CRUD: Add / Edit Extinguisher ─────────────────────────────────────────────
+// Populate the Company and Building dropdowns in the Add/Edit Extinguisher modal.
+// Company dropdown loads from /api/companies filtered by org_id.
+// Building dropdown cascades from the selected company.
+// presetCompanyId/presetBuildingId are used when editing or adding from drill-down.
 async function populateExtModalDropdowns(presetCompanyId=null, presetBuildingId=null) {
   const oid = orgId();
   const companies = await fetch(`/api/companies?org_id=${oid}`).then(r=>r.json());
@@ -2209,6 +2254,11 @@ document.getElementById("assignStatusFilter").addEventListener("change", () => l
 // ── Priority Queue ────────────────────────────────────────────────────────────
 document.getElementById("btnPriorityQueue").addEventListener("click", openPriorityQueue);
 
+// Open the Priority Queue modal — shows all extinguishers sorted by
+// inspection urgency (never-inspected first, then most days since last).
+// Color-coded: Green (0-7d), Blue (8-15d), Yellow (16-21d), Red (22-30+d).
+// Each row has View (opens detail) and Assign (opens pre-filled assignment modal)
+// buttons that return to the queue when closed.
 async function openPriorityQueue() {
   const oid = orgId();
   if (!oid) return;
@@ -2553,6 +2603,10 @@ function updateThemeCards() {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
+// ── User Preferences ───────────────────────────────────────────────────────────
+// Theme and other settings are stored in the Users.preferences JSON column.
+// On login, preferences are loaded and applied. On change, they're saved
+// via PUT /api/users/:id/preferences. Four themes: dark, light, navy, contrast.
 //  SAVE / LOAD PREFERENCES (synced to DB via Users.preferences column)
 // ══════════════════════════════════════════════════════════════════════════════
 
@@ -2705,6 +2759,11 @@ document.getElementById("userModalSave").addEventListener("click", async () => {
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
+// ── Auto-Polling System ────────────────────────────────────────────────────────
+// Refreshes dashboard data every 5 seconds without requiring manual refresh.
+// Uses hash-based DOM comparison to prevent flicker — only re-renders if
+// the data actually changed since the last poll. This avoids the jarring
+// effect of tables rebuilding every 5 seconds when nothing has changed.
 //  PHASE 1 — Auto-polling (refreshes data every 5 seconds automatically)
 // ══════════════════════════════════════════════════════════════════════════════
 
@@ -3016,6 +3075,9 @@ document.getElementById("extDetailModal").addEventListener("click", e => {
 });
 
 // Return to Priority Queue after closing a modal opened from it
+// Return to the Priority Queue after closing a modal that was opened from it.
+// The _returnToPriorityQueue flag is set ONLY when View or Assign is clicked
+// from inside the queue, so normal modal usage is unaffected.
 function returnToPriorityQueue() {
   if (window._returnToPriorityQueue) {
     window._returnToPriorityQueue = false;
@@ -3152,6 +3214,9 @@ document.getElementById("reportDetailModal").addEventListener("click", e => {
 });
 
 // ── Full-screen photo viewer overlay ─────────────────────────────────────────
+// Open a full-screen dark overlay displaying an inspection photo.
+// Click anywhere on the overlay to close it.
+// Called from both the reports table photo thumbnails and report detail popups.
 function openPhotoViewer(src) {
   // Remove any existing viewer
   const existing = document.getElementById("photoViewerOverlay");
@@ -3591,6 +3656,11 @@ document.getElementById("pdfReportModal").addEventListener("click", e => {
 });
 
 // Generate the PDF
+// ── Generate the formatted PDF report ─────────────────────────────────────────
+// Filters reports by date range and scope (company/building/extinguisher/inspector).
+// Generates a print-ready HTML page with cover page, summary stats, and
+// individual report entries. Opens browser print dialog (Save as PDF on desktop)
+// or downloads as HTML file on mobile.
 document.getElementById("pdfGenerateBtn").addEventListener("click", () => {
   const dateFrom = document.getElementById("pdfDateFrom").value;
   const dateTo = document.getElementById("pdfDateTo").value;
@@ -3745,6 +3815,11 @@ document.getElementById("pdfGenerateBtn").addEventListener("click", () => {
 //  DUE DATE ALERTS — matches Lillian's DueDateAlert.h logic for web
 // ══════════════════════════════════════════════════════════════════════════════
 
+// Check all assignments for due date urgency and show an alert banner.
+// Matches the logic in Lillian's DueDateAlert.h for the Qt desktop app.
+// Categories: Overdue (red, ≤0 days), Due Soon (orange, 1-3 days),
+// Due This Week (blue, 4-7 days). Completed assignments are skipped.
+// Role-scoped: Admins see all, Inspectors see only their own.
 async function checkDueDateAlerts() {
   const oid = orgId();
   if (!oid) return;
@@ -3852,6 +3927,11 @@ document.addEventListener("click", (e) => {
   if (!inSearch) searchDropdowns.forEach(d => d.classList.add("hidden"));
 });
 
+// Execute a global search across 6 database tables.
+// Calls /api/search with the query string, displays results grouped
+// by type (extinguishers, assignments, reports, users, companies, buildings).
+// Each result shows title, subtitle, and a color-coded badge.
+// Click a result to navigate to that item's tab and open its detail popup.
 async function runSearch(q) {
   const oid = orgId();
   if (!oid) return;

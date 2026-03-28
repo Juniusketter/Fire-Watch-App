@@ -1,7 +1,30 @@
 """
 FireWatch Backend Server
 ========================
-Run this file to start the local backend server.
+Flask REST API server for the FireWatch NFPA 10 fire extinguisher
+compliance tracking platform.
+
+Architecture:
+    - This file serves as both the REST API and static file server
+    - All data is stored in a single SQLite database (FireWatch.db)
+    - The same database is shared with the Qt C++ desktop application
+    - Multi-tenant: every data table includes org_id for organization isolation
+    - Platform Super Admin: separate authentication for owner-level control
+
+Endpoints (41 total):
+    Authentication:  /api/login, /api/register, /api/platform/login
+    Core CRUD:       /api/companies, /api/buildings, /api/extinguishers,
+                     /api/assignments, /api/reports, /api/users
+    Features:        /api/search, /api/upload, /api/stats, /api/notifications
+    User Settings:   /api/users/:id/preferences, /api/users/:id/password
+    Platform Admin:  /api/platform/organizations, /api/platform/settings,
+                     /api/platform/audit
+
+Security:
+    - Passwords are SHA-256 hashed client-side before transmission
+    - Server stores and compares hashes, never sees plaintext
+    - Platform password configurable via FW_PLATFORM_HASH env var
+    - All queries scoped by org_id for multi-tenant isolation
 
 Requirements:
     pip install flask
@@ -11,9 +34,6 @@ Usage:
 
 Then open your browser to:
     http://localhost:5000
-
-The server reads/writes directly from src/database/FireWatch.db
-Any changes you make to the database will appear live after login.
 """
 
 from flask import Flask, request, jsonify, send_from_directory
@@ -23,27 +43,37 @@ import hashlib
 import logging
 import uuid
 
-# Silence per-request logs — errors still print, routine GET/POST lines do not
+# Silence Flask's per-request log lines (GET /api/... 200)
+# Errors and startup messages still print normally
 logging.getLogger("werkzeug").setLevel(logging.ERROR)
 
 def hash_password(pw: str) -> str:
-    """SHA-256 hash a password. Matches Qt's QCryptographicHash::Sha256."""
+    """SHA-256 hash a password string, returning a 64-char hex digest.
+    This must match Qt's QCryptographicHash::Sha256 and the web frontend's
+    crypto.subtle.digest('SHA-256', ...) so all three platforms produce
+    identical hashes for the same password."""
     return hashlib.sha256(pw.encode()).hexdigest()
 
 app = Flask(__name__)
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
+# BASE_DIR: root of the project (where server.py lives)
+# DB_PATH:  path to the shared SQLite database
+# UI_DIR:   path to the web frontend (index.html served from here)
+# UPLOAD_DIR: where inspection photos are stored (UUID-renamed files)
 BASE_DIR    = os.path.dirname(os.path.abspath(__file__))
 DB_PATH     = os.path.join(BASE_DIR, "src", "database", "FireWatch.db")
 UI_DIR      = os.path.join(BASE_DIR, "src", "frontend", "Fire-Watch-UI")
 UPLOAD_DIR  = os.path.join(BASE_DIR, "src", "uploads")
-os.makedirs(UPLOAD_DIR, exist_ok=True)  # create uploads folder if it doesn't exist
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+# Allowed file extensions for photo uploads (validated on upload)
 ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "gif", "webp", "heic", "heif"}
 
 # ── Platform Super Admin ──────────────────────────────────────────────────────
-# Default platform password: FireWatch2026!
-# To override without changing code, set the FW_PLATFORM_HASH environment variable.
+# The platform password is separate from org-level user accounts.
+# Default: FireWatch2026! (hardcoded so teammates and professor can access)
+# Override: set FW_PLATFORM_HASH environment variable on Render or locally
 PLATFORM_PASSWORD_HASH = os.environ.get(
     "FW_PLATFORM_HASH",
     hashlib.sha256("FireWatch2026!".encode()).hexdigest()
@@ -51,12 +81,29 @@ PLATFORM_PASSWORD_HASH = os.environ.get(
 
 # ── DB helper ──────────────────────────────────────────────────────────────────
 def get_db():
+    """Open a connection to the SQLite database.
+    row_factory=sqlite3.Row makes rows behave like dicts (access by column name)."""
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
 # ── Startup migrations — run once on server start ──────────────────────────────
 def run_migrations():
+    """Auto-create and update database tables on every server start.
+    
+    This function handles all schema evolution so teammates don't need to
+    manually run SQL scripts. Each migration checks if a column/table exists
+    before altering, making it safe to run repeatedly (idempotent).
+    
+    Migration order:
+    1. Create core tables (Organizations, PlatformSettings, PlatformAuditLog)
+    2. Add columns to existing tables (org_id, due_date, photo_path, etc.)
+    3. Create Companies and Buildings tables (Sprint 3)
+    4. Add NFPA 10 compliance columns to Extinguishers (10 fields)
+    5. Add last_inspection_date to Extinguishers (Sprint 4)
+    6. Backfill last_report_id and last_inspection_date from existing Reports
+    7. Seed default organization for pre-existing data (one-time)
+    """
     with get_db() as conn:
 
         tables = [r[0] for r in conn.execute(
@@ -306,6 +353,10 @@ def serve_upload(filename):
 # ── PHOTO UPLOAD ───────────────────────────────────────────────────────────────
 @app.route("/api/upload", methods=["POST"])
 def upload_photo():
+    """Handle inspection photo uploads.
+    Renames file with UUID to prevent collisions and path traversal.
+    Validates file extension against ALLOWED_EXTENSIONS.
+    Returns the UUID filename for storage in Reports.photo_path."""
     if "photo" not in request.files:
         return jsonify({"error": "No photo file provided"}), 400
     file = request.files["photo"]
@@ -321,6 +372,10 @@ def upload_photo():
 # ── ORGANIZATION REGISTRATION ──────────────────────────────────────────────────
 @app.route("/api/register", methods=["POST"])
 def register_org():
+    """Register a new organization with its first admin account.
+    Creates the Organization row, then creates the admin User.
+    If platform approval is required (PlatformSettings.require_approval),
+    the new org starts as "pending" and needs Super Admin approval."""
     d        = request.get_json()
     org_name = (d.get("org_name")  or "").strip()
     username = (d.get("username")  or "").strip()
@@ -385,6 +440,9 @@ def register_org():
 
 @app.route("/api/login", methods=["POST"])
 def login():
+    """Authenticate a user by comparing SHA-256 hash of password.
+    Returns user info, org details, and platform_status (for pending org overlay).
+    The client hashes the password before sending, so we compare hashes directly."""
     data     = request.get_json()
     username = (data.get("username") or "").strip()
     password = data.get("password") or ""
@@ -425,6 +483,9 @@ def login():
 # ── COMPANIES ──────────────────────────────────────────────────────────────────
 @app.route("/api/companies", methods=["GET"])
 def get_companies():
+    """List all companies for an organization, with building and extinguisher counts.
+    Used by the drill-down hierarchy (Company → Building → Extinguisher).
+    Requires org_id query parameter for multi-tenant isolation."""
     org_id = request.args.get("org_id")
     with get_db() as conn:
         rows = conn.execute("""
@@ -476,6 +537,8 @@ def update_company(company_id):
 
 @app.route("/api/companies/<int:company_id>", methods=["DELETE"])
 def delete_company(company_id):
+    """Delete a company and cascade to all its buildings, extinguishers,
+    reports, and assignments. This is a destructive operation."""
     try:
         with get_db() as conn:
             bldgs = conn.execute(
@@ -586,6 +649,10 @@ def delete_building(building_id):
 # ── EXTINGUISHERS ──────────────────────────────────────────────────────────────
 @app.route("/api/extinguishers", methods=["GET"])
 def get_extinguishers():
+    """List extinguishers with JOINs to Buildings and Companies for location context.
+    Supports filtering by building_id, company_id, or org_id.
+    Returns all 19+ columns including NFPA 10 compliance metadata.
+    Uses SELECT e.* so new columns added via migration are auto-included."""
     building_id = request.args.get("building_id")
     company_id  = request.args.get("company_id")
     org_id      = request.args.get("org_id")
@@ -694,6 +761,9 @@ def delete_extinguisher(ext_id):
 # ── ASSIGNMENTS ────────────────────────────────────────────────────────────────
 @app.route("/api/assignments", methods=["GET"])
 def get_assignments():
+    """List assignments with full context (admin name, inspector name, location).
+    JOINs through Users (admin + inspector), Extinguishers, Buildings, Companies.
+    Filterable by org_id and optionally user_id (for inspector-scoped views)."""
     user_id = request.args.get("user_id")
     org_id  = request.args.get("org_id")
     with get_db() as conn:
@@ -800,6 +870,11 @@ def get_reports():
 
 @app.route("/api/reports", methods=["POST"])
 def create_report():
+    """Submit an inspection report.
+    Creates the Report row, then updates the parent Extinguisher with:
+    - last_report_id: links to this report for the detail popup
+    - last_inspection_date: used by Priority Queue for urgency sorting
+    If an assignment_id is provided, marks that assignment as Complete."""
     d = request.get_json()
     try:
         with get_db() as conn:
@@ -831,6 +906,8 @@ def create_report():
 # ── USERS ──────────────────────────────────────────────────────────────────────
 @app.route("/api/users", methods=["GET"])
 def get_users():
+    """List all users in an organization. Returns user_id, username, role.
+    Passwords are never returned. Filtered by org_id for multi-tenant isolation."""
     org_id = request.args.get("org_id")
     with get_db() as conn:
         if org_id:
@@ -999,6 +1076,10 @@ def delete_user(user_id):
 # ── SEARCH ─────────────────────────────────────────────────────────────────────
 @app.route("/api/search", methods=["GET"])
 def search():
+    """Global search across all org data — extinguishers, assignments, reports,
+    users, companies, buildings. Uses LIKE queries with 2-char minimum.
+    Results grouped by type with title, subtitle, badge, and raw data.
+    Limits to 10 results per category to prevent slow responses."""
     """Search across all org data — extinguishers, assignments, reports, users, companies, buildings."""
     q = (request.args.get("q") or "").strip().lower()
     org_id = request.args.get("org_id")
@@ -1247,6 +1328,9 @@ def get_stats():
 
 @app.route("/api/platform/login", methods=["POST"])
 def platform_login():
+    """Authenticate the Platform Super Admin with a separate password.
+    This is independent from org-level user accounts.
+    Logs both successful and failed attempts to PlatformAuditLog."""
     """Authenticate with the platform password (separate from org login)."""
     d = request.get_json()
     password = (d.get("password") or "").strip()
