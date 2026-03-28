@@ -763,7 +763,7 @@
             <div class="settings-row">
               <div>
                 <div class="settings-label">Version</div>
-                <div class="settings-desc">Sprint 3  ·  March 2026</div>
+                <div class="settings-desc">Sprint 2  ·  March 2026</div>
               </div>
             </div>
             <div class="settings-row">
@@ -1950,7 +1950,8 @@ document.getElementById("buildingModalSave").addEventListener("click", async () 
 
 // ── CRUD: Add / Edit Extinguisher ─────────────────────────────────────────────
 async function populateExtModalDropdowns(presetCompanyId=null, presetBuildingId=null) {
-  const companies = await fetch("/api/companies").then(r=>r.json());
+  const oid = orgId();
+  const companies = await fetch(`/api/companies?org_id=${oid}`).then(r=>r.json());
   const compSel = document.getElementById("fCompany");
   compSel.innerHTML = '<option value="">— Select company —</option>' +
     companies.map(c => `<option value="${c.company_id}">${c.name}</option>`).join("");
@@ -1960,7 +1961,7 @@ async function populateExtModalDropdowns(presetCompanyId=null, presetBuildingId=
     const cid = compSel.value;
     const bSel = document.getElementById("fBuildingSelect");
     if (!cid) { bSel.innerHTML = '<option value="">— Select building —</option>'; return; }
-    const buildings = await fetch(`/api/buildings?company_id=${cid}`).then(r=>r.json());
+    const buildings = await fetch(`/api/buildings?company_id=${cid}&org_id=${oid}`).then(r=>r.json());
     bSel.innerHTML = '<option value="">— Select building —</option>' +
       buildings.map(b => `<option value="${b.building_id}">${b.name}</option>`).join("");
   };
@@ -2109,7 +2110,7 @@ async function openAssignModal(editRow=null) {
     aExt.innerHTML = '<option value="">— Select building first —</option>';
     aExt.disabled = true;
     if (!cid) { aBuilding.disabled = true; return; }
-    const buildings = await fetch(`/api/buildings?company_id=${cid}`).then(r=>r.json());
+    const buildings = await fetch(`/api/buildings?company_id=${cid}&org_id=${orgId()}`).then(r=>r.json());
     aBuilding.innerHTML = '<option value="">— Select building —</option>' +
       buildings.map(b=>`<option value="${b.building_id}">${b.name}${b.address ? ' — '+b.address : ''}</option>`).join("");
     aBuilding.disabled = false;
