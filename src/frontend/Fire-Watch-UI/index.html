@@ -664,6 +664,7 @@
             <button class="export-option" id="btnExportWord" style="display:flex;align-items:center;gap:8px;width:100%;padding:10px 14px;border:none;background:none;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:0.78rem;cursor:pointer;text-align:left;border-top:1px solid var(--border);">📝 Export as Word</button>
           </div>
         </div>
+        <button class="btn-crud btn-add" id="btnGeneratePdfReport" style="background:var(--purple,#7C3AED);">📋 Generate PDF Report</button>
         <!-- Filter bar — always visible when reports panel is shown -->
         <div class="filter-bar" id="reportFilterBar">
           <div class="filter-group">
@@ -1061,6 +1062,46 @@
     </div>
     <div class="ext-detail-grid" id="detailAssignGrid"></div>
     <div class="ext-detail-footer" id="detailAssignFooter"></div>
+  </div>
+</div>
+
+<!-- PDF REPORT GENERATOR MODAL -->
+<div class="modal-overlay hidden" id="pdfReportModal">
+  <div class="modal-box" style="max-width:550px;width:95%;">
+    <h3 style="margin-bottom:1rem;font-size:1rem;">📋 Generate Inspection Report (PDF)</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.8rem;">
+      <div>
+        <label style="font-size:0.7rem;color:var(--muted);display:block;margin-bottom:4px;">From Date</label>
+        <input type="date" id="pdfDateFrom" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:0.78rem;" />
+      </div>
+      <div>
+        <label style="font-size:0.7rem;color:var(--muted);display:block;margin-bottom:4px;">To Date</label>
+        <input type="date" id="pdfDateTo" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:0.78rem;" />
+      </div>
+    </div>
+    <div style="margin-top:0.8rem;">
+      <label style="font-size:0.7rem;color:var(--muted);display:block;margin-bottom:4px;">Scope</label>
+      <select id="pdfScope" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:0.78rem;">
+        <option value="all">All Reports (Organization-wide)</option>
+        <option value="company">By Company</option>
+        <option value="building">By Building</option>
+        <option value="extinguisher">By Extinguisher</option>
+        <option value="inspector">By Inspector</option>
+      </select>
+    </div>
+    <div id="pdfScopeFilter" style="margin-top:0.8rem;display:none;">
+      <label style="font-size:0.7rem;color:var(--muted);display:block;margin-bottom:4px;" id="pdfScopeFilterLabel">Select</label>
+      <select id="pdfScopeValue" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:0.78rem;">
+      </select>
+    </div>
+    <div style="margin-top:0.8rem;">
+      <label style="font-size:0.7rem;color:var(--muted);display:block;margin-bottom:4px;">Report Title (optional)</label>
+      <input type="text" id="pdfTitle" placeholder="e.g. Q1 2026 Inspection Summary" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:0.78rem;" />
+    </div>
+    <div style="margin-top:1rem;display:flex;gap:0.5rem;justify-content:flex-end;">
+      <button onclick="document.getElementById('pdfReportModal').classList.add('hidden');" style="padding:6px 16px;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--muted);cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:0.78rem;">Cancel</button>
+      <button id="pdfGenerateBtn" style="padding:6px 16px;border:none;border-radius:6px;background:var(--purple,#7C3AED);color:white;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:0.78rem;font-weight:600;">Generate PDF</button>
+    </div>
   </div>
 </div>
 
@@ -3478,6 +3519,227 @@ document.getElementById("btnExportReports")?.addEventListener("click", () => {
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════════
+//  PDF REPORT GENERATOR
+// ══════════════════════════════════════════════════════════════════════════════
+
+document.getElementById("btnGeneratePdfReport").addEventListener("click", async () => {
+  const modal = document.getElementById("pdfReportModal");
+  // Set default dates — last 30 days
+  const today = new Date();
+  const thirtyAgo = new Date(today);
+  thirtyAgo.setDate(thirtyAgo.getDate() - 30);
+  document.getElementById("pdfDateTo").value = today.toISOString().split("T")[0];
+  document.getElementById("pdfDateFrom").value = thirtyAgo.toISOString().split("T")[0];
+  document.getElementById("pdfTitle").value = "";
+  document.getElementById("pdfScope").value = "all";
+  document.getElementById("pdfScopeFilter").style.display = "none";
+  modal.classList.remove("hidden");
+});
+
+// Scope dropdown changes — populate the secondary filter
+document.getElementById("pdfScope").addEventListener("change", async () => {
+  const scope = document.getElementById("pdfScope").value;
+  const filterDiv = document.getElementById("pdfScopeFilter");
+  const label = document.getElementById("pdfScopeFilterLabel");
+  const sel = document.getElementById("pdfScopeValue");
+  const oid = orgId();
+
+  if (scope === "all") {
+    filterDiv.style.display = "none";
+    return;
+  }
+
+  filterDiv.style.display = "";
+  sel.innerHTML = "";
+
+  if (scope === "company") {
+    label.textContent = "Select Company";
+    const companies = await fetch(`/api/companies?org_id=${oid}`).then(r => r.json());
+    companies.forEach(c => {
+      sel.innerHTML += `<option value="${c.company_id}">${c.name}</option>`;
+    });
+  } else if (scope === "building") {
+    label.textContent = "Select Building";
+    const exts = await fetch(`/api/extinguishers?org_id=${oid}`).then(r => r.json());
+    const buildings = {};
+    exts.forEach(e => { if (e.building_name) buildings[e.building_id] = `${e.company_name} — ${e.building_name}`; });
+    Object.entries(buildings).forEach(([id, name]) => {
+      sel.innerHTML += `<option value="${id}">${name}</option>`;
+    });
+  } else if (scope === "extinguisher") {
+    label.textContent = "Select Extinguisher";
+    const exts = await fetch(`/api/extinguishers?org_id=${oid}`).then(r => r.json());
+    exts.forEach(e => {
+      const loc = [e.company_name, e.building_name, e.floor_number ? `Floor ${e.floor_number}` : "", e.room_number ? `Rm ${e.room_number}` : ""].filter(Boolean).join(" · ");
+      sel.innerHTML += `<option value="${e.extinguisher_id}">#${e.extinguisher_id} — ${loc}</option>`;
+    });
+  } else if (scope === "inspector") {
+    label.textContent = "Select Inspector";
+    const users = await fetch(`/api/users?org_id=${oid}`).then(r => r.json());
+    users.filter(u => u.role.includes("Inspector") || u.role.includes("inspector")).forEach(u => {
+      sel.innerHTML += `<option value="${u.username}">${u.username} (${u.role})</option>`;
+    });
+  }
+});
+
+// Close on backdrop
+document.getElementById("pdfReportModal").addEventListener("click", e => {
+  if (e.target === document.getElementById("pdfReportModal"))
+    document.getElementById("pdfReportModal").classList.add("hidden");
+});
+
+// Generate the PDF
+document.getElementById("pdfGenerateBtn").addEventListener("click", () => {
+  const dateFrom = document.getElementById("pdfDateFrom").value;
+  const dateTo = document.getElementById("pdfDateTo").value;
+  const scope = document.getElementById("pdfScope").value;
+  const scopeValue = document.getElementById("pdfScopeValue").value;
+  const customTitle = document.getElementById("pdfTitle").value.trim();
+  const allReports = window._allReports || [];
+
+  // Filter by date range
+  let filtered = allReports.filter(r => {
+    if (!r.inspection_date) return false;
+    if (dateFrom && r.inspection_date < dateFrom) return false;
+    if (dateTo && r.inspection_date > dateTo) return false;
+    return true;
+  });
+
+  // Filter by scope
+  let scopeLabel = "Organization-wide";
+  if (scope === "company") {
+    filtered = filtered.filter(r => String(r.company_id_fk || r.company_id) === scopeValue || r.company_name === document.getElementById("pdfScopeValue").selectedOptions[0]?.textContent);
+    scopeLabel = `Company: ${document.getElementById("pdfScopeValue").selectedOptions[0]?.textContent || scopeValue}`;
+    // Fallback: match by company name from the report
+    const companyName = document.getElementById("pdfScopeValue").selectedOptions[0]?.textContent;
+    if (companyName) filtered = allReports.filter(r => {
+      if (dateFrom && r.inspection_date < dateFrom) return false;
+      if (dateTo && r.inspection_date > dateTo) return false;
+      return r.company_name === companyName;
+    });
+  } else if (scope === "building") {
+    const buildingLabel = document.getElementById("pdfScopeValue").selectedOptions[0]?.textContent || "";
+    const buildingName = buildingLabel.split(" — ")[1] || buildingLabel;
+    filtered = filtered.filter(r => r.building_name === buildingName || String(r.building_id) === scopeValue);
+    scopeLabel = `Building: ${buildingLabel}`;
+  } else if (scope === "extinguisher") {
+    filtered = filtered.filter(r => String(r.extinguisher_id) === scopeValue);
+    scopeLabel = `Extinguisher: ${document.getElementById("pdfScopeValue").selectedOptions[0]?.textContent || "#" + scopeValue}`;
+  } else if (scope === "inspector") {
+    filtered = filtered.filter(r => r.inspector === scopeValue);
+    scopeLabel = `Inspector: ${scopeValue}`;
+  }
+
+  if (filtered.length === 0) {
+    alert("No reports found for the selected criteria.");
+    return;
+  }
+
+  // Sort by date
+  filtered.sort((a, b) => (a.inspection_date || "").localeCompare(b.inspection_date || ""));
+
+  const title = customTitle || "FireWatch Inspection Report";
+  const orgName = currentUser?.org_name || "Organization";
+  const now = new Date().toLocaleString();
+
+  // Build PDF HTML
+  let html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title>
+  <style>
+    @media print { @page { margin: 0.75in; } body { margin: 0; } }
+    body { font-family: Arial, sans-serif; color: #1a1a2e; background: #fff; padding: 2rem; }
+    .cover { text-align: center; padding: 3rem 0 2rem; border-bottom: 3px solid #E85D04; margin-bottom: 2rem; }
+    .cover h1 { font-size: 2rem; color: #E85D04; margin-bottom: 0.3rem; }
+    .cover h2 { font-size: 1.3rem; color: #1a1a2e; margin-bottom: 0.5rem; }
+    .cover .meta { font-size: 0.85rem; color: #6B7280; }
+    .summary { display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap; }
+    .summary-box { flex: 1; min-width: 120px; background: #f3f4f6; border-radius: 8px; padding: 1rem; text-align: center; }
+    .summary-box .num { font-size: 1.8rem; font-weight: 700; color: #E85D04; }
+    .summary-box .label { font-size: 0.75rem; color: #6B7280; text-transform: uppercase; letter-spacing: 0.05em; }
+    .report-entry { border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; page-break-inside: avoid; }
+    .report-entry h3 { font-size: 0.95rem; color: #1a1a2e; margin-bottom: 0.5rem; border-bottom: 1px solid #e5e7eb; padding-bottom: 0.4rem; }
+    .report-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.3rem 1.5rem; font-size: 0.82rem; }
+    .report-grid .lbl { color: #6B7280; font-weight: 600; }
+    .report-grid .val { color: #1a1a2e; }
+    .notes-section { margin-top: 0.5rem; font-size: 0.82rem; }
+    .notes-section .lbl { color: #6B7280; font-weight: 600; }
+    .photo-thumb { margin-top: 0.5rem; max-width: 200px; max-height: 150px; border-radius: 4px; }
+    .footer { margin-top: 2rem; padding-top: 1rem; border-top: 2px solid #e5e7eb; text-align: center; font-size: 0.75rem; color: #9CA3AF; }
+  </style></head><body>`;
+
+  // Cover page
+  html += `<div class="cover">
+    <h1>🔥 ${title}</h1>
+    <h2>${orgName}</h2>
+    <div class="meta">${scopeLabel}</div>
+    <div class="meta">Date Range: ${dateFrom || "All"} to ${dateTo || "All"}</div>
+    <div class="meta">Generated: ${now}</div>
+  </div>`;
+
+  // Summary stats
+  const inspectors = [...new Set(filtered.map(r => r.inspector).filter(Boolean))];
+  const extinguishers = [...new Set(filtered.map(r => r.extinguisher_id).filter(Boolean))];
+  const withPhotos = filtered.filter(r => r.photo_path).length;
+
+  html += `<div class="summary">
+    <div class="summary-box"><div class="num">${filtered.length}</div><div class="label">Total Reports</div></div>
+    <div class="summary-box"><div class="num">${inspectors.length}</div><div class="label">Inspectors</div></div>
+    <div class="summary-box"><div class="num">${extinguishers.length}</div><div class="label">Extinguishers</div></div>
+    <div class="summary-box"><div class="num">${withPhotos}</div><div class="label">With Photos</div></div>
+  </div>`;
+
+  // Individual report entries
+  filtered.forEach((r, i) => {
+    html += `<div class="report-entry">
+      <h3>Report #${r.report_id} — Inspected ${r.inspection_date || "N/A"}</h3>
+      <div class="report-grid">
+        <div class="lbl">Extinguisher</div><div class="val">#${r.extinguisher_id}</div>
+        <div class="lbl">Inspector</div><div class="val">${r.inspector || "—"}</div>
+        <div class="lbl">Company</div><div class="val">${r.company_name || "—"}</div>
+        <div class="lbl">Building</div><div class="val">${r.building_name || "—"}</div>
+        <div class="lbl">Floor</div><div class="val">${r.floor_number ? "Floor " + r.floor_number : "—"}</div>
+        <div class="lbl">Room</div><div class="val">${r.room_number || "—"}</div>
+        <div class="lbl">Location</div><div class="val">${r.location_description || "—"}</div>
+        <div class="lbl">Date</div><div class="val">${r.inspection_date || "—"}</div>
+      </div>`;
+
+    if (r.notes) {
+      html += `<div class="notes-section"><span class="lbl">Notes:</span> ${r.notes}</div>`;
+    }
+    if (r.photo_path) {
+      html += `<img class="photo-thumb" src="/uploads/${r.photo_path}" alt="Inspection photo" onerror="this.style.display='none'" />`;
+    }
+    html += `</div>`;
+  });
+
+  // Footer
+  html += `<div class="footer">
+    FireWatch — NFPA 10 Fire Extinguisher Compliance Tracking Platform<br>
+    ${orgName} · ${scopeLabel} · Generated ${now}
+  </div>`;
+
+  html += `</body></html>`;
+
+  // Open in new window for print/save as PDF
+  const win = window.open("", "_blank");
+  if (win) {
+    win.document.write(html);
+    win.document.close();
+    setTimeout(() => win.print(), 500);
+  } else {
+    // Mobile fallback — download as HTML file
+    const blob = new Blob([html], { type: "text/html" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `${title.replace(/\s+/g, "_")}_${dateFrom}_${dateTo}.html`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(a.href); }, 100);
+  }
+
+  document.getElementById("pdfReportModal").classList.add("hidden");
+});
+
 // ══════════════════════════════════════════════════════════════════════════════
 //  DUE DATE ALERTS — matches Lillian's DueDateAlert.h logic for web
 // ══════════════════════════════════════════════════════════════════════════════
