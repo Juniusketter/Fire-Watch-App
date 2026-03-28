@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FireWatch Dashboard</title>
+</head>
+<body>
+  <section class="app-shell" aria-label="FireWatch dashboard">
+    <header class="app-header">
+      <h1 class="brand">FireWatch</h1>
+      <p class="welcome" id="welcomeText">Signed in</p>
+    </header>
+
+    <form class="search-bar" id="searchForm" aria-label="Search FireWatch">
+      <div class="field">
+        <label for="searchInput">Search</label>
+        <input
+          type="search"
+          id="searchInput"
+          name="search"
+          placeholder="Search all tabs and database information"
+        />
+      </div>
+      <button type="submit">Search</button>
+      <p class="message" id="searchStatus" aria-live="polite"></p>
+    </form>
+
+    <div class="folder">
+      <nav class="tabs" aria-label="Folder tabs">
+        <button class="tab active" data-tab="notes" type="button">Notes</button>
+        <button class="tab" data-tab="pictures" type="button">Pictures</button>
+        <button class="tab" data-tab="floor-plan" type="button">Floor Plan</button>
+        <button class="tab" data-tab="regulations" type="button">Regulations</button>
+        <button class="tab" data-tab="fire-extinguisher" type="button">Fire Extinguisher</button>
+        <button class="tab" data-tab="contact-information" type="button">Contact Information</button>
+        <button class="tab" data-tab="inspection-calendar" type="button">Inspection Calendar</button>
+        <button class="tab" data-tab="reports" type="button">Reports</button>
+      </nav>
+
+      <div class="folder-content">
+        <section class="panel active" id="notes">
+          <h2>Notes</h2>
+          <p>Keep important fire safety notes and reminders here.</p>
+        </section>
+
+        <section class="panel" id="pictures">
+          <h2>Pictures</h2>
+          <p>Store and review location photos, hazard images, and documentation snapshots.</p>
+        </section>
+
+        <section class="panel" id="floor-plan">
+          <h2>Floor Plan</h2>
+          <p>Review floor layouts, exits, and equipment placement maps.</p>
+        </section>
+
+        <section class="panel" id="regulations">
+          <h2>Regulations</h2>
+          <p>Reference fire code requirements and local compliance checklists.</p>
+        </section>
+
+        <section class="panel" id="fire-extinguisher">
+          <h2>Fire Extinguisher</h2>
+          <p>Track extinguisher types, locations, and service status details.</p>
+        </section>
+
+        <section class="panel" id="contact-information">
+          <h2>Contact Information</h2>
+          <p>Maintain emergency contacts, inspectors, and facility management details.</p>
+        </section>
+
+        <section class="panel" id="inspection-calendar">
+          <h2>Inspection Calendar</h2>
+          <p>View upcoming inspections, completed checks, and due dates.</p>
+        </section>
+
+        <section class="panel" id="reports">
+          <h2>Reports</h2>
+          <p>Generate and review incident summaries, compliance logs, and inspection reports.</p>
+        </section>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    function applyFallbackStyles() {
+      const fallback = document.createElement("style");
+      fallback.textContent = `
+        body { background: #e9dec8; color: #000; }
+        button { background: #3fa34d; color: #000; }
+        button:hover { background: #2e8c3b; }
+      `;
+      document.head.appendChild(fallback);
+    }
+
+    async function loadStylesFromJson() {
+      try {
+        const response = await fetch("./styles.json", { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error("Failed to load styles.json");
+        }
+
+        const payload = await response.json();
+        if (!payload || typeof payload.css !== "string") {
+          throw new Error("Invalid styles.json format");
+        }
+
+        const styleTag = document.createElement("style");
+        styleTag.textContent = payload.css;
+        document.head.appendChild(styleTag);
+      } catch (error) {
+        console.error("Style loading error:", error);
+        applyFallbackStyles();
+      }
+    }
+
+    const tabs = document.querySelectorAll(".tab");
+    const panels = document.querySelectorAll(".panel");
+    const searchForm = document.getElementById("searchForm");
+    const searchInput = document.getElementById("searchInput");
+    const searchStatus = document.getElementById("searchStatus");
+
+    function showTab(tabId) {
+      tabs.forEach((tab) => {
+        tab.classList.toggle("active", tab.dataset.tab === tabId);
+      });
+
+      panels.forEach((panel) => {
+        panel.classList.toggle("active", panel.id === tabId);
+      });
+    }
+
+    tabs.forEach((tab) => {
+      tab.addEventListener("click", () => {
+        showTab(tab.dataset.tab);
+      });
+    });
+
+    async function runSearch(query) {
+      const trimmed = query.trim();
+      if (!trimmed) {
+        searchStatus.textContent = "";
+        showTab("notes");
+        return;
+      }
+
+      const normalized = trimmed.toLowerCase();
+      let firstMatch = null;
+
+      panels.forEach((panel) => {
+        const match = panel.textContent.toLowerCase().includes(normalized);
+        if (match && !firstMatch) {
+          firstMatch = panel.id;
+        }
+      });
+
+      if (firstMatch) {
+        showTab(firstMatch);
+        searchStatus.textContent = `Results found in ${firstMatch.replace(/-/g, " ")}`;
+      } else {
+        searchStatus.textContent = "No matching tab content found.";
+      }
+
+      try {
+        const response = await fetch(`/api/search?q=${encodeURIComponent(trimmed)}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data && Array.isArray(data.results)) {
+            searchStatus.textContent += ` Backend results: ${data.results.length}`;
+          }
+        }
+      } catch (error) {
+        // Backend search is optional; fail silently on network errors.
+      }
+    }
+
+    searchForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      runSearch(searchInput.value);
+    });
+
+    loadStylesFromJson();
+  </script>
+</body>
+</html>
