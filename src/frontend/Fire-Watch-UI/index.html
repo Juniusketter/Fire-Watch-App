@@ -642,6 +642,10 @@
       <div class="table-toolbar hidden" id="assignToolbar">
         <button class="btn-crud btn-add" id="btnGenerateAssign">＋ Generate Assignment</button>
         <button class="btn-crud btn-edit" id="btnEditAssign">✎ Edit Selected</button>
+        <select id="assignStatusFilter" style="margin-left:auto;padding:5px 10px;border-radius:4px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:0.75rem;cursor:pointer;">
+          <option value="active">Active Only</option>
+          <option value="all">All Assignments</option>
+        </select>
       </div>
       <div class="table-scroll-wrap" id="tableAssignWrap"></div>
       <div class="card-list" id="cardAssignWrap"></div>
@@ -1598,16 +1602,31 @@ async function loadAssignments() {
   const oid = orgId();
   let url = `/api/assignments?org_id=${oid}`;
   if (isInv()||isThirdInv()) url += `&user_id=${currentUser.user_id}`;
-  const rows=await fetch(url).then(r=>r.json());
+  const allRows=await fetch(url).then(r=>r.json());
+  window._allAssignments = allRows;
+
+  // Apply status filter
+  const filter = document.getElementById("assignStatusFilter");
+  const filterVal = filter ? filter.value : "active";
+  const rows = filterVal === "active"
+    ? allRows.filter(r => !r.status || !r.status.toLowerCase().includes("complete"))
+    : allRows;
+
+  // Update stat box to show filtered count with total
+  const statAssign = document.getElementById("statAssign");
+  if (statAssign && filterVal === "active" && rows.length !== allRows.length) {
+    statAssign.textContent = `${rows.length} / ${allRows.length}`;
+  }
+
   const cols=(isAdmin()||isThirdAdmin())?["assignment_id","assigned_by","inspector","extinguisher_id","due_date","status"]:["assignment_id","assigned_by","extinguisher_id","due_date","status"];
   renderTable("tableAssignWrap", cols, rows, row=>{
     selectedAssignId = row.assignment_id;
-    window._lastAssignRows = rows;
+    window._lastAssignRows = allRows;
     openAssignDetail(row);
   });
   renderCards("cardAssignWrap", rows, "assignment", row=>{
     selectedAssignId = row.assignment_id;
-    window._lastAssignRows = rows;
+    window._lastAssignRows = allRows;
     openAssignDetail(row);
   });
 }
@@ -2119,6 +2138,9 @@ async function openAssignModal(editRow=null) {
 
 // ── Generate Assignment button ─────────────────────────────────────────────────
 document.getElementById("btnGenerateAssign").addEventListener("click", ()=>openAssignModal(null));
+
+// ── Assignment status filter ──────────────────────────────────────────────────
+document.getElementById("assignStatusFilter").addEventListener("change", () => loadAssignments());
 
 // ── Edit Assignment button ─────────────────────────────────────────────────────
 document.getElementById("btnEditAssign").addEventListener("click", async ()=>{
@@ -2768,6 +2790,7 @@ function openExtDetail(row) {
     { label: "Location",     value: row.location_description || "—",         full: true  },
     { label: "Extinguisher ID", value: `#${row.extinguisher_id}`,            full: false },
     { label: "Last Report",  value: row.last_report_id ? `Report #${row.last_report_id}` : "No reports yet", full: false },
+    { label: "Last Inspected", value: row.last_inspection_date || "Not yet inspected", full: false },
   ];
 
   // NFPA 10 metadata — only show fields that have data
@@ -2916,7 +2939,7 @@ function openReportDetail(row) {
         <div class="ext-detail-label">Photo</div>
         <img src="/uploads/${row.photo_path}" alt="Inspection photo"
           style="width:100%;max-height:200px;object-fit:cover;border-radius:4px;margin-top:0.3rem;cursor:zoom-in;"
-          onclick="document.getElementById('reportDetailModal').classList.add('hidden'); openPhotoViewer('/uploads/${row.photo_path}');" />
+          onclick="openPhotoViewer('/uploads/${row.photo_path}');" />
       </div>
     `;
   } else {
@@ -2940,6 +2963,20 @@ document.getElementById("reportDetailModal").addEventListener("click", e => {
   if (e.target === document.getElementById("reportDetailModal"))
     document.getElementById("reportDetailModal").classList.add("hidden");
 });
+
+// ── Full-screen photo viewer overlay ─────────────────────────────────────────
+function openPhotoViewer(src) {
+  // Remove any existing viewer
+  const existing = document.getElementById("photoViewerOverlay");
+  if (existing) existing.remove();
+
+  const overlay = document.createElement("div");
+  overlay.id = "photoViewerOverlay";
+  overlay.className = "photo-viewer";
+  overlay.innerHTML = `<img src="${src}" alt="Inspection photo" />`;
+  overlay.addEventListener("click", () => overlay.remove());
+  document.body.appendChild(overlay);
+}
 
 function _openAssignEditById(aid) {
   const row = window._lastAssignRows?.find(r => r.assignment_id === aid);
