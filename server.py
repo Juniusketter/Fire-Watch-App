@@ -775,9 +775,10 @@ def get_reports():
                    r.notes, r.photo_path,
                    u.username  AS inspector,
                    e.floor_number, e.room_number, e.location_description,
-                   e.next_due_date,
+                   e.next_due_date, e.building_id,
                    b.name      AS building_name,
                    c.name      AS company_name,
+                   c.company_id AS company_id,
                    c.address   AS company_address
             FROM Reports r
             LEFT JOIN Users u         ON r.inspector_id    = u.user_id
