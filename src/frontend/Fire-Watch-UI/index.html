@@ -823,6 +823,9 @@
         </div>
       </div>
       <div class="sidebar-footer">
+        <button class="sidebar-item hidden" id="btnExitOrgView" onclick="exitPlatformReadOnly()" style="color:var(--purple);font-weight:700;">
+          <span class="si-icon">↩️</span> Exit Organization
+        </button>
         <button class="sidebar-item" onclick="document.getElementById('btnLogout').click()">
           <span class="si-icon">🚪</span> Logout
         </button>
@@ -4786,13 +4789,13 @@ function applyReadOnlyMode(orgName) {
     btn.style.display = "none";
   });
 
-  // Add a read-only banner at the top
+  // Add a read-only banner at the top of the dashboard
   const existingBanner = document.getElementById("readOnlyBanner");
   if (existingBanner) existingBanner.remove();
 
   const banner = document.createElement("div");
   banner.id = "readOnlyBanner";
-  banner.style.cssText = "padding:0.5rem var(--pad-desk);background:rgba(124,58,237,0.12);border-bottom:1px solid var(--purple);display:flex;align-items:center;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:0.75rem;";
+  banner.style.cssText = "padding:0.5rem 1rem;background:rgba(124,58,237,0.12);border-bottom:1px solid var(--purple);display:flex;align-items:center;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:0.75rem;flex-wrap:wrap;gap:0.5rem;";
   banner.innerHTML = `
     <div>
       <span style="color:var(--purple);font-weight:700;">👁 READ-ONLY VIEW</span>
@@ -4801,19 +4804,31 @@ function applyReadOnlyMode(orgName) {
     <button onclick="exitPlatformReadOnly()" style="padding:4px 12px;border:1px solid var(--purple);border-radius:4px;background:var(--bg3);color:var(--purple);cursor:pointer;font-size:0.72rem;font-family:'IBM Plex Mono',monospace;font-weight:600;">← Back to Platform Admin</button>
   `;
 
-  // Insert after topbar
-  const mainContent = document.querySelector(".main-content");
-  if (mainContent) mainContent.insertBefore(banner, mainContent.firstChild);
+  // Insert into the appPage's main-content (second .main-content, not the platform one)
+  const appMainContent = document.querySelector("#appPage .main-content");
+  if (appMainContent) {
+    appMainContent.insertBefore(banner, appMainContent.firstChild);
+  }
 
   // Update topbar to show org name
   const orgPill = document.getElementById("orgNamePill");
   if (orgPill) { orgPill.textContent = "👁 " + orgName; orgPill.classList.add("show"); }
 
-  // Hide the sidebar logout (prevent accidental logout from platform)
+  // Show Exit Organization button in sidebar
+  const exitBtn = document.getElementById("btnExitOrgView");
+  if (exitBtn) exitBtn.classList.remove("hidden");
+
+  // Update sidebar header to show which org is being viewed
+  const sidebarUser = document.getElementById("sidebarUsername");
+  if (sidebarUser) sidebarUser.textContent = "Platform Admin";
+  const sidebarRole = document.getElementById("sidebarRole");
+  if (sidebarRole) sidebarRole.textContent = "Viewing: " + orgName;
+
+  // Update topbar
   const welcomeLabel = document.getElementById("welcomeLabel");
   if (welcomeLabel) welcomeLabel.textContent = "Platform Admin";
   const roleLabel = document.getElementById("roleLabel");
-  if (roleLabel) roleLabel.textContent = "Read-Only";
+  if (roleLabel) roleLabel.textContent = "READ-ONLY";
 }
 
 // Exit read-only mode and return to Platform Admin dashboard
@@ -4824,6 +4839,10 @@ function exitPlatformReadOnly() {
   // Remove read-only banner
   const banner = document.getElementById("readOnlyBanner");
   if (banner) banner.remove();
+
+  // Hide Exit Organization button
+  const exitBtn = document.getElementById("btnExitOrgView");
+  if (exitBtn) exitBtn.classList.add("hidden");
 
   // Clear the temporary session
   localStorage.removeItem("fw_session");
