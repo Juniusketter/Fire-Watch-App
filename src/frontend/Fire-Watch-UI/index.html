@@ -641,6 +641,7 @@
     <div class="panel" id="panelAssignments">
       <div class="table-toolbar hidden" id="assignToolbar">
         <button class="btn-crud btn-add" id="btnGenerateAssign">＋ Generate Assignment</button>
+        <button class="btn-crud btn-edit" id="btnPriorityQueue" style="background:var(--purple,#7C3AED);">📋 Priority Queue</button>
         <button class="btn-crud btn-edit" id="btnEditAssign">✎ Edit Selected</button>
         <select id="assignStatusFilter" style="margin-left:auto;padding:5px 10px;border-radius:4px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:0.75rem;cursor:pointer;">
           <option value="active">Active Only</option>
@@ -1060,6 +1061,27 @@
     </div>
     <div class="ext-detail-grid" id="detailAssignGrid"></div>
     <div class="ext-detail-footer" id="detailAssignFooter"></div>
+  </div>
+</div>
+
+<!-- PRIORITY QUEUE MODAL -->
+<div class="modal-overlay hidden" id="priorityQueueModal">
+  <div class="modal-box" style="max-width:900px;width:95%;max-height:85vh;overflow-y:auto;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+      <div>
+        <div style="font-size:0.7rem;letter-spacing:0.1em;color:var(--orange);font-family:'IBM Plex Mono',monospace;">INSPECTION PRIORITY</div>
+        <div style="font-size:1.1rem;font-weight:700;color:var(--text);">Extinguisher Queue</div>
+      </div>
+      <button class="ext-detail-close" onclick="document.getElementById('priorityQueueModal').classList.add('hidden')">✕</button>
+    </div>
+    <div style="display:flex;gap:0.8rem;margin-bottom:0.8rem;flex-wrap:wrap;">
+      <span style="font-size:0.65rem;padding:2px 8px;border-radius:3px;background:rgba(21,128,61,0.15);color:#15803D;font-weight:600;">● 0-7 days</span>
+      <span style="font-size:0.65rem;padding:2px 8px;border-radius:3px;background:rgba(29,78,216,0.12);color:#1D4ED8;font-weight:600;">● 8-15 days</span>
+      <span style="font-size:0.65rem;padding:2px 8px;border-radius:3px;background:rgba(234,179,8,0.15);color:#EAB308;font-weight:600;">● 16-21 days</span>
+      <span style="font-size:0.65rem;padding:2px 8px;border-radius:3px;background:rgba(193,18,31,0.12);color:#C1121F;font-weight:600;">● 22-30+ days</span>
+      <span style="font-size:0.65rem;padding:2px 8px;border-radius:3px;background:rgba(128,128,128,0.12);color:var(--muted);font-weight:600;">● Never inspected</span>
+    </div>
+    <div id="priorityQueueContent"></div>
   </div>
 </div>
 
@@ -2142,6 +2164,103 @@ document.getElementById("btnGenerateAssign").addEventListener("click", ()=>openA
 // ── Assignment status filter ──────────────────────────────────────────────────
 document.getElementById("assignStatusFilter").addEventListener("change", () => loadAssignments());
 
+// ── Priority Queue ────────────────────────────────────────────────────────────
+document.getElementById("btnPriorityQueue").addEventListener("click", openPriorityQueue);
+
+async function openPriorityQueue() {
+  const oid = orgId();
+  if (!oid) return;
+
+  const extinguishers = await fetch(`/api/extinguishers?org_id=${oid}`).then(r => r.json());
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Calculate days since last inspection and sort
+  const items = extinguishers.map(ext => {
+    let daysSince = null;
+    let lastDate = ext.last_inspection_date || null;
+    if (lastDate) {
+      const last = new Date(lastDate + "T00:00:00");
+      daysSince = Math.floor((today - last) / 86400000);
+    }
+    return { ...ext, daysSince, lastDate };
+  });
+
+  // Sort: never inspected first, then most days since inspection
+  items.sort((a, b) => {
+    if (a.daysSince === null && b.daysSince === null) return 0;
+    if (a.daysSince === null) return -1;
+    if (b.daysSince === null) return 1;
+    return b.daysSince - a.daysSince;
+  });
+
+  function getColor(days) {
+    if (days === null) return { bg: "rgba(128,128,128,0.1)", border: "var(--muted)", text: "var(--muted)", label: "Never" };
+    if (days >= 22)    return { bg: "rgba(193,18,31,0.1)", border: "#C1121F", text: "#C1121F", label: `${days}d ago` };
+    if (days >= 16)    return { bg: "rgba(234,179,8,0.12)", border: "#EAB308", text: "#EAB308", label: `${days}d ago` };
+    if (days >= 8)     return { bg: "rgba(29,78,216,0.1)", border: "#1D4ED8", text: "#1D4ED8", label: `${days}d ago` };
+    return              { bg: "rgba(21,128,61,0.1)", border: "#15803D", text: "#15803D", label: `${days}d ago` };
+  }
+
+  let html = `<table style="width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:0.78rem;">
+    <thead>
+      <tr style="border-bottom:2px solid var(--border);text-align:left;">
+        <th style="padding:8px 6px;color:var(--muted);font-size:0.65rem;letter-spacing:0.05em;">STATUS</th>
+        <th style="padding:8px 6px;color:var(--muted);font-size:0.65rem;letter-spacing:0.05em;">ID</th>
+        <th style="padding:8px 6px;color:var(--muted);font-size:0.65rem;letter-spacing:0.05em;">COMPANY</th>
+        <th style="padding:8px 6px;color:var(--muted);font-size:0.65rem;letter-spacing:0.05em;">BUILDING</th>
+        <th style="padding:8px 6px;color:var(--muted);font-size:0.65rem;letter-spacing:0.05em;">LOCATION</th>
+        <th style="padding:8px 6px;color:var(--muted);font-size:0.65rem;letter-spacing:0.05em;">LAST INSPECTED</th>
+        <th style="padding:8px 6px;color:var(--muted);font-size:0.65rem;letter-spacing:0.05em;">DAYS SINCE</th>
+        <th style="padding:8px 6px;color:var(--muted);font-size:0.65rem;letter-spacing:0.05em;">ACTIONS</th>
+      </tr>
+    </thead>
+    <tbody>`;
+
+  items.forEach(ext => {
+    const c = getColor(ext.daysSince);
+    const loc = [ext.floor_number ? `Floor ${ext.floor_number}` : "", ext.room_number ? `Rm ${ext.room_number}` : ""].filter(Boolean).join(", ") || ext.location_description || "—";
+
+    html += `<tr style="border-bottom:1px solid rgba(255,255,255,0.04);cursor:pointer;transition:background 0.1s;"
+      onmouseenter="this.style.background='var(--bg3)'" onmouseleave="this.style.background='none'">
+      <td style="padding:8px 6px;">
+        <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${c.border};"></span>
+      </td>
+      <td style="padding:8px 6px;color:var(--text);font-weight:600;">#${ext.extinguisher_id}</td>
+      <td style="padding:8px 6px;color:var(--text);">${ext.company_name || "—"}</td>
+      <td style="padding:8px 6px;color:var(--text);">${ext.building_name || "—"}</td>
+      <td style="padding:8px 6px;color:var(--muted);">${loc}</td>
+      <td style="padding:8px 6px;color:var(--muted);">${ext.lastDate || "Never"}</td>
+      <td style="padding:8px 6px;">
+        <span style="padding:2px 8px;border-radius:4px;background:${c.bg};color:${c.text};font-weight:700;font-size:0.72rem;border:1px solid ${c.border};">${c.label}</span>
+      </td>
+      <td style="padding:8px 6px;">
+        <button onclick="event.stopPropagation();document.getElementById('priorityQueueModal').classList.add('hidden');window._returnToPriorityQueue=true;openExtDetail(${JSON.stringify(ext).replace(/"/g,'&quot;')});"
+          style="padding:3px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--teal);cursor:pointer;font-size:0.65rem;font-family:'IBM Plex Mono',monospace;margin-right:4px;">View</button>
+        <button onclick="event.stopPropagation();document.getElementById('priorityQueueModal').classList.add('hidden');window._returnToPriorityQueue=true;openAssignModalForExt(${ext.extinguisher_id});"
+          style="padding:3px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--orange);cursor:pointer;font-size:0.65rem;font-family:'IBM Plex Mono',monospace;">Assign</button>
+      </td>
+    </tr>`;
+  });
+
+  html += `</tbody></table>`;
+  document.getElementById("priorityQueueContent").innerHTML = html;
+  document.getElementById("priorityQueueModal").classList.remove("hidden");
+}
+
+// Helper: open the Generate Assignment modal pre-filled with a specific extinguisher
+function openAssignModalForExt(extId) {
+  openAssignModal(null);
+  // After modal opens, pre-select the extinguisher
+  setTimeout(() => {
+    const sel = document.getElementById("fAssignExt");
+    if (sel) {
+      sel.value = extId;
+      sel.dispatchEvent(new Event("change"));
+    }
+  }, 300);
+}
+
 // ── Edit Assignment button ─────────────────────────────────────────────────────
 document.getElementById("btnEditAssign").addEventListener("click", async ()=>{
   if (!selectedAssignId) { alert("Select an assignment row first."); return; }
@@ -2159,8 +2278,8 @@ document.getElementById("btnEditAssign").addEventListener("click", async ()=>{
   openAssignModal({...row, inspector_id: fullRow?.inspector_id});
 });
 
-document.getElementById("assignModalCancel").addEventListener("click",()=>document.getElementById("assignModal").classList.add("hidden"));
-document.getElementById("assignModal").addEventListener("click",e=>{ if(e.target===document.getElementById("assignModal")) document.getElementById("assignModal").classList.add("hidden"); });
+document.getElementById("assignModalCancel").addEventListener("click",()=>{ document.getElementById("assignModal").classList.add("hidden"); returnToPriorityQueue(); });
+document.getElementById("assignModal").addEventListener("click",e=>{ if(e.target===document.getElementById("assignModal")) { document.getElementById("assignModal").classList.add("hidden"); returnToPriorityQueue(); } });
 
 document.getElementById("assignModalSave").addEventListener("click",async()=>{
   const extId  = parseInt(document.getElementById("aExtinguisher").value);
@@ -2179,7 +2298,7 @@ document.getElementById("assignModalSave").addEventListener("click",async()=>{
       headers:{"Content-Type":"application/json"},
       body:JSON.stringify({inspector_id:invId, extinguisher_id:extId, due_date:due, notes, status})
     });
-    if (res.ok) { document.getElementById("assignModal").classList.add("hidden"); loadAssignments(); loadStats(); }
+    if (res.ok) { document.getElementById("assignModal").classList.add("hidden"); loadAssignments(); loadStats(); returnToPriorityQueue(); }
     else errEl.textContent = "Error: "+(await res.json()).error;
   } else {
     // POST — create new
@@ -2188,7 +2307,7 @@ document.getElementById("assignModalSave").addEventListener("click",async()=>{
       headers:{"Content-Type":"application/json"},
       body:JSON.stringify({admin_id:currentUser.user_id, inspector_id:invId, extinguisher_id:extId, due_date:due, notes, org_id:orgId()})
     });
-    if (res.ok) { document.getElementById("assignModal").classList.add("hidden"); loadAssignments(); loadStats(); }
+    if (res.ok) { document.getElementById("assignModal").classList.add("hidden"); loadAssignments(); loadStats(); returnToPriorityQueue(); }
     else errEl.textContent = "Error: "+(await res.json()).error;
   }
 });
@@ -2826,18 +2945,18 @@ function openExtDetail(row) {
   if (isAdmin()) {
     footer.innerHTML = `
       <button class="btn-crud btn-edit" style="font-size:0.72rem;padding:6px 14px;min-height:34px;"
-        onclick="document.getElementById('extDetailModal').classList.add('hidden'); document.getElementById('btnEdit').click();">
+        onclick="document.getElementById('extDetailModal').classList.add('hidden'); document.getElementById('btnEdit').click(); returnToPriorityQueue();">
         ✎ Edit
       </button>
       <button class="btn-crud btn-delete" style="font-size:0.72rem;padding:6px 14px;min-height:34px;"
-        onclick="document.getElementById('extDetailModal').classList.add('hidden'); document.getElementById('btnDelete').click();">
+        onclick="document.getElementById('extDetailModal').classList.add('hidden'); document.getElementById('btnDelete').click(); returnToPriorityQueue();">
         ✕ Delete
       </button>
     `;
   } else {
     footer.innerHTML = `
       <button class="btn-crud btn-edit" style="font-size:0.72rem;padding:6px 14px;min-height:34px;background:var(--bg3);border-color:var(--border);color:var(--muted);"
-        onclick="document.getElementById('extDetailModal').classList.add('hidden');">
+        onclick="document.getElementById('extDetailModal').classList.add('hidden'); returnToPriorityQueue();">
         Close
       </button>
     `;
@@ -2848,9 +2967,30 @@ function openExtDetail(row) {
 
 // Close on backdrop tap
 document.getElementById("extDetailModal").addEventListener("click", e => {
-  if (e.target === document.getElementById("extDetailModal"))
+  if (e.target === document.getElementById("extDetailModal")) {
     document.getElementById("extDetailModal").classList.add("hidden");
+    returnToPriorityQueue();
+  }
 });
+
+// Return to Priority Queue after closing a modal opened from it
+function returnToPriorityQueue() {
+  if (window._returnToPriorityQueue) {
+    window._returnToPriorityQueue = false;
+    setTimeout(() => openPriorityQueue(), 200);
+  }
+}
+
+// Patch all extDetailModal close buttons to return to queue
+document.getElementById("extDetailModal").addEventListener("transitionend", () => {
+  if (document.getElementById("extDetailModal").classList.contains("hidden")) returnToPriorityQueue();
+});
+
+// Use a click listener on extDetailModal to catch close button clicks
+const _origExtClose = document.querySelector("#extDetailModal .ext-detail-close");
+if (_origExtClose) {
+  _origExtClose.addEventListener("click", () => setTimeout(returnToPriorityQueue, 100));
+}
 
 // ── Assignment detail popup ───────────────────────────────────────────────────
 function openAssignDetail(row) {
@@ -2905,6 +3045,11 @@ function openAssignDetail(row) {
 document.getElementById("assignDetailModal").addEventListener("click", e => {
   if (e.target === document.getElementById("assignDetailModal"))
     document.getElementById("assignDetailModal").classList.add("hidden");
+});
+
+document.getElementById("priorityQueueModal").addEventListener("click", e => {
+  if (e.target === document.getElementById("priorityQueueModal"))
+    document.getElementById("priorityQueueModal").classList.add("hidden");
 });
 
 // ── Report detail popup ───────────────────────────────────────────────────────
