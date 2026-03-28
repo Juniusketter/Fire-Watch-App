@@ -196,12 +196,28 @@ def run_migrations():
             "last_6year_date":     "DATE",                     # last 6-year internal exam
             "last_hydro_date":     "DATE",                     # last hydrostatic pressure test
             "ext_status":          "TEXT DEFAULT 'Active'",    # Active, Out of Service, Retired, Missing
+            "last_inspection_date":"DATE",                     # last routine monthly inspection
         }
         for col, col_type in nfpa_cols.items():
             if col not in ext_cols:
                 conn.execute(f"ALTER TABLE Extinguishers ADD COLUMN {col} {col_type}")
                 print(f"  [Migration] Added Extinguishers.{col}")
 
+        conn.commit()
+
+        # ── Auto-migrate: backfill last_report_id and last_inspection_date ──
+        # For extinguishers that have reports but null last_report_id
+        conn.execute("""
+            UPDATE Extinguishers SET
+                last_report_id = (SELECT r.report_id FROM Reports r
+                    WHERE r.extinguisher_id = Extinguishers.extinguisher_id
+                    ORDER BY r.inspection_date DESC, r.report_id DESC LIMIT 1),
+                last_inspection_date = (SELECT r.inspection_date FROM Reports r
+                    WHERE r.extinguisher_id = Extinguishers.extinguisher_id
+                    ORDER BY r.inspection_date DESC, r.report_id DESC LIMIT 1)
+            WHERE last_report_id IS NULL
+              AND extinguisher_id IN (SELECT DISTINCT extinguisher_id FROM Reports)
+        """)
         conn.commit()
 
         # ── Auto-migrate: seed default org for existing data ──────────────
@@ -795,6 +811,12 @@ def create_report():
                 (d.get("extinguisher_id"), d.get("inspector_id"),
                  d.get("inspection_date"), d.get("notes",""),
                  d.get("photo_path"), d.get("org_id"))
+            )
+            # Update extinguisher's last_report_id and last inspection date
+            report_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+            conn.execute(
+                "UPDATE Extinguishers SET last_report_id=?, last_inspection_date=? WHERE extinguisher_id=?",
+                (report_id, d.get("inspection_date"), d.get("extinguisher_id"))
             )
             if d.get("assignment_id"):
                 conn.execute(
