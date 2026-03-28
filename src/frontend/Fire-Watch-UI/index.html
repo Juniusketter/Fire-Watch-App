@@ -552,9 +552,30 @@
         <button class="sidebar-item" data-view="profile" onclick="showView('profile')">
           <span class="si-icon">👤</span> My Profile
         </button>
-        <button class="sidebar-item" data-view="settings" onclick="showView('settings')">
+        <button class="sidebar-item" data-view="settings" onclick="toggleSettingsMenu()">
           <span class="si-icon">⚙️</span> Settings
         </button>
+        <!-- Settings sub-items — hidden until Settings is clicked -->
+        <div id="sidebarSettingsSub" class="hidden" style="padding-left:1.2rem;">
+          <button class="sidebar-item sidebar-sub" onclick="showSettingsPage('theme')" id="sidebarTheme" style="font-size:0.78rem;padding:6px 12px;">
+            <span class="si-icon">🎨</span> Theme
+          </button>
+          <button class="sidebar-item sidebar-sub" onclick="toggleGeneralMenu()" id="sidebarGeneral" style="font-size:0.78rem;padding:6px 12px;">
+            <span class="si-icon">📋</span> General ›
+          </button>
+          <!-- General sub-items — hidden until General is clicked -->
+          <div id="sidebarGeneralSub" class="hidden" style="padding-left:1.2rem;">
+            <button class="sidebar-item sidebar-sub" onclick="showSettingsPage('about')" id="sidebarAbout" style="font-size:0.72rem;padding:5px 12px;">
+              <span class="si-icon">ℹ️</span> About FireWatch
+            </button>
+            <button class="sidebar-item sidebar-sub" onclick="showSettingsPage('team')" id="sidebarTeam" style="font-size:0.72rem;padding:5px 12px;">
+              <span class="si-icon">👥</span> Development Team
+            </button>
+            <button class="sidebar-item sidebar-sub" onclick="showSettingsPage('techstack')" id="sidebarTechstack" style="font-size:0.72rem;padding:5px 12px;">
+              <span class="si-icon">🔧</span> Tech Stack
+            </button>
+          </div>
+        </div>
       </div>
       <div class="sidebar-footer">
         <button class="sidebar-item" onclick="document.getElementById('btnLogout').click()">
@@ -714,155 +735,174 @@
       <!-- SETTINGS VIEW -->
       <div id="viewSettings" class="hidden">
         <div class="settings-panel">
-          <div class="settings-section">
-            <div class="settings-section-title">Appearance — Theme</div>
-            <div class="theme-grid">
-              <div class="theme-card" data-theme="dark" onclick="selectTheme('dark')">
-                <div class="theme-card-preview">
-                  <div class="theme-swatch" style="background:#0d0f12"></div>
-                  <div class="theme-swatch" style="background:#e85d04"></div>
-                  <div class="theme-swatch" style="background:#e8eaf0"></div>
+
+          <!-- THEME PAGE -->
+          <div class="settings-page" id="settingsPageTheme">
+            <div class="settings-section">
+              <div class="settings-section-title">Appearance — Theme</div>
+              <div class="theme-grid">
+                <div class="theme-card" data-theme="dark" onclick="selectTheme('dark')">
+                  <div class="theme-card-preview">
+                    <div class="theme-swatch" style="background:#0d0f12"></div>
+                    <div class="theme-swatch" style="background:#e85d04"></div>
+                    <div class="theme-swatch" style="background:#e8eaf0"></div>
+                  </div>
+                  <div class="theme-card-name">Dark</div>
                 </div>
-                <div class="theme-card-name">Dark</div>
+                <div class="theme-card" data-theme="light" onclick="selectTheme('light')">
+                  <div class="theme-card-preview">
+                    <div class="theme-swatch" style="background:#f5f0e8"></div>
+                    <div class="theme-swatch" style="background:#c45400"></div>
+                    <div class="theme-swatch" style="background:#1a1410"></div>
+                  </div>
+                  <div class="theme-card-name">Light</div>
+                </div>
+                <div class="theme-card" data-theme="navy" onclick="selectTheme('navy')">
+                  <div class="theme-card-preview">
+                    <div class="theme-swatch" style="background:#0a1628"></div>
+                    <div class="theme-swatch" style="background:#f0a030"></div>
+                    <div class="theme-swatch" style="background:#d8e8f8"></div>
+                  </div>
+                  <div class="theme-card-name">Navy Blue</div>
+                </div>
+                <div class="theme-card" data-theme="contrast" onclick="selectTheme('contrast')">
+                  <div class="theme-card-preview">
+                    <div class="theme-swatch" style="background:#000000"></div>
+                    <div class="theme-swatch" style="background:#ffaa00"></div>
+                    <div class="theme-swatch" style="background:#ffffff"></div>
+                  </div>
+                  <div class="theme-card-name">High Contrast</div>
+                </div>
               </div>
-              <div class="theme-card" data-theme="light" onclick="selectTheme('light')">
-                <div class="theme-card-preview">
-                  <div class="theme-swatch" style="background:#f5f0e8"></div>
-                  <div class="theme-swatch" style="background:#c45400"></div>
-                  <div class="theme-swatch" style="background:#1a1410"></div>
+            </div>
+            <div class="settings-save-bar">
+              <span class="settings-saved-msg" id="settingsSavedMsg">✓ Preferences saved</span>
+              <button class="btn-save" style="flex:none;padding:8px 24px;font-size:0.78rem;" onclick="saveSettings()">Save Preferences</button>
+            </div>
+          </div>
+
+          <!-- ABOUT PAGE -->
+          <div class="settings-page hidden" id="settingsPageAbout">
+            <div class="settings-section">
+              <div class="settings-section-title">About FireWatch</div>
+              <div class="settings-row">
+                <div>
+                  <div class="settings-label">Application</div>
+                  <div class="settings-desc">FireWatch — NFPA Fire Extinguisher Compliance Tracking System</div>
                 </div>
-                <div class="theme-card-name">Light</div>
               </div>
-              <div class="theme-card" data-theme="navy" onclick="selectTheme('navy')">
-                <div class="theme-card-preview">
-                  <div class="theme-swatch" style="background:#0a1628"></div>
-                  <div class="theme-swatch" style="background:#f0a030"></div>
-                  <div class="theme-swatch" style="background:#d8e8f8"></div>
+              <div class="settings-row">
+                <div>
+                  <div class="settings-label">Version</div>
+                  <div class="settings-desc">Sprint 3  ·  March 2026</div>
                 </div>
-                <div class="theme-card-name">Navy Blue</div>
               </div>
-              <div class="theme-card" data-theme="contrast" onclick="selectTheme('contrast')">
-                <div class="theme-card-preview">
-                  <div class="theme-swatch" style="background:#000000"></div>
-                  <div class="theme-swatch" style="background:#ffaa00"></div>
-                  <div class="theme-swatch" style="background:#ffffff"></div>
+              <div class="settings-row">
+                <div>
+                  <div class="settings-label">Purpose</div>
+                  <div class="settings-desc">Built to track fire extinguisher inspections, assignments, and compliance reporting across multiple user roles in accordance with NFPA standards.</div>
                 </div>
-                <div class="theme-card-name">High Contrast</div>
+              </div>
+              <div class="settings-row">
+                <div>
+                  <div class="settings-label">Course</div>
+                  <div class="settings-desc">CSC480B — Computer Science Capstone Project II  ·  National University, San Diego</div>
+                </div>
+              </div>
+              <div class="settings-row">
+                <div>
+                  <div class="settings-label">Instructor</div>
+                  <div class="settings-desc">Professor Mila Hose</div>
+                </div>
+              </div>
+              <div class="settings-row">
+                <div>
+                  <div class="settings-label">Session</div>
+                  <div class="settings-desc" id="settingsUserInfo"></div>
+                </div>
               </div>
             </div>
           </div>
 
-          <div class="settings-section">
-            <div class="settings-section-title">About FireWatch</div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Application</div>
-                <div class="settings-desc">FireWatch — NFPA Fire Extinguisher Compliance Tracking System</div>
-              </div>
-            </div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Version</div>
-                <div class="settings-desc">Sprint 3  ·  March 2026</div>
-              </div>
-            </div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Purpose</div>
-                <div class="settings-desc">Built to track fire extinguisher inspections, assignments, and compliance reporting across multiple user roles in accordance with NFPA standards.</div>
-              </div>
-            </div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Course</div>
-                <div class="settings-desc">CSC480B — Computer Science Capstone Project II  ·  National University, San Diego</div>
-              </div>
-            </div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Instructor</div>
-                <div class="settings-desc">Professor Mila Hose</div>
-              </div>
-            </div>
-            <div class="settings-section-title" style="border-top:1px solid var(--border);">Development Team — Fire Wardens Safety</div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Lillian Bowen</div>
-                <div class="settings-desc">Project Manager & Backend Lead</div>
-              </div>
-            </div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Junius Ketter</div>
-                <div class="settings-desc">Database & Frontend Developer</div>
-              </div>
-            </div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Rafael G. Santiago Montalvo</div>
-                <div class="settings-desc">Frontend Developer</div>
-              </div>
-            </div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Quinci Walker</div>
-                <div class="settings-desc">Backend Developer</div>
-              </div>
-            </div>
-            <div class="settings-section-title" style="border-top:1px solid var(--border);">Tech Stack</div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Desktop App</div>
-                <div class="settings-desc">Qt Creator 6.10.2  ·  C++  ·  MinGW 64-bit</div>
-              </div>
-            </div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Web Frontend</div>
-                <div class="settings-desc">HTML  ·  CSS  ·  Vanilla JavaScript</div>
-              </div>
-            </div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Backend</div>
-                <div class="settings-desc">Python Flask  ·  REST API  ·  SHA-256 Authentication</div>
-              </div>
-            </div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Database</div>
-                <div class="settings-desc">SQLite  ·  FireWatch.db</div>
-              </div>
-            </div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Cloud Hosting</div>
-                <div class="settings-desc">Render.com  ·  Starter Plan  ·  Auto-deploy via GitHub</div>
-              </div>
-            </div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Repository</div>
-                <div class="settings-desc">
-                  <a href="https://github.com/Juniusketter/Fire-Watch-App" target="_blank"
-                     style="color:var(--orange);text-decoration:none;">
-                    github.com/Juniusketter/Fire-Watch-App
-                  </a>
+          <!-- TEAM PAGE -->
+          <div class="settings-page hidden" id="settingsPageTeam">
+            <div class="settings-section">
+              <div class="settings-section-title">Development Team — Fire Wardens Safety</div>
+              <div class="settings-row">
+                <div>
+                  <div class="settings-label">Lillian Bowen</div>
+                  <div class="settings-desc">Project Manager & Backend Lead</div>
                 </div>
               </div>
-            </div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Session</div>
-                <div class="settings-desc" id="settingsUserInfo"></div>
+              <div class="settings-row">
+                <div>
+                  <div class="settings-label">Junius Ketter</div>
+                  <div class="settings-desc">Database & Frontend Developer</div>
+                </div>
+              </div>
+              <div class="settings-row">
+                <div>
+                  <div class="settings-label">Rafael G. Santiago Montalvo</div>
+                  <div class="settings-desc">Frontend Developer</div>
+                </div>
+              </div>
+              <div class="settings-row">
+                <div>
+                  <div class="settings-label">Quinci Walker</div>
+                  <div class="settings-desc">Backend Developer</div>
+                </div>
               </div>
             </div>
           </div>
 
-          <div class="settings-save-bar">
-            <span class="settings-saved-msg" id="settingsSavedMsg">✓ Preferences saved</span>
-            <button class="btn-save" style="flex:none;padding:8px 24px;font-size:0.78rem;" onclick="saveSettings()">Save Preferences</button>
+          <!-- TECH STACK PAGE -->
+          <div class="settings-page hidden" id="settingsPageTechstack">
+            <div class="settings-section">
+              <div class="settings-section-title">Tech Stack</div>
+              <div class="settings-row">
+                <div>
+                  <div class="settings-label">Desktop App</div>
+                  <div class="settings-desc">Qt Creator 6.10.2  ·  C++  ·  MinGW 64-bit</div>
+                </div>
+              </div>
+              <div class="settings-row">
+                <div>
+                  <div class="settings-label">Web Frontend</div>
+                  <div class="settings-desc">HTML  ·  CSS  ·  Vanilla JavaScript</div>
+                </div>
+              </div>
+              <div class="settings-row">
+                <div>
+                  <div class="settings-label">Backend</div>
+                  <div class="settings-desc">Python Flask  ·  REST API  ·  SHA-256 Authentication</div>
+                </div>
+              </div>
+              <div class="settings-row">
+                <div>
+                  <div class="settings-label">Database</div>
+                  <div class="settings-desc">SQLite  ·  FireWatch.db</div>
+                </div>
+              </div>
+              <div class="settings-row">
+                <div>
+                  <div class="settings-label">Cloud Hosting</div>
+                  <div class="settings-desc">Render.com  ·  Starter Plan  ·  Auto-deploy via GitHub</div>
+                </div>
+              </div>
+              <div class="settings-row">
+                <div>
+                  <div class="settings-label">Repository</div>
+                  <div class="settings-desc">
+                    <a href="https://github.com/Juniusketter/Fire-Watch-App" target="_blank"
+                       style="color:var(--orange);text-decoration:none;">
+                      github.com/Juniusketter/Fire-Watch-App
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
+
         </div>
       </div><!-- /viewSettings -->
 
@@ -2588,6 +2628,48 @@ function applyTheme(theme) {
   if (theme !== "dark") document.body.classList.add("theme-" + theme);
   _currentTheme = theme;
   updateThemeCards();
+}
+
+// ── Settings sidebar drill-down navigation ───────────────────────────────────
+// Clicking Settings in sidebar reveals Theme and General sub-items.
+// Clicking General reveals About, Team, and Tech Stack sub-items.
+// Each sub-item shows its corresponding page in the main content area.
+
+function toggleSettingsMenu() {
+  const sub = document.getElementById("sidebarSettingsSub");
+  const isHidden = sub.classList.contains("hidden");
+  if (isHidden) {
+    sub.classList.remove("hidden");
+    // Default to Theme page when opening Settings
+    showSettingsPage("theme");
+  } else {
+    sub.classList.add("hidden");
+    document.getElementById("sidebarGeneralSub").classList.add("hidden");
+  }
+}
+
+function toggleGeneralMenu() {
+  const sub = document.getElementById("sidebarGeneralSub");
+  sub.classList.toggle("hidden");
+}
+
+function showSettingsPage(page) {
+  // Switch to settings view
+  showView("settings");
+  // Hide all settings pages
+  document.querySelectorAll(".settings-page").forEach(p => p.classList.add("hidden"));
+  // Show the selected page
+  const pageMap = { theme: "settingsPageTheme", about: "settingsPageAbout", team: "settingsPageTeam", techstack: "settingsPageTechstack" };
+  const target = document.getElementById(pageMap[page]);
+  if (target) target.classList.remove("hidden");
+  // Highlight active sidebar sub-item
+  document.querySelectorAll(".sidebar-sub").forEach(btn => btn.classList.remove("active"));
+  const btnMap = { theme: "sidebarTheme", about: "sidebarAbout", team: "sidebarTeam", techstack: "sidebarTechstack" };
+  const activeBtn = document.getElementById(btnMap[page]);
+  if (activeBtn) activeBtn.classList.add("active");
+  // Close mobile sidebar after selection
+  document.getElementById("sidebar").classList.remove("open");
+  document.getElementById("sidebarOverlay").style.display = "none";
 }
 
 function selectTheme(theme) {
