@@ -1725,12 +1725,20 @@ function buildTabs() {
     document.getElementById("exportDropdown").style.display = "";
     document.getElementById("userToolbar").classList.remove("hidden");
   } else if (isInv()) {
-    tabs = [{id:"panelAssignments",label:"My Assignments"},{id:"panelReports",label:"My Reports"}];
-    document.getElementById("statBoxExt").style.display="none";
+    tabs = [{id:"panelExtinguishers",label:"Extinguishers"},{id:"panelAssignments",label:"My Assignments"},{id:"panelReports",label:"My Reports"}];
     document.getElementById("statBoxUsers").style.display="none";
     document.getElementById("statLabelAssign").textContent="My Assignments";
     document.getElementById("statLabelReports").textContent="My Reports";
+    document.getElementById("extToolbar").classList.remove("hidden");
     document.getElementById("reportToolbar").classList.remove("hidden");
+    // Inspectors: hide Company/Building add/edit/delete, keep Ext add/edit only
+    document.getElementById("btnAddCompany").style.display = "none";
+    document.getElementById("btnEditCompany").style.display = "none";
+    document.getElementById("btnDeleteCompany").style.display = "none";
+    document.getElementById("btnAddBuilding").style.display = "none";
+    document.getElementById("btnEditBuilding").style.display = "none";
+    document.getElementById("btnDeleteBuilding").style.display = "none";
+    document.getElementById("btnDelete").style.display = "none"; // no delete extinguisher for inspectors
   } else if (isThirdAdmin()) {
     tabs = [{id:"panelAssignments",label:"Assignments"},{id:"panelUsers",label:"My Team"}];
     document.getElementById("statBoxExt").style.display="none";
@@ -1798,7 +1806,7 @@ async function loadStats() {
 // Called on login, refresh, and every 5-second auto-poll cycle.
 function loadAllData() {
   if (isAdmin())           { loadExtinguishers(); loadAssignments(); loadReports(); loadUsers(); }
-  else if (isInv())        { loadAssignments(); loadReports(); }
+  else if (isInv())        { loadExtinguishers(); loadAssignments(); loadReports(); }
   else if (isThirdAdmin()) { loadAssignments(); loadUsers(); }
   else if (isThirdInv())   { loadAssignments(); }
 }
@@ -1906,7 +1914,7 @@ async function renderCompanyGrid() {
                 <div class="company-stat-lbl">Extinguishers</div>
               </div>
             </div>
-            <button class="card-edit-btn" onclick="event.stopPropagation(); editCompanyCard(${JSON.stringify(c).replace(/"/g,'&quot;')})">✎ Edit</button>
+            <button class="card-edit-btn" onclick="event.stopPropagation(); ${isAdmin() ? `editCompanyCard(${JSON.stringify(c).replace(/"/g,'&quot;')})` : `viewCompanyCard(${JSON.stringify(c).replace(/"/g,'&quot;')})`}">${isAdmin() ? '✎ Edit' : '👁 View'}</button>
             <div class="company-card-drill">›</div>
           </div>`).join("")
       : `<div class="drill-empty">No companies yet. Click ＋ Add Company to get started.</div>`;
@@ -1948,7 +1956,7 @@ async function renderBuildingGrid(companyId) {
                   <div class="building-stat-lbl">Pending</div>
                 </div>
               </div>
-              <button class="card-edit-btn" onclick="event.stopPropagation(); editBuildingCard(${JSON.stringify(b).replace(/"/g,'&quot;')})">✎ Edit</button>
+              <button class="card-edit-btn" onclick="event.stopPropagation(); ${isAdmin() ? `editBuildingCard(${JSON.stringify(b).replace(/"/g,'&quot;')})` : `viewBuildingCard(${JSON.stringify(b).replace(/"/g,'&quot;')})`}">${isAdmin() ? '✎ Edit' : '👁 View'}</button>
               <div class="building-card-drill">›</div>
             </div>`;
         }).join("")
@@ -2556,7 +2564,19 @@ async function openPriorityQueue() {
   const oid = orgId();
   if (!oid) return;
 
-  const extinguishers = await fetch(`/api/extinguishers?org_id=${oid}`).then(r => r.json());
+  const [extinguishers, assignments] = await Promise.all([
+    fetch(`/api/extinguishers?org_id=${oid}`).then(r => r.json()),
+    fetch(`/api/assignments?org_id=${oid}`).then(r => r.json()),
+  ]);
+
+  // Build a set of extinguisher IDs that have pending assignments
+  const pendingExtIds = new Set();
+  assignments.forEach(a => {
+    if (!a.status || !a.status.toLowerCase().includes("complete")) {
+      pendingExtIds.add(a.extinguisher_id);
+    }
+  });
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -2622,8 +2642,11 @@ async function openPriorityQueue() {
       <td style="padding:8px 6px;">
         <button onclick="event.stopPropagation();document.getElementById('priorityQueueModal').classList.add('hidden');window._returnToPriorityQueue=true;openExtDetail(${JSON.stringify(ext).replace(/"/g,'&quot;')});"
           style="padding:3px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--teal);cursor:pointer;font-size:0.65rem;font-family:'IBM Plex Mono',monospace;margin-right:4px;">View</button>
-        <button onclick="event.stopPropagation();document.getElementById('priorityQueueModal').classList.add('hidden');window._returnToPriorityQueue=true;openAssignModalForExt(${ext.extinguisher_id});"
-          style="padding:3px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--orange);cursor:pointer;font-size:0.65rem;font-family:'IBM Plex Mono',monospace;">Assign</button>
+        ${pendingExtIds.has(ext.extinguisher_id)
+          ? `<span style="padding:3px 8px;border-radius:4px;background:rgba(21,128,61,0.15);color:#15803D;font-size:0.65rem;font-family:'IBM Plex Mono',monospace;font-weight:600;border:1px solid #15803D;">✓ Assigned</span>`
+          : `<button onclick="event.stopPropagation();document.getElementById('priorityQueueModal').classList.add('hidden');window._returnToPriorityQueue=true;openAssignModalForExt(${ext.extinguisher_id});"
+              style="padding:3px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--orange);cursor:pointer;font-size:0.65rem;font-family:'IBM Plex Mono',monospace;">Assign</button>`
+        }
       </td>
     </tr>`;
   });
@@ -2633,17 +2656,83 @@ async function openPriorityQueue() {
   document.getElementById("priorityQueueModal").classList.remove("hidden");
 }
 
-// Helper: open the Generate Assignment modal pre-filled with a specific extinguisher
-function openAssignModalForExt(extId) {
-  openAssignModal(null);
-  // After modal opens, pre-select the extinguisher
-  setTimeout(() => {
-    const sel = document.getElementById("fAssignExt");
-    if (sel) {
-      sel.value = extId;
-      sel.dispatchEvent(new Event("change"));
-    }
-  }, 300);
+// Helper: open the Submit Report modal pre-filled for a specific extinguisher
+// Fetches the inspector's pending assignments, finds the one for this extinguisher,
+// and opens the report modal with it pre-selected.
+async function openReportForExtinguisher(extId) {
+  const assignments = await fetch("/api/assignments?user_id=" + currentUser.user_id).then(r => r.json());
+  const pending = assignments.filter(a => !String(a.status).toLowerCase().includes("complete"));
+  
+  if (!pending.length) {
+    alert("You have no pending assignments. Ask your admin to assign you an inspection first.");
+    return;
+  }
+
+  const exts = await fetch("/api/extinguishers").then(r => r.json());
+  const extMap = {};
+  exts.forEach(e => extMap[e.extinguisher_id] = (e.company_name || "") + " — " + (e.building_name || "") + ", " + (e.location_description || "Ext #" + e.extinguisher_id));
+
+  // Populate the assignment dropdown
+  const assignSel = document.getElementById("rAssignment");
+  assignSel.innerHTML = pending.map(a =>
+    `<option value="${a.assignment_id}" data-ext="${a.extinguisher_id}">Assignment #${a.assignment_id} — ${extMap[a.extinguisher_id] || "Ext #" + a.extinguisher_id}</option>`
+  ).join("");
+
+  // Pre-select the assignment matching this extinguisher
+  const matchingAssignment = pending.find(a => a.extinguisher_id === extId || String(a.extinguisher_id) === String(extId));
+  if (matchingAssignment) {
+    assignSel.value = matchingAssignment.assignment_id;
+  } else {
+    // No pending assignment for this specific extinguisher
+    alert(`No pending assignment found for Extinguisher #${extId}. Ask your admin to generate an assignment first.`);
+    return;
+  }
+
+  // Set defaults
+  document.getElementById("rDate").value = new Date().toISOString().split("T")[0];
+  document.getElementById("rNotes").value = "";
+  document.getElementById("rPhoto").value = "";
+  document.getElementById("photoPreview").classList.remove("show");
+  document.getElementById("photoClear").classList.remove("show");
+  document.getElementById("photoUploadArea").classList.remove("has-photo");
+  document.getElementById("reportModalError").textContent = "";
+  document.getElementById("reportModal").classList.remove("hidden");
+}
+
+// Helper: open the Generate Assignment modal pre-filled with a specific extinguisher.
+// Fetches the extinguisher's data to find its company and building, then auto-fills
+// the cascade dropdowns so the admin only needs to pick an inspector and click Generate.
+async function openAssignModalForExt(extId) {
+  // Get the extinguisher details to find its company/building
+  const exts = await fetch(`/api/extinguishers?org_id=${orgId()}`).then(r => r.json());
+  const ext = exts.find(e => e.extinguisher_id === extId || String(e.extinguisher_id) === String(extId));
+
+  // Open the modal (populates company dropdown and inspectors)
+  await openAssignModal(null);
+
+  if (!ext) return;
+
+  // Auto-fill Company
+  const aCompany = document.getElementById("aCompany");
+  if (ext.company_id_fk || ext.company_id) {
+    aCompany.value = ext.company_id_fk || ext.company_id;
+    await aCompany.onchange(); // triggers building dropdown load
+
+    // Auto-fill Building after buildings load
+    setTimeout(async () => {
+      const aBuilding = document.getElementById("aBuilding");
+      if (ext.building_id) {
+        aBuilding.value = ext.building_id;
+        await aBuilding.onchange(); // triggers extinguisher dropdown load
+
+        // Auto-fill Extinguisher after extinguishers load
+        setTimeout(() => {
+          const aExt = document.getElementById("aExtinguisher");
+          aExt.value = extId;
+        }, 200);
+      }
+    }, 200);
+  }
 }
 
 // ── Edit Assignment button ─────────────────────────────────────────────────────
@@ -3376,7 +3465,7 @@ function openExtDetail(row) {
     </div>
   `).join("");
 
-  // Footer — quick action buttons (Admin only)
+  // Footer — quick action buttons based on role
   const footer = document.getElementById("detailExtFooter");
   if (isAdmin() && !window._platformReadOnly) {
     footer.innerHTML = `
@@ -3387,6 +3476,22 @@ function openExtDetail(row) {
       <button class="btn-crud btn-delete" style="font-size:0.72rem;padding:6px 14px;min-height:34px;"
         onclick="document.getElementById('extDetailModal').classList.add('hidden'); document.getElementById('btnDelete').click(); returnToPriorityQueue();">
         ✕ Delete
+      </button>
+    `;
+  } else if ((isInv() || isThirdInv()) && !window._platformReadOnly) {
+    // Inspectors: Edit extinguisher details + Submit Report for this extinguisher
+    footer.innerHTML = `
+      <button class="btn-crud btn-edit" style="font-size:0.72rem;padding:6px 14px;min-height:34px;"
+        onclick="document.getElementById('extDetailModal').classList.add('hidden'); selectedExtId=${row.extinguisher_id}; document.getElementById('btnEdit').click(); returnToPriorityQueue();">
+        ✎ Edit Details
+      </button>
+      <button class="btn-crud btn-add" style="font-size:0.72rem;padding:6px 14px;min-height:34px;"
+        onclick="document.getElementById('extDetailModal').classList.add('hidden'); window._returnToPriorityQueue=false; openReportForExtinguisher(${row.extinguisher_id});">
+        📋 Submit Report
+      </button>
+      <button class="btn-crud btn-edit" style="font-size:0.72rem;padding:6px 14px;min-height:34px;background:var(--bg3);border-color:var(--border);color:var(--muted);"
+        onclick="document.getElementById('extDetailModal').classList.add('hidden'); returnToPriorityQueue();">
+        Close
       </button>
     `;
   } else {
@@ -3586,6 +3691,31 @@ function editCompanyCard(data) {
   document.getElementById("companyModal").classList.remove("hidden");
 }
 
+// View-only company details popup for inspectors
+function viewCompanyCard(data) {
+  const fields = [
+    { label: "Company Name", value: data.name || "—" },
+    { label: "Address", value: data.address || "—" },
+    { label: "City", value: data.city || "—" },
+    { label: "State", value: data.state || "—" },
+    { label: "Phone", value: data.phone || "—" },
+    { label: "Contact", value: data.contact_name || "—" },
+    { label: "Buildings", value: data.building_count || 0 },
+    { label: "Extinguishers", value: data.extinguisher_count || 0 },
+  ];
+  document.getElementById("detailExtId").textContent = `COMPANY-${data.company_id}`;
+  document.getElementById("detailExtTitle").textContent = data.name || "Company";
+  document.getElementById("detailExtGrid").innerHTML = fields.map(f => `
+    <div class="ext-detail-field">
+      <div class="ext-detail-label">${f.label}</div>
+      <div class="ext-detail-value">${f.value}</div>
+    </div>`).join("");
+  document.getElementById("detailExtFooter").innerHTML = `
+    <button class="btn-crud btn-edit" style="font-size:0.72rem;padding:6px 14px;min-height:34px;background:var(--bg3);border-color:var(--border);color:var(--muted);"
+      onclick="document.getElementById('extDetailModal').classList.add('hidden');">Close</button>`;
+  document.getElementById("extDetailModal").classList.remove("hidden");
+}
+
 // Open building edit modal directly from card button (no drilling required)
 function editBuildingCard(data) {
   _selectedBuilding  = data;
@@ -3598,6 +3728,31 @@ function editBuildingCard(data) {
   document.getElementById("bNotes").value   = data.notes   || "";
   document.getElementById("buildingModalError").textContent = "";
   document.getElementById("buildingModal").classList.remove("hidden");
+}
+
+// View-only building details popup for inspectors
+function viewBuildingCard(data) {
+  const fields = [
+    { label: "Building Name", value: data.name || "—" },
+    { label: "Company", value: data.company_name || "—" },
+    { label: "Address", value: data.address || "—" },
+    { label: "Floors", value: data.floors || "—" },
+    { label: "Notes", value: data.notes || "—" },
+    { label: "Total Extinguishers", value: data.total_count || 0 },
+    { label: "Overdue", value: data.overdue_count || 0 },
+    { label: "Pending Assignments", value: data.pending_count || 0 },
+  ];
+  document.getElementById("detailExtId").textContent = `BUILDING-${data.building_id}`;
+  document.getElementById("detailExtTitle").textContent = data.name || "Building";
+  document.getElementById("detailExtGrid").innerHTML = fields.map(f => `
+    <div class="ext-detail-field">
+      <div class="ext-detail-label">${f.label}</div>
+      <div class="ext-detail-value">${f.value}</div>
+    </div>`).join("");
+  document.getElementById("detailExtFooter").innerHTML = `
+    <button class="btn-crud btn-edit" style="font-size:0.72rem;padding:6px 14px;min-height:34px;background:var(--bg3);border-color:var(--border);color:var(--muted);"
+      onclick="document.getElementById('extDetailModal').classList.add('hidden');">Close</button>`;
+  document.getElementById("extDetailModal").classList.remove("hidden");
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
