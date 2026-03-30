@@ -1332,7 +1332,7 @@
         <div class="ext-detail-id" id="detailExtId"></div>
         <div class="ext-detail-title" id="detailExtTitle"></div>
       </div>
-      <button class="ext-detail-close" onclick="document.getElementById('extDetailModal').classList.add('hidden')">✕</button>
+      <button class="ext-detail-close" onclick="document.getElementById('extDetailModal').classList.add('hidden'); returnToPriorityQueue();">✕</button>
     </div>
     <div class="ext-detail-grid" id="detailExtGrid"></div>
     <div class="ext-detail-footer" id="detailExtFooter"></div>
@@ -3531,11 +3531,11 @@ function openExtDetail(row) {
   if (isAdmin() && !window._platformReadOnly) {
     footer.innerHTML = `
       <button class="btn-crud btn-edit" style="font-size:0.72rem;padding:6px 14px;min-height:34px;"
-        onclick="document.getElementById('extDetailModal').classList.add('hidden'); document.getElementById('btnEdit').click(); returnToPriorityQueue();">
+        onclick="document.getElementById('extDetailModal').classList.add('hidden'); window._returnToPriorityQueue=false; document.getElementById('btnEdit').click();">
         ✎ Edit
       </button>
       <button class="btn-crud btn-delete" style="font-size:0.72rem;padding:6px 14px;min-height:34px;"
-        onclick="document.getElementById('extDetailModal').classList.add('hidden'); document.getElementById('btnDelete').click(); returnToPriorityQueue();">
+        onclick="document.getElementById('extDetailModal').classList.add('hidden'); window._returnToPriorityQueue=false; document.getElementById('btnDelete').click();">
         ✕ Delete
       </button>
     `;
@@ -3543,7 +3543,7 @@ function openExtDetail(row) {
     // Inspectors: Edit extinguisher details + Submit Report for this extinguisher
     footer.innerHTML = `
       <button class="btn-crud btn-edit" style="font-size:0.72rem;padding:6px 14px;min-height:34px;"
-        onclick="document.getElementById('extDetailModal').classList.add('hidden'); selectedExtId=${row.extinguisher_id}; document.getElementById('btnEdit').click(); returnToPriorityQueue();">
+        onclick="document.getElementById('extDetailModal').classList.add('hidden'); window._returnToPriorityQueue=false; selectedExtId=${row.extinguisher_id}; document.getElementById('btnEdit').click();">
         ✎ Edit Details
       </button>
       <button class="btn-crud btn-add" style="font-size:0.72rem;padding:6px 14px;min-height:34px;"
@@ -3576,7 +3576,6 @@ document.getElementById("extDetailModal").addEventListener("click", e => {
 });
 
 // Return to Priority Queue after closing a modal opened from it
-// Return to the Priority Queue after closing a modal that was opened from it.
 // The _returnToPriorityQueue flag is set ONLY when View or Assign is clicked
 // from inside the queue, so normal modal usage is unaffected.
 function returnToPriorityQueue() {
@@ -3584,17 +3583,6 @@ function returnToPriorityQueue() {
     window._returnToPriorityQueue = false;
     setTimeout(() => openPriorityQueue(), 200);
   }
-}
-
-// Patch all extDetailModal close buttons to return to queue
-document.getElementById("extDetailModal").addEventListener("transitionend", () => {
-  if (document.getElementById("extDetailModal").classList.contains("hidden")) returnToPriorityQueue();
-});
-
-// Use a click listener on extDetailModal to catch close button clicks
-const _origExtClose = document.querySelector("#extDetailModal .ext-detail-close");
-if (_origExtClose) {
-  _origExtClose.addEventListener("click", () => setTimeout(returnToPriorityQueue, 100));
 }
 
 // ── Assignment detail popup ───────────────────────────────────────────────────
