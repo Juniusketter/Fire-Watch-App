@@ -1601,7 +1601,7 @@ async function doLogin() {
     const res  = await fetch("/api/login", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({username, password: hashed}) });
     const data = await res.json();
     if (data.success) {
-      currentUser = {user_id:data.user_id, username:data.username, role:data.role, org_id:data.org_id, org_name:data.org_name};
+      currentUser = {user_id:data.user_id, username:data.username, role:data.role, org_id:data.org_id, org_name:data.org_name, platform_status:data.platform_status};
       localStorage.setItem("fw_session", JSON.stringify(currentUser));
       showDashboard();
     } else { msg.style.color="#c1121f"; msg.textContent="Invalid username or password."; }
@@ -1645,7 +1645,7 @@ async function doRegister() {
     const data = await res.json();
     if (data.success) {
       // Auto-login after successful registration
-      currentUser = {user_id:data.user_id, username:data.username, role:data.role, org_id:data.org_id, org_name:data.org_name};
+      currentUser = {user_id:data.user_id, username:data.username, role:data.role, org_id:data.org_id, org_name:data.org_name, platform_status:data.platform_status};
       localStorage.setItem("fw_session", JSON.stringify(currentUser));
       msg.style.color="#0d9488";
       msg.textContent=`✓ Organization "${orgName}" created! Logging in...`;
