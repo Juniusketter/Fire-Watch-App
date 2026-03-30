@@ -2129,9 +2129,14 @@ function renderTable(wrapperId,cols,rows,onRowClick) {
   let html=`<table class="data-table"><thead><tr>`;
   cols.forEach(c=>html+=`<th>${headerMap[c]||c}</th>`);
   html+=`</tr></thead><tbody>`;
-  rows.forEach(row=>{
-    const rowId=row.extinguisher_id??row.assignment_id??row.user_id??row.report_id??"";
-    html+=`<tr data-id="${rowId}">`;
+  // Determine which ID field this table uses based on columns or data
+  const idField = rows[0].report_id !== undefined && cols.includes("report_id") ? "report_id"
+    : rows[0].assignment_id !== undefined && cols.includes("assignment_id") ? "assignment_id"
+    : rows[0].user_id !== undefined && cols.includes("user_id") ? "user_id"
+    : rows[0].extinguisher_id !== undefined ? "extinguisher_id" : null;
+  rows.forEach((row, idx)=>{
+    const rowId = idField ? row[idField] : idx;
+    html+=`<tr data-id="${rowId}" data-idx="${idx}">`;
     cols.forEach(c=>{
       let val=row[c]??"—";
       if(c==="status") val=statusBadge(val);
@@ -2150,12 +2155,9 @@ function renderTable(wrapperId,cols,rows,onRowClick) {
     tr.addEventListener("click",()=>{
       wrap.querySelectorAll("tr").forEach(r=>r.classList.remove("selected"));
       tr.classList.add("selected");
-      if(onRowClick) onRowClick(rows.find(r=>
-        String(r.extinguisher_id)===tr.dataset.id||
-        String(r.assignment_id)===tr.dataset.id||
-        String(r.report_id)===tr.dataset.id||
-        String(r.user_id)===tr.dataset.id
-      ));
+      // Use the data-idx for guaranteed correct row matching
+      const idx = parseInt(tr.dataset.idx);
+      if(onRowClick && rows[idx]) onRowClick(rows[idx]);
     });
   });
 }
@@ -3581,6 +3583,49 @@ function openExtDetail(row) {
 
   calHtml += `</div></div>`;
   document.getElementById("detailExtGrid").innerHTML += calHtml;
+
+  // ── Report History — scrollable list of all reports for this extinguisher ──
+  // Sorted by date descending (most recent first) with clickable rows
+  const extReportsSorted = [...extReports].sort((a, b) => (b.inspection_date || "").localeCompare(a.inspection_date || ""));
+
+  let historyHtml = `
+    <div class="ext-detail-field-full" style="margin-top:0.3rem;">
+      <div class="ext-detail-label" style="margin-bottom:0.4rem;">Report History (${extReportsSorted.length})</div>`;
+
+  if (extReportsSorted.length === 0) {
+    historyHtml += `<div style="font-size:0.75rem;color:var(--muted);padding:0.5rem 0;">No reports submitted yet.</div>`;
+  } else {
+    historyHtml += `<div style="max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;">`;
+    extReportsSorted.forEach(r => {
+      const resultColor = r.inspection_result === "Pass" ? "#15803D" : r.inspection_result === "Fail" ? "#C1121F" : r.inspection_result === "Needs Service" ? "#EAB308" : "var(--muted)";
+      const resultBg = r.inspection_result === "Pass" ? "rgba(21,128,61,0.1)" : r.inspection_result === "Fail" ? "rgba(193,18,31,0.1)" : r.inspection_result === "Needs Service" ? "rgba(234,179,8,0.1)" : "var(--bg3)";
+      const resultLabel = r.inspection_result || "—";
+
+      historyHtml += `
+        <div style="display:flex;align-items:center;gap:0.5rem;padding:6px 10px;border-bottom:1px solid rgba(255,255,255,0.04);cursor:pointer;transition:background 0.1s;font-size:0.72rem;"
+          onmouseenter="this.style.background='var(--bg3)'" onmouseleave="this.style.background='none'">
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+              <span style="color:var(--orange);font-weight:600;">RPT-${r.report_id}</span>
+              <span style="color:var(--muted);">${r.inspection_date || "No date"}</span>
+              <span style="color:var(--muted);">· ${r.inspector || "Unknown"}</span>
+              <span style="padding:1px 6px;border-radius:3px;font-size:0.62rem;font-weight:600;background:${resultBg};color:${resultColor};">${resultLabel}</span>
+              ${r.service_type && r.service_type !== "Routine Inspection" ? `<span style="font-size:0.6rem;color:var(--blue);">${r.service_type}</span>` : ""}
+            </div>
+            ${r.notes ? `<div style="font-size:0.65rem;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${r.notes}</div>` : ""}
+          </div>
+          <div style="display:flex;gap:4px;flex-shrink:0;">
+            <button onclick="event.stopPropagation();openReportDetail(${JSON.stringify(r).replace(/"/g,'&quot;')});"
+              style="padding:2px 6px;border:1px solid var(--border);border-radius:3px;background:var(--bg3);color:var(--teal);cursor:pointer;font-size:0.6rem;font-family:'IBM Plex Mono',monospace;">View</button>
+            <button onclick="event.stopPropagation();generateNFPAForm(${JSON.stringify(r).replace(/"/g,'&quot;')});"
+              style="padding:2px 6px;border:1px solid var(--border);border-radius:3px;background:var(--bg3);color:var(--purple);cursor:pointer;font-size:0.6rem;font-family:'IBM Plex Mono',monospace;">NFPA</button>
+          </div>
+        </div>`;
+    });
+    historyHtml += `</div>`;
+  }
+  historyHtml += `</div>`;
+  document.getElementById("detailExtGrid").innerHTML += historyHtml;
 
   // Footer — quick action buttons based on role
   const footer = document.getElementById("detailExtFooter");
