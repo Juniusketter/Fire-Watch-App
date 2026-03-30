@@ -182,6 +182,8 @@ def run_migrations():
             conn.execute("ALTER TABLE Reports ADD COLUMN photo_path TEXT")
         if "org_id" not in report_cols:
             conn.execute("ALTER TABLE Reports ADD COLUMN org_id INTEGER REFERENCES Organizations(org_id)")
+        if "service_type" not in report_cols:
+            conn.execute("ALTER TABLE Reports ADD COLUMN service_type TEXT DEFAULT 'Routine Inspection'")
 
         # ── Companies table ────────────────────────────────────────────────
         if "Companies" not in tables:
@@ -244,6 +246,7 @@ def run_migrations():
             "last_hydro_date":     "DATE",                     # last hydrostatic pressure test
             "ext_status":          "TEXT DEFAULT 'Active'",    # Active, Out of Service, Retired, Missing
             "last_inspection_date":"DATE",                     # last routine monthly inspection
+            "dot_cert_no":         "TEXT DEFAULT ''",           # DOT certification number (e.g. A739)
         }
         for col, col_type in nfpa_cols.items():
             if col not in ext_cols:
@@ -697,8 +700,8 @@ def add_extinguisher():
                 "(address, building_number, floor_number, room_number, "
                 " location_description, inspection_interval_days, next_due_date, building_id, org_id,"
                 " ext_type, ext_size_lbs, serial_number, manufacturer, model,"
-                " manufacture_date, last_annual_date, last_6year_date, last_hydro_date, ext_status) "
-                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                " manufacture_date, last_annual_date, last_6year_date, last_hydro_date, ext_status, dot_cert_no) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (d.get("address"), d.get("building_number"),
                  d.get("floor_number", 1), d.get("room_number"),
                  d.get("location_description"),
@@ -715,7 +718,8 @@ def add_extinguisher():
                  d.get("last_annual_date"),
                  d.get("last_6year_date"),
                  d.get("last_hydro_date"),
-                 d.get("ext_status", "Active"))
+                 d.get("ext_status", "Active"),
+                 d.get("dot_cert_no", ""))
             )
         platform_log("admin", "extinguisher_created", "new", f"org_id={d.get('org_id')}")
         return jsonify({"success": True}), 201
@@ -732,7 +736,7 @@ def update_extinguisher(ext_id):
                 "floor_number=?, room_number=?, location_description=?, "
                 "inspection_interval_days=?, next_due_date=?, building_id=?,"
                 "ext_type=?, ext_size_lbs=?, serial_number=?, manufacturer=?, model=?,"
-                "manufacture_date=?, last_annual_date=?, last_6year_date=?, last_hydro_date=?, ext_status=? "
+                "manufacture_date=?, last_annual_date=?, last_6year_date=?, last_hydro_date=?, ext_status=?, dot_cert_no=? "
                 "WHERE extinguisher_id=?",
                 (d.get("address"), d.get("building_number"),
                  d.get("floor_number", 1), d.get("room_number"),
@@ -750,6 +754,7 @@ def update_extinguisher(ext_id):
                  d.get("last_6year_date"),
                  d.get("last_hydro_date"),
                  d.get("ext_status", "Active"),
+                 d.get("dot_cert_no", ""),
                  ext_id)
             )
         platform_log("admin", "extinguisher_updated", str(ext_id), "Updated")
@@ -895,11 +900,11 @@ def create_report():
             if "photo_path" not in report_cols:
                 conn.execute("ALTER TABLE Reports ADD COLUMN photo_path TEXT")
             conn.execute(
-                "INSERT INTO Reports (extinguisher_id, inspector_id, inspection_date, notes, photo_path, org_id) "
-                "VALUES (?,?,?,?,?,?)",
+                "INSERT INTO Reports (extinguisher_id, inspector_id, inspection_date, notes, photo_path, org_id, service_type) "
+                "VALUES (?,?,?,?,?,?,?)",
                 (d.get("extinguisher_id"), d.get("inspector_id"),
                  d.get("inspection_date"), d.get("notes",""),
-                 d.get("photo_path"), d.get("org_id"))
+                 d.get("photo_path"), d.get("org_id"), d.get("service_type", "Routine Inspection"))
             )
             # Update extinguisher's last_report_id and last inspection date
             report_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
