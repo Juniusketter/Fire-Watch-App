@@ -184,6 +184,22 @@ def run_migrations():
             conn.execute("ALTER TABLE Reports ADD COLUMN org_id INTEGER REFERENCES Organizations(org_id)")
         if "service_type" not in report_cols:
             conn.execute("ALTER TABLE Reports ADD COLUMN service_type TEXT DEFAULT 'Routine Inspection'")
+        # NFPA 10 Section 7.2.2 — Monthly Visual Inspection Checklist
+        nfpa_report_cols = {
+            "chk_mounted":      "INTEGER DEFAULT 0",  # Mounted in designated location
+            "chk_access":       "INTEGER DEFAULT 0",  # No obstruction to access/visibility
+            "chk_pressure":     "INTEGER DEFAULT 0",  # Pressure gauge in operable range
+            "chk_seal":         "INTEGER DEFAULT 0",  # Safety pin and tamper seal intact
+            "chk_damage":       "INTEGER DEFAULT 0",  # No physical damage or corrosion
+            "chk_nozzle":       "INTEGER DEFAULT 0",  # Nozzle/hose not blocked or damaged
+            "chk_label":        "INTEGER DEFAULT 0",  # Operating instructions readable
+            "chk_weight":       "INTEGER DEFAULT 0",  # Weight/heft correct (not discharged)
+            "inspection_result":"TEXT DEFAULT ''",     # Pass, Fail, Needs Service
+        }
+        for col, col_type in nfpa_report_cols.items():
+            if col not in report_cols:
+                conn.execute(f"ALTER TABLE Reports ADD COLUMN {col} {col_type}")
+                print(f"  [Migration] Added Reports.{col}")
 
         # ── Companies table ────────────────────────────────────────────────
         if "Companies" not in tables:
@@ -912,11 +928,21 @@ def create_report():
             if "photo_path" not in report_cols:
                 conn.execute("ALTER TABLE Reports ADD COLUMN photo_path TEXT")
             conn.execute(
-                "INSERT INTO Reports (extinguisher_id, inspector_id, inspection_date, notes, photo_path, org_id, service_type) "
-                "VALUES (?,?,?,?,?,?,?)",
+                "INSERT INTO Reports (extinguisher_id, inspector_id, inspection_date, notes, photo_path, org_id, service_type,"
+                " chk_mounted, chk_access, chk_pressure, chk_seal, chk_damage, chk_nozzle, chk_label, chk_weight, inspection_result) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (d.get("extinguisher_id"), d.get("inspector_id"),
                  d.get("inspection_date"), d.get("notes",""),
-                 d.get("photo_path"), d.get("org_id"), d.get("service_type", "Routine Inspection"))
+                 d.get("photo_path"), d.get("org_id"), d.get("service_type", "Routine Inspection"),
+                 1 if d.get("chk_mounted") else 0,
+                 1 if d.get("chk_access") else 0,
+                 1 if d.get("chk_pressure") else 0,
+                 1 if d.get("chk_seal") else 0,
+                 1 if d.get("chk_damage") else 0,
+                 1 if d.get("chk_nozzle") else 0,
+                 1 if d.get("chk_label") else 0,
+                 1 if d.get("chk_weight") else 0,
+                 d.get("inspection_result", ""))
             )
             # Update extinguisher's last_report_id and last inspection date
             report_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
