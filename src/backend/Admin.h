@@ -22,14 +22,15 @@ public:
 
 using namespace std;
 
-// Admin class - extends User class
-// Created by Lillian 
-// Updated Sprint 2: Replaced cin/cout console I/O in generateAssignment()
-// and changeDB() with parameter-based methods.
-// UI input is handled by AssignDialog + ExtDialog in the Qt dashboard
-// and by the web UI modals (index.html). DB writes are handled by the
-// calling layer (dashboard.cpp / server.py), not this class.
-
+/*
+  Admin class - extends User class
+  Created by Lillian 
+  Updated Sprint 2: Replaced cin/cout console I/O in generateAssignment()
+  and changeDB() with parameter-based methods.
+  UI input is handled by AssignDialog + ExtDialog in the Qt dashboard
+  and by the web UI modals (index.html). DB writes are handled by the
+  calling layer (dashboard.cpp / server.py), not this class.
+*/
 class Admin : public User {
     private:
         string adminID;
