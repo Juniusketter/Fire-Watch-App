@@ -472,6 +472,18 @@ def login():
                 org_name = org["name"]
                 platform_status = org["platform_status"] or "approved"
         platform_log(row["username"], "user_login", org_name, f"role={row['role']}")
+        # Block login for suspended or rejected orgs
+        if platform_status in ("suspended", "rejected"):
+            platform_log(row["username"], "login_blocked", org_name, f"Org status: {platform_status}")
+            return jsonify({
+                "success": True,
+                "user_id":  row["user_id"],
+                "username": row["username"],
+                "role":     row["role"],
+                "org_id":   row["org_id"],
+                "org_name": org_name,
+                "platform_status": platform_status,
+            })
         return jsonify({
             "success":  True,
             "user_id":  row["user_id"],
