@@ -917,9 +917,24 @@
           </div>
         </div>
         <div id="drillToolbarExt" class="hidden">
-          <button class="btn-crud btn-add" id="btnAdd">＋ Add Extinguisher</button>
-          <button class="btn-crud btn-add" id="btnBulkAdd" onclick="openBulkExtModal()" style="background:var(--teal);border-color:var(--teal);">＋ Bulk Add</button>
-          <button class="btn-crud btn-add" id="btnCsvImport" onclick="openCsvImportModal()" style="background:var(--purple);border-color:var(--purple);">📂 Import CSV</button>
+          <!-- Add Extinguisher dropdown: Single / Bulk / Import CSV -->
+          <div style="position:relative;display:inline-block;" id="addExtDropdownWrap">
+            <button class="btn-crud btn-add" id="btnAddDropTrigger"
+              onclick="toggleAddExtDropdown()">
+              ＋ Add Extinguisher ▾
+            </button>
+            <div id="addExtDropMenu" class="hidden" style="position:absolute;top:100%;left:0;margin-top:4px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;min-width:200px;z-index:200;box-shadow:0 8px 24px rgba(0,0,0,0.5);overflow:hidden;">
+              <button class="qr-sheet-option" id="btnAdd" onclick="closeAddExtDropdown()">
+                ＋ Single Extinguisher
+              </button>
+              <button class="qr-sheet-option" id="btnBulkAdd" onclick="openBulkExtModal();closeAddExtDropdown()" style="border-top:1px solid var(--border);">
+                ＋ Bulk Add
+              </button>
+              <button class="qr-sheet-option" id="btnCsvImport" onclick="openCsvImportModal();closeAddExtDropdown()" style="border-top:1px solid var(--border);">
+                📂 Import CSV
+              </button>
+            </div>
+          </div>
           <button class="btn-crud btn-edit" id="btnEdit">✎ Edit</button>
           <button class="btn-crud btn-delete" id="btnDelete">✕ Delete</button>
           <!-- QR Sheet: at extinguisher level -->
@@ -2145,8 +2160,10 @@ function buildTabs() {
     document.getElementById("btnEditBuilding").style.display = "none";
     document.getElementById("btnDeleteBuilding").style.display = "none";
     document.getElementById("btnDelete").style.display = "none"; // no delete extinguisher for inspectors
-    document.getElementById("btnBulkAdd").style.display = "none"; // no bulk add for inspectors
-    document.getElementById("btnCsvImport").style.display = "none"; // no CSV import for inspectors
+    // Inspectors get single-add only — hide the dropdown trigger and show a plain Add button
+    document.getElementById("btnAddDropTrigger").style.display = "none";
+    document.getElementById("btnBulkAdd").style.display = "none";  // inside dropdown, belt-and-suspenders
+    document.getElementById("btnCsvImport").style.display = "none"; // inside dropdown, belt-and-suspenders
   } else if (isThirdAdmin()) {
     tabs = [{id:"panelAssignments",label:"Assignments"},{id:"panelUsers",label:"My Team"}];
     document.getElementById("statBoxExt").style.display="none";
@@ -6955,6 +6972,20 @@ function checkExtDeepLink() {
 /**
  * Toggle a QR scope dropdown menu open/closed.
  * Closes all other QR dropdowns first so only one is open at a time.
+/** Toggle the Add Extinguisher dropdown (Single / Bulk / Import CSV). */
+function toggleAddExtDropdown() {
+  const menu = document.getElementById("addExtDropMenu");
+  if (menu) menu.classList.toggle("hidden");
+}
+
+/** Close the Add Extinguisher dropdown. */
+function closeAddExtDropdown() {
+  const menu = document.getElementById("addExtDropMenu");
+  if (menu) menu.classList.add("hidden");
+}
+
+/**
+ * Toggle a QR scope dropdown menu open/closed.
  * Also closes when user clicks anywhere outside.
  *
  * @param {string} menuId - element ID of the dropdown menu div
@@ -6971,12 +7002,13 @@ function toggleQRDropdown(menuId) {
 
 // Close QR dropdowns when clicking anywhere outside them
 document.addEventListener("click", e => {
-  const insideDropdown = e.target.closest("#qrSheetDropdownCompany,#qrSheetDropdownBuilding,#qrSheetDropdownExt");
+  const insideDropdown = e.target.closest("#qrSheetDropdownCompany,#qrSheetDropdownBuilding,#qrSheetDropdownExt,#addExtDropdownWrap");
   if (!insideDropdown) {
     ["qrDropMenuCompany","qrDropMenuBuilding","qrDropMenuExt"].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.classList.add("hidden");
     });
+    closeAddExtDropdown();
   }
 });
 
