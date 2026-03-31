@@ -754,6 +754,26 @@ def add_extinguisher():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route("/api/extinguishers/<int:ext_id>", methods=["GET"])
+def get_extinguisher_by_id(ext_id):
+    """Return a single extinguisher row by ID with full building/company context.
+    Used by the QR code deep-link feature: when a user scans a QR code,
+    the frontend fetches this endpoint to get the full row for openExtDetail()."""
+    with get_db() as conn:
+        row = conn.execute("""
+            SELECT e.*,
+                   b.name    AS building_name,
+                   c.name    AS company_name,
+                   c.company_id AS company_id_fk
+            FROM Extinguishers e
+            LEFT JOIN Buildings b ON b.building_id = e.building_id
+            LEFT JOIN Companies c ON c.company_id  = b.company_id
+            WHERE e.extinguisher_id = ?
+        """, (ext_id,)).fetchone()
+    if not row:
+        return jsonify({"error": "Extinguisher not found"}), 404
+    return jsonify(dict(row))
+
 @app.route("/api/extinguishers/<int:ext_id>", methods=["PUT"])
 def update_extinguisher(ext_id):
     d = request.get_json()
