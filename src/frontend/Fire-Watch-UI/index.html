@@ -1238,7 +1238,43 @@
       <div id="viewProfile" class="hidden">
         <div class="settings-panel">
 
-          <!-- Account Info -->
+          <!-- ── Personal Information ── -->
+          <div class="settings-section">
+            <div class="settings-section-title">Personal Information</div>
+            <div style="padding:0.85rem 1rem;">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 1rem;">
+                <div class="form-row">
+                  <label>First Name *</label>
+                  <input type="text" id="profFirstName" placeholder="e.g. James" autocomplete="given-name" />
+                </div>
+                <div class="form-row">
+                  <label>Last Name *</label>
+                  <input type="text" id="profLastName" placeholder="e.g. Smith" autocomplete="family-name" />
+                </div>
+              </div>
+              <div class="form-row">
+                <label>Middle Name <span style="color:var(--muted);font-weight:400;">(optional)</span></label>
+                <input type="text" id="profMiddleName" placeholder="e.g. Robert" autocomplete="additional-name" />
+              </div>
+              <div class="form-row">
+                <label>Email Address *</label>
+                <input type="email" id="profEmail" placeholder="e.g. jsmith@company.com" autocomplete="email" />
+              </div>
+              <div class="form-row">
+                <label>Mobile Phone <span style="color:var(--muted);font-weight:400;">(optional)</span></label>
+                <input type="tel" id="profPhone" placeholder="e.g. (619) 555-0100" autocomplete="tel" />
+              </div>
+              <div class="form-row" id="profCertRow">
+                <label>State License / Cert No. <span style="color:var(--muted);font-weight:400;">(optional)</span></label>
+                <input type="text" id="profCertNumber" placeholder="e.g. CA-FE-123456" />
+                <div style="font-size:0.65rem;color:var(--muted);margin-top:4px;">
+                  Printed below your signature on NFPA 10 inspection forms.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Account Information (read-only) ── -->
           <div class="settings-section">
             <div class="settings-section-title">Account Information</div>
             <div class="settings-row">
@@ -1261,13 +1297,16 @@
             </div>
           </div>
 
-          <!-- Change Password -->
+          <!-- ── Change Password (optional — only applied if fields are filled) ── -->
           <div class="settings-section">
-            <div class="settings-section-title">Change Password</div>
+            <div class="settings-section-title">
+              Change Password
+              <span style="font-family:'IBM Plex Sans',sans-serif;font-size:0.7rem;font-weight:400;color:var(--muted);margin-left:0.5rem;">(leave blank to keep current password)</span>
+            </div>
             <div style="padding:0.85rem 1rem;">
               <div class="form-row">
                 <label>Current Password</label>
-                <input type="password" id="profCurrentPw" placeholder="Enter current password" />
+                <input type="password" id="profCurrentPw" placeholder="Required only if changing password" />
               </div>
               <div class="form-row">
                 <label>New Password</label>
@@ -1277,12 +1316,18 @@
                 <label>Confirm New Password</label>
                 <input type="password" id="profConfirmPw" placeholder="Re-enter new password" />
               </div>
-              <div class="modal-error" id="profilePwError" style="margin-bottom:0.5rem;"></div>
             </div>
-            <div class="settings-save-bar">
-              <span class="settings-saved-msg" id="profileSavedMsg">✓ Password updated</span>
-              <button class="btn-save" style="flex:none;padding:8px 24px;font-size:0.78rem;" onclick="changePassword()">Update Password</button>
+          </div>
+
+          <!-- ── Single Save Bar ── -->
+          <div class="settings-save-bar">
+            <div style="flex:1;">
+              <div class="modal-error" id="profInfoError" style="margin:0;min-height:0;"></div>
+              <span class="settings-saved-msg" id="profInfoSavedMsg">✓ Profile saved</span>
             </div>
+            <button class="btn-save" style="flex:none;padding:8px 28px;font-size:0.78rem;" onclick="saveProfileInfo()">
+              Save Changes
+            </button>
           </div>
 
         </div>
@@ -2180,21 +2225,76 @@
 <div class="modal-overlay hidden" id="userModal">
   <div class="modal-box">
     <h3 id="userModalTitle">Add New User</h3>
-    <div class="form-row"><label>Username *</label><input type="text" id="uUsername" placeholder="e.g. JSmith" /></div>
-    <div class="form-row" id="uPasswordRow"><label>Password *</label><input type="password" id="uPassword" placeholder="Enter password" /></div>
-    <div class="form-row" id="uConfirmRow"><label>Confirm Password *</label><input type="password" id="uConfirm" placeholder="Re-enter password" /></div>
+
+    <!-- ── SECTION 1: User Details ── -->
+    <div style="border-bottom:1px solid var(--border);margin-bottom:0.75rem;padding-bottom:0.25rem;">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:0.65rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);">User Details</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 1rem;">
+      <div class="form-row">
+        <label>First Name *</label>
+        <input type="text" id="uFirstName" placeholder="e.g. James" autocomplete="given-name" />
+      </div>
+      <div class="form-row">
+        <label>Last Name *</label>
+        <input type="text" id="uLastName" placeholder="e.g. Smith" autocomplete="family-name" />
+      </div>
+    </div>
+    <div class="form-row">
+      <label>Middle Name <span style="color:var(--muted);font-weight:400;">(optional)</span></label>
+      <input type="text" id="uMiddleName" placeholder="e.g. Robert" autocomplete="additional-name" />
+    </div>
+    <div class="form-row">
+      <label>Email Address *</label>
+      <input type="email" id="uEmail" placeholder="e.g. jsmith@company.com" autocomplete="email" />
+    </div>
+    <div class="form-row">
+      <label>Mobile Phone <span style="color:var(--muted);font-weight:400;">(optional)</span></label>
+      <input type="tel" id="uPhone" placeholder="e.g. (619) 555-0100" autocomplete="tel" />
+    </div>
+
+    <!-- ── SECTION 2: Account Credentials ── -->
+    <div style="border-bottom:1px solid var(--border);margin:0.75rem 0 0.75rem;padding-bottom:0.25rem;">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:0.65rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);">Account Credentials</span>
+    </div>
+    <div class="form-row">
+      <label>Username *</label>
+      <input type="text" id="uUsername" placeholder="e.g. JSmith" autocomplete="username" />
+    </div>
+    <div class="form-row" id="uPasswordRow">
+      <label>Password *</label>
+      <input type="password" id="uPassword" placeholder="Min 6 characters" autocomplete="new-password" />
+    </div>
+    <div class="form-row" id="uConfirmRow">
+      <label>Confirm Password *</label>
+      <input type="password" id="uConfirm" placeholder="Re-enter password" autocomplete="new-password" />
+    </div>
     <div class="form-row" id="uPasswordHint" class="hidden" style="display:none;">
       <span style="font-size:0.75rem;color:var(--muted);font-style:italic;">Leave password blank to keep current password.</span>
     </div>
+
+    <!-- ── SECTION 3: Permissions & Licensing ── -->
+    <div style="border-bottom:1px solid var(--border);margin:0.75rem 0 0.75rem;padding-bottom:0.25rem;">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:0.65rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);">Permissions &amp; Licensing</span>
+    </div>
     <div class="form-row">
       <label>Role *</label>
-      <select id="uRole">
+      <select id="uRole" onchange="onURoleChange()">
         <option value="Inspector">Inspector</option>
         <option value="Admin">Admin</option>
         <option value="3rd_Party_Admin">3rd Party Admin</option>
         <option value="3rd_Party_Inspector">3rd Party Inspector</option>
       </select>
     </div>
+    <!-- Cert number: only shown when role is Inspector or 3rd Party Inspector -->
+    <div class="form-row" id="uCertRow" style="display:none;">
+      <label>State License / Cert No. <span style="color:var(--muted);font-weight:400;">(optional)</span></label>
+      <input type="text" id="uCertNumber" placeholder="e.g. CA-FE-123456" />
+      <div style="font-size:0.65rem;color:var(--muted);margin-top:4px;">
+        Automatically printed below the inspector's signature on NFPA 10 forms.
+      </div>
+    </div>
+
     <div class="modal-error" id="userModalError"></div>
     <div class="modal-actions">
       <button class="btn-cancel" id="userModalCancel">Cancel</button>
@@ -2278,7 +2378,17 @@ async function doLogin() {
     const res  = await fetch("/api/login", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({username, password: hashed}) });
     const data = await res.json();
     if (data.success) {
-      currentUser = {user_id:data.user_id, username:data.username, role:data.role, org_id:data.org_id, org_name:data.org_name, platform_status:data.platform_status};
+      currentUser = {
+        user_id: data.user_id, username: data.username, role: data.role,
+        org_id: data.org_id, org_name: data.org_name, platform_status: data.platform_status,
+        // PII fields — used for NFPA form Section 6 (Inspector Certification)
+        full_name:   data.full_name   || data.username,
+        first_name:  data.first_name  || "",
+        last_name:   data.last_name   || "",
+        email:       data.email       || "",
+        phone:       data.phone       || "",
+        cert_number: data.cert_number || "",
+      };
       localStorage.setItem("fw_session", JSON.stringify(currentUser));
       showDashboard();
     } else { msg.style.color="#c1121f"; msg.textContent="Invalid username or password."; }
@@ -4756,13 +4866,24 @@ function showView(view) {
     updateThemeCards();
   }
   if (view === "profile") {
+    // Account info (read-only)
     document.getElementById("profileUsername").textContent = currentUser.username;
-    document.getElementById("profileRole").textContent = currentUser.role.replace(/_/g," ");
-    document.getElementById("profileUserId").textContent = "#" + currentUser.user_id;
-    // Clear password fields
+    document.getElementById("profileRole").textContent     = currentUser.role.replace(/_/g," ");
+    document.getElementById("profileUserId").textContent   = "#" + currentUser.user_id;
+    // Personal info fields — pre-fill from currentUser PII
+    document.getElementById("profFirstName").value   = currentUser.first_name  || "";
+    document.getElementById("profLastName").value    = currentUser.last_name   || "";
+    document.getElementById("profMiddleName").value  = currentUser.middle_name || "";
+    document.getElementById("profEmail").value       = currentUser.email       || "";
+    document.getElementById("profPhone").value       = currentUser.phone       || "";
+    document.getElementById("profCertNumber").value  = currentUser.cert_number || "";
+    // Show cert field only for inspector roles
+    const isInspRole = currentUser.role === "Inspector" || currentUser.role === "3rd_Party_Inspector";
+    document.getElementById("profCertRow").style.display = isInspRole ? "" : "none";
+    // Clear all password fields and unified status
     ["profCurrentPw","profNewPw","profConfirmPw"].forEach(id => document.getElementById(id).value = "");
-    document.getElementById("profilePwError").textContent = "";
-    document.getElementById("profileSavedMsg").classList.remove("show");
+    document.getElementById("profInfoError").textContent = "";
+    document.getElementById("profInfoSavedMsg").classList.remove("show");
   }
   if (view === "notifications") {
     renderNotifications();
@@ -4776,7 +4897,7 @@ async function changePassword() {
   const currentPw = document.getElementById("profCurrentPw").value;
   const newPw     = document.getElementById("profNewPw").value;
   const confirmPw = document.getElementById("profConfirmPw").value;
-  const errEl     = document.getElementById("profilePwError");
+  const errEl     = document.getElementById("profInfoError");
 
   errEl.textContent = "";
 
@@ -4802,12 +4923,105 @@ async function changePassword() {
     const data = await res.json();
     if (data.success) {
       ["profCurrentPw","profNewPw","profConfirmPw"].forEach(id => document.getElementById(id).value = "");
-      const msg = document.getElementById("profileSavedMsg");
+      const msg = document.getElementById("profInfoSavedMsg");
       msg.classList.add("show");
       setTimeout(() => msg.classList.remove("show"), 3000);
     } else {
       errEl.textContent = data.error || "Failed to update password.";
     }
+  } catch(e) {
+    errEl.textContent = "Could not reach server.";
+  }
+}
+
+/**
+ * Save the Personal Information section on My Profile.
+ * Validates mandatory fields, PUTs to /api/users/<id>,
+ * then updates currentUser and localStorage so NFPA forms
+ * immediately reflect the new name and cert without requiring re-login.
+ */
+async function saveProfileInfo() {
+  const errEl = document.getElementById("profInfoError");
+  const msgEl = document.getElementById("profInfoSavedMsg");
+  errEl.textContent = "";
+  msgEl.classList.remove("show");
+
+  const firstName  = document.getElementById("profFirstName").value.trim();
+  const lastName   = document.getElementById("profLastName").value.trim();
+  const middleName = document.getElementById("profMiddleName").value.trim();
+  const email      = document.getElementById("profEmail").value.trim();
+  const phone      = document.getElementById("profPhone").value.trim();
+  const certNumber = document.getElementById("profCertNumber").value.trim();
+  const currentPw  = document.getElementById("profCurrentPw").value;
+  const newPw      = document.getElementById("profNewPw").value;
+  const confirmPw  = document.getElementById("profConfirmPw").value;
+
+  // ── Validate PII (always required) ──────────────────────────────────────
+  if (!firstName)            { errEl.textContent = "First name is required.";      return; }
+  if (!lastName)             { errEl.textContent = "Last name is required.";       return; }
+  if (!email)                { errEl.textContent = "Email address is required.";   return; }
+  if (!email.includes("@")) { errEl.textContent = "Enter a valid email address."; return; }
+
+  // ── Validate password change (only if any password field is touched) ────
+  const changingPassword = currentPw || newPw || confirmPw;
+  if (changingPassword) {
+    if (!currentPw)           { errEl.textContent = "Current password is required to set a new password."; return; }
+    if (!newPw)               { errEl.textContent = "New password is required."; return; }
+    if (newPw.length < 6)     { errEl.textContent = "New password must be at least 6 characters."; return; }
+    if (newPw !== confirmPw)  { errEl.textContent = "Passwords do not match."; return; }
+    if (newPw === currentPw)  { errEl.textContent = "New password must be different from current password."; return; }
+  }
+
+  try {
+    // ── Step 1: Save PII fields ──────────────────────────────────────────
+    const piiRes = await fetch("/api/users/" + currentUser.user_id, {
+      method:  "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        first_name: firstName, last_name: lastName, middle_name: middleName,
+        email, phone, cert_number: certNumber,
+      })
+    });
+    const piiData = await piiRes.json();
+    if (!piiData.success) {
+      errEl.textContent = piiData.error || "Failed to update profile.";
+      return;
+    }
+
+    // ── Step 2: Change password if requested ─────────────────────────────
+    if (changingPassword) {
+      const currentHashed = await sha256(currentPw);
+      const newHashed     = await sha256(newPw);
+      const pwRes = await fetch("/api/users/" + currentUser.user_id + "/password", {
+        method:  "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ current_password: currentHashed, new_password: newHashed })
+      });
+      const pwData = await pwRes.json();
+      if (!pwData.success) {
+        errEl.textContent = pwData.error || "Profile saved but password change failed.";
+        return;
+      }
+      // Clear password fields after successful change
+      ["profCurrentPw","profNewPw","profConfirmPw"].forEach(id =>
+        document.getElementById(id).value = ""
+      );
+    }
+
+    // ── Update currentUser in memory + localStorage ───────────────────────
+    // NFPA forms use legal name immediately — no re-login required
+    currentUser.full_name   = [firstName, middleName, lastName].filter(Boolean).join(" ");
+    currentUser.first_name  = firstName;
+    currentUser.last_name   = lastName;
+    currentUser.middle_name = middleName;
+    currentUser.email       = email;
+    currentUser.phone       = phone;
+    currentUser.cert_number = certNumber;
+    localStorage.setItem("fw_session", JSON.stringify(currentUser));
+
+    msgEl.classList.add("show");
+    setTimeout(() => msgEl.classList.remove("show"), 3000);
+
   } catch(e) {
     errEl.textContent = "Could not reach server.";
   }
@@ -4932,19 +5146,35 @@ async function loadUserPreferences() {
     applyTheme("dark");
   }
 }
+// ── Role change: show cert number only for inspector roles ──────────────────
+function onURoleChange() {
+  const role = document.getElementById("uRole").value;
+  const isInspectorRole = role === "Inspector" || role === "3rd_Party_Inspector";
+  document.getElementById("uCertRow").style.display = isInspectorRole ? "" : "none";
+}
+
+// ── Helper: clear all user modal fields ──────────────────────────────────────
+function clearUserModal() {
+  ["uFirstName","uLastName","uMiddleName","uEmail","uPhone",
+   "uUsername","uPassword","uConfirm","uCertNumber"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = "";
+  });
+  document.getElementById("userModalError").textContent = "";
+}
+
 // ── Add User button ──────────────────────────────────────────────────────────
 document.getElementById("btnAddUser").addEventListener("click", () => {
   editingUserId = null;
   document.getElementById("userModalTitle").textContent = "Add New User";
   document.getElementById("userModalSave").textContent  = "Create User";
-  ["uUsername","uPassword","uConfirm"].forEach(id => document.getElementById(id).value = "");
-  document.getElementById("uUsername").disabled = false;
-  document.getElementById("uRole").value = "Inspector";
-  document.getElementById("userModalError").textContent = "";
-  // Show password fields as required for new user
-  document.getElementById("uPasswordRow").style.display = "";
-  document.getElementById("uConfirmRow").style.display  = "";
+  clearUserModal();
+  document.getElementById("uUsername").disabled        = false;
+  document.getElementById("uRole").value               = "Inspector";
+  document.getElementById("uPasswordRow").style.display  = "";
+  document.getElementById("uConfirmRow").style.display   = "";
   document.getElementById("uPasswordHint").style.display = "none";
+  onURoleChange(); // Inspector is default — show cert field
   document.getElementById("userModal").classList.remove("hidden");
 });
 
@@ -4957,16 +5187,25 @@ document.getElementById("btnEditUser").addEventListener("click", () => {
   editingUserId = selectedUserId;
   document.getElementById("userModalTitle").textContent = "Edit User";
   document.getElementById("userModalSave").textContent  = "Save Changes";
+  // Credentials
   document.getElementById("uUsername").value    = user.username;
   document.getElementById("uUsername").disabled = false;
   document.getElementById("uRole").value        = user.role;
   document.getElementById("uPassword").value    = "";
   document.getElementById("uConfirm").value     = "";
+  // PII fields — pre-fill whatever the server returned
+  document.getElementById("uFirstName").value   = user.first_name  || "";
+  document.getElementById("uLastName").value    = user.last_name   || "";
+  document.getElementById("uMiddleName").value  = user.middle_name || "";
+  document.getElementById("uEmail").value       = user.email       || "";
+  document.getElementById("uPhone").value       = user.phone       || "";
+  document.getElementById("uCertNumber").value  = user.cert_number || "";
   document.getElementById("userModalError").textContent = "";
   // Password optional for edit
   document.getElementById("uPasswordRow").style.display  = "";
   document.getElementById("uConfirmRow").style.display   = "";
   document.getElementById("uPasswordHint").style.display = "";
+  onURoleChange(); // show/hide cert field based on role
   document.getElementById("userModal").classList.remove("hidden");
 });
 
@@ -4998,23 +5237,42 @@ document.getElementById("userModal").addEventListener("click", e => { if(e.targe
 
 // ── Save handler (works for both Add and Edit) ──────────────────────────────
 document.getElementById("userModalSave").addEventListener("click", async () => {
-  const username = document.getElementById("uUsername").value.trim();
-  const password = document.getElementById("uPassword").value;
-  const confirm  = document.getElementById("uConfirm").value;
-  const role     = document.getElementById("uRole").value;
-  const errEl    = document.getElementById("userModalError");
+  const errEl = document.getElementById("userModalError");
+  errEl.textContent = "";
 
-  if (!username) { errEl.textContent = "Username is required."; return; }
+  // Collect all fields
+  const firstName  = document.getElementById("uFirstName").value.trim();
+  const lastName   = document.getElementById("uLastName").value.trim();
+  const middleName = document.getElementById("uMiddleName").value.trim();
+  const email      = document.getElementById("uEmail").value.trim();
+  const phone      = document.getElementById("uPhone").value.trim();
+  const username   = document.getElementById("uUsername").value.trim();
+  const password   = document.getElementById("uPassword").value;
+  const confirm    = document.getElementById("uConfirm").value;
+  const role       = document.getElementById("uRole").value;
+  const certNumber = document.getElementById("uCertNumber").value.trim();
+
+  // ── Client-side validation for mandatory fields ──────────────────────────
+  if (!firstName)  { errEl.textContent = "First name is required.";    return; }
+  if (!lastName)   { errEl.textContent = "Last name is required.";     return; }
+  if (!email)      { errEl.textContent = "Email address is required."; return; }
+  if (!email.includes("@")) { errEl.textContent = "Enter a valid email address."; return; }
+  if (!username)   { errEl.textContent = "Username is required.";      return; }
+
+  // PII payload shared by both add and edit
+  const piiFields = {
+    first_name: firstName, last_name: lastName, middle_name: middleName,
+    email, phone, cert_number: certNumber,
+  };
 
   if (editingUserId) {
-    // ── EDIT MODE ──
-    // Password is optional — only validate if provided
+    // ── EDIT MODE — password optional ────────────────────────────────────
     if (password || confirm) {
-      if (password !== confirm) { errEl.textContent = "Passwords do not match."; return; }
+      if (password !== confirm) { errEl.textContent = "Passwords do not match.";             return; }
       if (password.length < 6)  { errEl.textContent = "Password must be at least 6 characters."; return; }
     }
 
-    const body = { username, role };
+    const body = { username, role, ...piiFields };
     if (password) body.password = await sha256(password);
 
     const res = await fetch("/api/users/" + editingUserId, {
@@ -5022,26 +5280,25 @@ document.getElementById("userModalSave").addEventListener("click", async () => {
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify(body)
     });
-
     if (res.ok) {
       document.getElementById("userModal").classList.add("hidden");
       loadUsers(); loadStats();
     } else {
       errEl.textContent = "Error: " + (await res.json()).error;
     }
+
   } else {
-    // ── ADD MODE ──
-    if (!password)            { errEl.textContent = "Password is required."; return; }
-    if (password !== confirm) { errEl.textContent = "Passwords do not match."; return; }
+    // ── ADD MODE — password required ──────────────────────────────────────
+    if (!password)            { errEl.textContent = "Password is required.";                  return; }
+    if (password !== confirm) { errEl.textContent = "Passwords do not match.";                return; }
     if (password.length < 6)  { errEl.textContent = "Password must be at least 6 characters."; return; }
 
     const hashed = await sha256(password);
     const res = await fetch("/api/users", {
       method: "POST",
       headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({ username, password: hashed, role, org_id: orgId() })
+      body: JSON.stringify({ username, password: hashed, role, org_id: orgId(), ...piiFields })
     });
-
     if (res.ok) {
       document.getElementById("userModal").classList.add("hidden");
       loadUsers(); loadStats();
@@ -6443,12 +6700,20 @@ function generateNFPAForm(report) {
       <div class="section-title">Section 6 — Inspector Certification</div>
       <div class="sig-grid">
         <div class="sig-field">
-          <div class="field-label">Inspector Name</div>
-          <div class="field-value">${report.inspector || "—"}</div>
+          <div class="field-label">Inspector Legal Name</div>
+          <div class="field-value">${currentUser.full_name || report.inspector || "—"}</div>
         </div>
         <div class="sig-field">
           <div class="field-label">Report ID</div>
           <div class="field-value">RPT-${report.report_id}</div>
+        </div>
+        <div class="sig-field">
+          <div class="field-label">Username / ID</div>
+          <div class="field-value">${report.inspector || "—"}</div>
+        </div>
+        <div class="sig-field">
+          <div class="field-label">State License / Cert No.</div>
+          <div class="field-value">${currentUser.cert_number || "—"}</div>
         </div>
         <div class="sig-field">
           <div class="field-label">Inspector Signature</div>
@@ -6977,8 +7242,10 @@ async function generateBulkNFPA() {
       <div class="section">
         <div class="section-title">Section 6 — Inspector Certification</div>
         <div class="sig-grid">
-          <div class="sig-field"><div class="field-label">Inspector Name</div><div class="field-value">${r.inspector || "—"}</div></div>
+          <div class="sig-field"><div class="field-label">Inspector Legal Name</div><div class="field-value">${currentUser.full_name || r.inspector || "—"}</div></div>
           <div class="sig-field"><div class="field-label">Report ID</div><div class="field-value">RPT-${r.report_id}</div></div>
+          <div class="sig-field"><div class="field-label">Username / ID</div><div class="field-value">${r.inspector || "—"}</div></div>
+          <div class="sig-field"><div class="field-label">State License / Cert No.</div><div class="field-value">${currentUser.cert_number || "—"}</div></div>
           <div class="sig-field"><div class="field-label">Inspector Signature</div><div class="sig-line"></div></div>
           <div class="sig-field"><div class="field-label">Date Signed</div><div class="sig-line"></div></div>
         </div>

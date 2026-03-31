@@ -166,6 +166,25 @@ def run_migrations():
             conn.execute("ALTER TABLE Users ADD COLUMN preferences TEXT DEFAULT '{}'")
         if "org_id" not in user_cols:
             conn.execute("ALTER TABLE Users ADD COLUMN org_id INTEGER REFERENCES Organizations(org_id)")
+        # PII fields — Sprint 5. Idempotent: safe to run on every server start.
+        if "first_name" not in user_cols:
+            conn.execute("ALTER TABLE Users ADD COLUMN first_name TEXT DEFAULT ''")
+            print("  [Migration] Added Users.first_name")
+        if "last_name" not in user_cols:
+            conn.execute("ALTER TABLE Users ADD COLUMN last_name TEXT DEFAULT ''")
+            print("  [Migration] Added Users.last_name")
+        if "middle_name" not in user_cols:
+            conn.execute("ALTER TABLE Users ADD COLUMN middle_name TEXT DEFAULT ''")
+            print("  [Migration] Added Users.middle_name")
+        if "email" not in user_cols:
+            conn.execute("ALTER TABLE Users ADD COLUMN email TEXT DEFAULT ''")
+            print("  [Migration] Added Users.email")
+        if "phone" not in user_cols:
+            conn.execute("ALTER TABLE Users ADD COLUMN phone TEXT DEFAULT ''")
+            print("  [Migration] Added Users.phone")
+        if "cert_number" not in user_cols:
+            conn.execute("ALTER TABLE Users ADD COLUMN cert_number TEXT DEFAULT ''")
+            print("  [Migration] Added Users.cert_number")
 
         # ── Assignments ────────────────────────────────────────────────────
         assign_cols = [r[1] for r in conn.execute("PRAGMA table_info(Assignments)").fetchall()]
@@ -471,12 +490,18 @@ def login():
 
     with get_db() as conn:
         row = conn.execute(
-            "SELECT user_id, username, role, org_id FROM Users "
-            "WHERE username = ? AND password_hash = ?",
+            """SELECT user_id, username, role, org_id,
+                      first_name, last_name, middle_name, email, phone, cert_number
+               FROM Users
+               WHERE username = ? AND password_hash = ?""",
             (username, password)
         ).fetchone()
 
     if row:
+        # Build the legal full name for NFPA forms
+        full_name_parts = [row["first_name"], row["middle_name"], row["last_name"]]
+        full_name = " ".join(p for p in full_name_parts if p).strip() or row["username"]
+
         # Get org name and platform status for display
         org_name = ""
         platform_status = "approved"
@@ -501,13 +526,20 @@ def login():
                 "platform_status": platform_status,
             })
         return jsonify({
-            "success":  True,
-            "user_id":  row["user_id"],
-            "username": row["username"],
-            "role":     row["role"],
-            "org_id":   row["org_id"],
-            "org_name": org_name,
+            "success":         True,
+            "user_id":         row["user_id"],
+            "username":        row["username"],
+            "role":            row["role"],
+            "org_id":          row["org_id"],
+            "org_name":        org_name,
             "platform_status": platform_status,
+            # PII fields — used for NFPA form Section 6 (Inspector Certification)
+            "full_name":    full_name,
+            "first_name":   row["first_name"]  or "",
+            "last_name":    row["last_name"]   or "",
+            "email":        row["email"]        or "",
+            "phone":        row["phone"]        or "",
+            "cert_number":  row["cert_number"]  or "",
         })
     platform_log("unknown", "login_failed", username, "Invalid credentials")
     return jsonify({"success": False, "error": "Invalid username or password"}), 401
@@ -983,16 +1015,26 @@ def create_report():
 # ── USERS ──────────────────────────────────────────────────────────────────────
 @app.route("/api/users", methods=["GET"])
 def get_users():
-    """List all users in an organization. Returns user_id, username, role.
-    Passwords are never returned. Filtered by org_id for multi-tenant isolation."""
+    """List all users in an organization.
+    Returns user_id, username, role, and PII fields added in Sprint 5.
+    Passwords and password_hash are never returned.
+    Filtered by org_id for multi-tenant isolation."""
     org_id = request.args.get("org_id")
     with get_db() as conn:
         if org_id:
             rows = conn.execute(
-                "SELECT user_id, username, role FROM Users WHERE org_id=?", (org_id,)
+                """SELECT user_id, username, role,
+                          first_name, last_name, middle_name,
+                          email, phone, cert_number
+                   FROM Users WHERE org_id=?""", (org_id,)
             ).fetchall()
         else:
-            rows = conn.execute("SELECT user_id, username, role FROM Users").fetchall()
+            rows = conn.execute(
+                """SELECT user_id, username, role,
+                          first_name, last_name, middle_name,
+                          email, phone, cert_number
+                   FROM Users"""
+            ).fetchall()
     return jsonify([dict(r) for r in rows])
 
 # ── USER PREFERENCES ──────────────────────────────────────────────────────────
@@ -1060,14 +1102,32 @@ def save_preferences(user_id):
 # ── CREATE USER ───────────────────────────────────────────────────────────────
 @app.route("/api/users", methods=["POST"])
 def create_user():
-    d = request.get_json()
-    username = (d.get("username") or "").strip()
-    password = (d.get("password") or "").strip()
-    role     = (d.get("role")     or "").strip()
-    org_id   = d.get("org_id")
+    d          = request.get_json()
+    username   = (d.get("username")   or "").strip()
+    password   = (d.get("password")   or "").strip()
+    role       = (d.get("role")       or "").strip()
+    org_id     = d.get("org_id")
+    # PII fields — first_name, last_name, email mandatory; others optional
+    first_name  = (d.get("first_name")  or "").strip()
+    last_name   = (d.get("last_name")   or "").strip()
+    middle_name = (d.get("middle_name") or "").strip()
+    email       = (d.get("email")       or "").strip()
+    phone       = (d.get("phone")       or "").strip()
+    cert_number = (d.get("cert_number") or "").strip()
 
-    if not username or not password or not role:
-        return jsonify({"error": "Username, password, and role are required."}), 400
+    # Mandatory field validation
+    if not username:
+        return jsonify({"error": "Username is required."}), 400
+    if not password:
+        return jsonify({"error": "Password is required."}), 400
+    if not role:
+        return jsonify({"error": "Role is required."}), 400
+    if not first_name:
+        return jsonify({"error": "First name is required."}), 400
+    if not last_name:
+        return jsonify({"error": "Last name is required."}), 400
+    if not email:
+        return jsonify({"error": "Email address is required."}), 400
 
     valid_roles = ["Admin", "Inspector", "3rd_Party_Admin", "3rd_Party_Inspector"]
     if role not in valid_roles:
@@ -1081,8 +1141,12 @@ def create_user():
             if existing:
                 return jsonify({"error": "Username already exists."}), 409
             conn.execute(
-                "INSERT INTO Users (username, password_hash, role, org_id) VALUES (?,?,?,?)",
-                (username, password, role, org_id)
+                """INSERT INTO Users
+                   (username, password_hash, role, org_id,
+                    first_name, last_name, middle_name, email, phone, cert_number)
+                   VALUES (?,?,?,?,?,?,?,?,?,?)""",
+                (username, password, role, org_id,
+                 first_name, last_name, middle_name, email, phone, cert_number)
             )
         platform_log(username, "user_created", username, f"role={role}")
         return jsonify({"success": True}), 201
@@ -1092,10 +1156,17 @@ def create_user():
 # ── EDIT USER ─────────────────────────────────────────────────────────────────
 @app.route("/api/users/<int:user_id>", methods=["PUT"])
 def update_user(user_id):
-    d = request.get_json()
-    role     = (d.get("role") or "").strip()
+    d        = request.get_json()
+    role     = (d.get("role")     or "").strip()
     username = (d.get("username") or "").strip()
     new_pw   = (d.get("password") or "").strip()  # optional — only set if provided
+    # PII fields — all optional on edit (admin may update one at a time)
+    first_name  = d.get("first_name")
+    last_name   = d.get("last_name")
+    middle_name = d.get("middle_name")
+    email       = d.get("email")
+    phone       = d.get("phone")
+    cert_number = d.get("cert_number")
 
     valid_roles = ["Admin", "Inspector", "3rd_Party_Admin", "3rd_Party_Inspector"]
     if role and role not in valid_roles:
@@ -1103,30 +1174,47 @@ def update_user(user_id):
 
     try:
         with get_db() as conn:
-            # Check user exists
-            existing = conn.execute("SELECT user_id, username FROM Users WHERE user_id=?", (user_id,)).fetchone()
+            existing = conn.execute(
+                "SELECT user_id, username FROM Users WHERE user_id=?", (user_id,)
+            ).fetchone()
             if not existing:
                 return jsonify({"error": "User not found."}), 404
 
-            # Check for duplicate username (if changing)
             if username and username != existing["username"]:
-                dup = conn.execute("SELECT user_id FROM Users WHERE username=? AND user_id!=?", (username, user_id)).fetchone()
+                dup = conn.execute(
+                    "SELECT user_id FROM Users WHERE username=? AND user_id!=?",
+                    (username, user_id)
+                ).fetchone()
                 if dup:
                     return jsonify({"error": "Username already exists."}), 409
 
-            # Build dynamic update
+            # Build dynamic UPDATE — only set fields that were provided
             updates = []
             params  = []
             if username:
-                updates.append("username=?"); params.append(username)
+                updates.append("username=?");      params.append(username)
             if role:
-                updates.append("role=?"); params.append(role)
+                updates.append("role=?");          params.append(role)
             if new_pw:
                 updates.append("password_hash=?"); params.append(new_pw)
+            if first_name  is not None:
+                updates.append("first_name=?");    params.append(first_name.strip())
+            if last_name   is not None:
+                updates.append("last_name=?");     params.append(last_name.strip())
+            if middle_name is not None:
+                updates.append("middle_name=?");   params.append(middle_name.strip())
+            if email       is not None:
+                updates.append("email=?");         params.append(email.strip())
+            if phone       is not None:
+                updates.append("phone=?");         params.append(phone.strip())
+            if cert_number is not None:
+                updates.append("cert_number=?");   params.append(cert_number.strip())
 
             if updates:
                 params.append(user_id)
-                conn.execute(f"UPDATE Users SET {', '.join(updates)} WHERE user_id=?", params)
+                conn.execute(
+                    f"UPDATE Users SET {', '.join(updates)} WHERE user_id=?", params
+                )
 
         platform_log("admin", "user_updated", str(user_id), "Updated")
         return jsonify({"success": True})
