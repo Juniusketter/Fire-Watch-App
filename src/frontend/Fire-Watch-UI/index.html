@@ -975,7 +975,20 @@
     <!-- Assignments -->
     <div class="panel" id="panelAssignments">
       <div class="table-toolbar hidden" id="assignToolbar">
-        <button class="btn-crud btn-add" id="btnGenerateAssign">＋ Generate Assignment</button>
+        <!-- Generate Assignment dropdown: Single or Bulk -->
+        <div style="position:relative;display:inline-block;" id="genAssignDropWrap">
+          <button class="btn-crud btn-add" id="btnGenerateAssign" onclick="toggleGenAssignDropdown()">
+            ＋ Generate Assignment ▾
+          </button>
+          <div id="genAssignDropMenu" class="hidden" style="position:absolute;top:100%;left:0;margin-top:4px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;min-width:210px;z-index:200;box-shadow:0 8px 24px rgba(0,0,0,0.5);overflow:hidden;">
+            <button class="qr-sheet-option" id="btnSingleAssign">
+              ＋ Single Assignment
+            </button>
+            <button class="qr-sheet-option" id="btnBulkAssign" style="border-top:1px solid var(--border);">
+              ＋ Bulk Assignment
+            </button>
+          </div>
+        </div>
         <button class="btn-crud btn-edit" id="btnPriorityQueue" style="background:var(--purple,#7C3AED);">📋 Priority Queue</button>
         <button class="btn-crud btn-edit" id="btnEditAssign">✎ Edit Selected</button>
         <select id="assignStatusFilter" style="margin-left:auto;padding:5px 10px;border-radius:4px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:0.75rem;cursor:pointer;">
@@ -1000,6 +1013,7 @@
           </div>
         </div>
         <button class="btn-crud btn-add" id="btnGeneratePdfReport" style="background:var(--purple,#7C3AED);">📋 Generate PDF Report</button>
+        <button class="btn-crud btn-add" id="btnBulkNFPA" style="background:var(--teal);border-color:var(--teal);">📄 Bulk NFPA Forms</button>
         <!-- Filter bar — always visible when reports panel is shown -->
         <div class="filter-bar" id="reportFilterBar">
           <div class="filter-group">
@@ -1719,6 +1733,141 @@
   </div>
 </div>
 
+<!-- BULK NFPA FORMS MODAL -->
+<div class="modal-overlay hidden" id="bulkNFPAModal" onclick="if(event.target===this)closeBulkNFPAModal()">
+  <div class="modal-box" style="max-width:780px;width:96%;">
+    <h3>📄 Bulk NFPA 10 Inspection Forms</h3>
+
+    <!-- ── STEP 1: Filter criteria ── -->
+    <div id="bnStep1">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:0.75rem;">
+        Filter Reports — one NFPA form will be generated per matched report
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 1rem;">
+        <!-- Scope -->
+        <div class="form-row">
+          <label>Scope</label>
+          <select id="bnScope" onchange="onBnScopeChange()">
+            <option value="all">🌐 All Reports — Entire Organization</option>
+            <option value="company">🏢 By Company</option>
+            <option value="building">🏗 By Building</option>
+            <option value="floor">📐 By Floor</option>
+            <option value="inspector">👤 By Inspector</option>
+          </select>
+        </div>
+        <!-- Result filter -->
+        <div class="form-row">
+          <label>Inspection Result</label>
+          <select id="bnResult">
+            <option value="">All Results</option>
+            <option value="Pass">Pass only</option>
+            <option value="Fail">Fail only</option>
+            <option value="Needs Service">Needs Service only</option>
+          </select>
+        </div>
+        <!-- Date From -->
+        <div class="form-row">
+          <label>Date From</label>
+          <input type="date" id="bnDateFrom">
+        </div>
+        <!-- Date To -->
+        <div class="form-row">
+          <label>Date To</label>
+          <input type="date" id="bnDateTo">
+        </div>
+      </div>
+
+      <!-- Scope-specific sub-filters (shown dynamically) -->
+      <div id="bnScopeFilters" style="display:grid;grid-template-columns:1fr 1fr;gap:0 1rem;">
+        <div class="form-row hidden" id="bnCompanyRow">
+          <label>Company</label>
+          <select id="bnCompany" onchange="onBnCompanyChange()">
+            <option value="">— Select company —</option>
+          </select>
+        </div>
+        <div class="form-row hidden" id="bnBuildingRow">
+          <label>Building</label>
+          <select id="bnBuilding" onchange="onBnBuildingChange()">
+            <option value="">— Select building —</option>
+          </select>
+        </div>
+        <div class="form-row hidden" id="bnFloorRow">
+          <label>Floor</label>
+          <select id="bnFloor">
+            <option value="">— Select floor —</option>
+          </select>
+        </div>
+        <div class="form-row hidden" id="bnInspectorRow">
+          <label>Inspector</label>
+          <select id="bnInspector">
+            <option value="">— Select inspector —</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="modal-error" id="bnStep1Error"></div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeBulkNFPAModal()">Cancel</button>
+        <button class="btn-save" onclick="loadBnReports()" style="background:var(--teal);">
+          Load Reports →
+        </button>
+      </div>
+    </div>
+
+    <!-- ── STEP 2: Select reports ── -->
+    <div id="bnStep2" class="hidden">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.6rem;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:0.7rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);">
+          Select Reports —
+          <span id="bnSelectedCount" style="color:var(--teal);">0</span> selected
+        </div>
+        <button onclick="goBackToBnStep1()" style="background:none;border:none;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:0.72rem;cursor:pointer;">← Back</button>
+      </div>
+
+      <!-- Report selection table -->
+      <div style="overflow-x:auto;max-height:360px;overflow-y:auto;border:1px solid var(--border);border-radius:4px;margin-bottom:0.75rem;">
+        <table style="width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:0.7rem;">
+          <thead>
+            <tr style="background:var(--bg3);position:sticky;top:0;z-index:1;">
+              <th style="padding:8px 10px;border-bottom:1px solid var(--border);width:36px;">
+                <input type="checkbox" id="bnSelectAll" title="Select / deselect all"
+                  style="width:15px;height:15px;cursor:pointer;accent-color:var(--teal);"
+                  onchange="toggleBnSelectAll(this.checked)">
+              </th>
+              <th style="padding:8px 10px;text-align:left;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border);">RPT</th>
+              <th style="padding:8px 10px;text-align:left;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border);">Date</th>
+              <th style="padding:8px 10px;text-align:left;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border);">EXT</th>
+              <th style="padding:8px 10px;text-align:left;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border);">Location</th>
+              <th style="padding:8px 10px;text-align:left;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border);">Inspector</th>
+              <th style="padding:8px 10px;text-align:left;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border);">Result</th>
+              <th style="padding:8px 10px;text-align:left;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border);">Service Type</th>
+            </tr>
+          </thead>
+          <tbody id="bnReportBody"></tbody>
+        </table>
+      </div>
+
+      <!-- Progress bar (shown while generating) -->
+      <div id="bnProgress" class="hidden" style="margin-bottom:0.75rem;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:0.72rem;color:var(--muted);margin-bottom:4px;" id="bnProgressLabel">Building forms…</div>
+        <div style="background:var(--bg3);border-radius:4px;height:6px;overflow:hidden;">
+          <div id="bnProgressBar" style="height:100%;background:var(--teal);width:0%;transition:width 0.15s ease;"></div>
+        </div>
+      </div>
+
+      <div class="modal-error" id="bnStep2Error"></div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeBulkNFPAModal()">Cancel</button>
+        <button class="btn-save" id="bnGenerateBtn" onclick="generateBulkNFPA()" disabled
+          style="opacity:0.5;cursor:not-allowed;background:var(--teal);border-color:var(--teal);">
+          Generate NFPA Forms
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- PDF REPORT GENERATOR MODAL -->
 <div class="modal-overlay hidden" id="pdfReportModal">
   <div class="modal-box" style="max-width:550px;width:95%;">
@@ -1794,6 +1943,127 @@
     <div class="ext-detail-footer" id="detailReportFooter"></div>
   </div>
 </div>
+<!-- BULK ASSIGNMENT MODAL -->
+<div class="modal-overlay hidden" id="bulkAssignModal" onclick="if(event.target===this)closeBulkAssignModal()">
+  <div class="modal-box" style="max-width:780px;width:96%;">
+    <h3>Bulk Generate Assignments</h3>
+
+    <!-- ── STEP 1: Scope + Inspector ── -->
+    <div id="baStep1">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 1rem;">
+        <!-- Scope selector -->
+        <div class="form-row">
+          <label>Assign By *</label>
+          <select id="baScope" onchange="onBaScopeChange()">
+            <option value="">— Select scope —</option>
+            <option value="company">🏢 Company — all extinguishers in a company</option>
+            <option value="building">🏗 Building — all extinguishers in a building</option>
+            <option value="floor">🏢 Floor — all extinguishers on one floor</option>
+          </select>
+        </div>
+        <!-- Inspector selector -->
+        <div class="form-row">
+          <label>Inspector *</label>
+          <select id="baInspector">
+            <option value="">— Select inspector —</option>
+          </select>
+        </div>
+        <!-- Company (always shown) -->
+        <div class="form-row">
+          <label>Company *</label>
+          <select id="baCompany" onchange="onBaCompanyChange()">
+            <option value="">— Select company —</option>
+          </select>
+        </div>
+        <!-- Building (shown for building + floor scope) -->
+        <div class="form-row" id="baBuildingRow" style="display:none;">
+          <label>Building *</label>
+          <select id="baBuilding" onchange="onBaBuildingChange()">
+            <option value="">— Select building —</option>
+          </select>
+        </div>
+        <!-- Floor (shown for floor scope only) -->
+        <div class="form-row" id="baFloorRow" style="display:none;">
+          <label>Floor *</label>
+          <select id="baFloor">
+            <option value="">— Select floor —</option>
+          </select>
+        </div>
+        <!-- Due Date -->
+        <div class="form-row">
+          <label>Due Date</label>
+          <input type="date" id="baDueDate">
+        </div>
+      </div>
+      <!-- Notes spans full width -->
+      <div class="form-row">
+        <label>Notes <span style="color:var(--muted);font-weight:400;">(applied to all assignments)</span></label>
+        <textarea id="baNotes" rows="2" placeholder="Optional notes for the inspector…"></textarea>
+      </div>
+
+      <div class="modal-error" id="baStep1Error"></div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeBulkAssignModal()">Cancel</button>
+        <button class="btn-save" onclick="loadBaExtinguishers()">Load Extinguishers →</button>
+      </div>
+    </div>
+
+    <!-- ── STEP 2: Select Extinguishers ── -->
+    <div id="baStep2" class="hidden">
+      <!-- Header row: back link + count badge -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.6rem;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:0.7rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);">
+          Select Extinguishers —
+          <span id="baSelectedCount" style="color:var(--orange);">0</span> selected
+          <span id="baAlreadyAssignedNote" style="color:var(--muted);margin-left:0.5rem;font-size:0.62rem;"></span>
+        </div>
+        <button onclick="goBackToBaStep1()" style="background:none;border:none;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:0.72rem;cursor:pointer;">← Back</button>
+      </div>
+
+      <!-- Extinguisher selection table -->
+      <div style="overflow-x:auto;max-height:340px;overflow-y:auto;border:1px solid var(--border);border-radius:4px;margin-bottom:0.75rem;">
+        <table style="width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:0.7rem;">
+          <thead>
+            <tr style="background:var(--bg3);position:sticky;top:0;z-index:1;">
+              <th style="padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);width:36px;">
+                <!-- Select All checkbox -->
+                <input type="checkbox" id="baSelectAll" title="Select / deselect all"
+                  style="width:15px;height:15px;cursor:pointer;accent-color:var(--orange);"
+                  onchange="toggleBaSelectAll(this.checked)">
+              </th>
+              <th style="padding:8px 10px;text-align:left;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border);">ID</th>
+              <th style="padding:8px 10px;text-align:left;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border);">Floor</th>
+              <th style="padding:8px 10px;text-align:left;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border);">Room</th>
+              <th style="padding:8px 10px;text-align:left;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border);">Location</th>
+              <th style="padding:8px 10px;text-align:left;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border);">Type</th>
+              <th style="padding:8px 10px;text-align:left;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border);">Status</th>
+              <th style="padding:8px 10px;text-align:left;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border);">Assignment</th>
+            </tr>
+          </thead>
+          <tbody id="baExtBody"></tbody>
+        </table>
+      </div>
+
+      <!-- Progress bar -->
+      <div id="baProgress" class="hidden" style="margin-bottom:0.75rem;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:0.72rem;color:var(--muted);margin-bottom:4px;" id="baProgressLabel">Generating 0 of 0…</div>
+        <div style="background:var(--bg3);border-radius:4px;height:6px;overflow:hidden;">
+          <div id="baProgressBar" style="height:100%;background:var(--orange);width:0%;transition:width 0.15s ease;"></div>
+        </div>
+      </div>
+
+      <div class="modal-error" id="baStep2Error"></div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeBulkAssignModal()">Cancel</button>
+        <button class="btn-save" id="baGenerateBtn" onclick="submitBulkAssignments()" disabled
+          style="opacity:0.5;cursor:not-allowed;background:var(--orange);">
+          Generate Assignments
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay hidden" id="assignModal">
   <div class="modal-box">
     <h3 id="assignModalTitle">Generate Assignment</h3>
@@ -3603,6 +3873,390 @@ async function submitCsvImport() {
 
 // ── END CSV IMPORT ────────────────────────────────────────────────────────────
 
+// ══════════════════════════════════════════════════════════════════════════════
+// BULK ASSIGNMENT GENERATOR
+//
+// Two-step flow:
+//   Step 1 — Choose scope (Company / Building / Floor), Inspector, Due Date
+//   Step 2 — Extinguisher selection table with Select All + per-row checkboxes
+//             Already-assigned extinguishers are flagged (⚠) but still selectable
+//             "Generate X Assignments" POSTs each selected extinguisher
+//
+// Scope determines which API filter is used to fetch extinguishers:
+//   company  → /api/extinguishers?company_id=X
+//   building → /api/extinguishers?building_id=X
+//   floor    → /api/extinguishers?building_id=X then filter by floor client-side
+// ══════════════════════════════════════════════════════════════════════════════
+
+// Extinguisher rows loaded in Step 1, used in Step 2
+let _baExtRows      = [];
+// Set of extinguisher IDs that already have a pending assignment
+let _baAlreadyAssigned = new Set();
+
+/**
+ * Open the bulk assignment modal.
+ * Pre-populates Company from current drill context and loads inspectors.
+ */
+async function openBulkAssignModal() {
+  // Reset state
+  _baExtRows         = [];
+  _baAlreadyAssigned = new Set();
+
+  document.getElementById("baStep1Error").textContent  = "";
+  document.getElementById("baStep2Error").textContent  = "";
+  document.getElementById("baStep1").classList.remove("hidden");
+  document.getElementById("baStep2").classList.add("hidden");
+  document.getElementById("baProgress").classList.add("hidden");
+  document.getElementById("baProgressBar").style.width      = "0%";
+  document.getElementById("baProgressBar").style.background = "var(--orange)";
+  document.getElementById("baScope").value    = "";
+  document.getElementById("baBuildingRow").style.display = "none";
+  document.getElementById("baFloorRow").style.display    = "none";
+  document.getElementById("baNotes").value    = "";
+
+  // Default due date = 7 days from now
+  const d = new Date(); d.setDate(d.getDate() + 7);
+  document.getElementById("baDueDate").value = d.toISOString().split("T")[0];
+
+  // Load companies and inspectors in parallel
+  try {
+    const [companies, users] = await Promise.all([
+      fetch(`/api/companies?org_id=${orgId()}`).then(r => r.json()),
+      fetch(`/api/users?org_id=${orgId()}`).then(r => r.json()),
+    ]);
+    const inspectors = users.filter(u =>
+      u.role === "Inspector" || u.role === "3rd_Party_Inspector"
+    );
+
+    // Populate Company dropdown
+    const compSel = document.getElementById("baCompany");
+    compSel.innerHTML = "<option value=''>— Select company —</option>" +
+      companies.map(c => `<option value="${c.company_id}">${c.name}</option>`).join("");
+
+    // Pre-select from drill context
+    if (_selectedCompany) {
+      compSel.value = _selectedCompany.company_id;
+      await onBaCompanyChange();
+      if (_selectedBuilding) {
+        document.getElementById("baBuilding").value = _selectedBuilding.building_id;
+        await onBaBuildingChange();
+      }
+    }
+
+    // Populate Inspector dropdown
+    document.getElementById("baInspector").innerHTML =
+      "<option value=''>— Select inspector —</option>" +
+      inspectors.map(u =>
+        `<option value="${u.user_id}">${u.username} [${u.role.replace("_"," ")}]</option>`
+      ).join("");
+
+  } catch(e) {
+    document.getElementById("baStep1Error").textContent = "Failed to load data. Please try again.";
+  }
+
+  document.getElementById("bulkAssignModal").classList.remove("hidden");
+}
+
+/** Show/hide Building and Floor selectors based on selected scope. */
+function onBaScopeChange() {
+  const scope = document.getElementById("baScope").value;
+  document.getElementById("baBuildingRow").style.display =
+    (scope === "building" || scope === "floor") ? "" : "none";
+  document.getElementById("baFloorRow").style.display =
+    scope === "floor" ? "" : "none";
+}
+
+/** Load buildings when company changes. */
+async function onBaCompanyChange() {
+  const cid  = document.getElementById("baCompany").value;
+  const bSel = document.getElementById("baBuilding");
+  bSel.innerHTML = "<option value=''>— Select building —</option>";
+  document.getElementById("baFloor").innerHTML = "<option value=''>— Select floor —</option>";
+  if (!cid) return;
+  try {
+    const buildings = await fetch(`/api/buildings?company_id=${cid}`).then(r => r.json());
+    bSel.innerHTML = "<option value=''>— Select building —</option>" +
+      buildings.map(b => `<option value="${b.building_id}">${b.name}</option>`).join("");
+  } catch(e) {}
+}
+
+/** Load floor options when building changes. */
+async function onBaBuildingChange() {
+  const bid   = document.getElementById("baBuilding").value;
+  const fSel  = document.getElementById("baFloor");
+  fSel.innerHTML = "<option value=''>— Select floor —</option>";
+  if (!bid) return;
+  try {
+    const exts = await fetch(`/api/extinguishers?building_id=${bid}`).then(r => r.json());
+    // Collect unique floor numbers, sorted
+    const floors = [...new Set(
+      exts.map(e => e.floor_number).filter(f => f != null)
+    )].sort((a, b) => a - b);
+    fSel.innerHTML = "<option value=''>— Select floor —</option>" +
+      floors.map(f => `<option value="${f}">Floor ${f}</option>`).join("");
+  } catch(e) {}
+}
+
+/** Go back to Step 1 from the extinguisher selection table. */
+function goBackToBaStep1() {
+  document.getElementById("baStep2").classList.add("hidden");
+  document.getElementById("baStep1").classList.remove("hidden");
+  document.getElementById("baStep2Error").textContent = "";
+}
+
+/** Close and reset the bulk assignment modal. */
+function closeBulkAssignModal() {
+  document.getElementById("bulkAssignModal").classList.add("hidden");
+  _baExtRows         = [];
+  _baAlreadyAssigned = new Set();
+}
+
+/**
+ * Fetch extinguishers for the selected scope and render the selection table.
+ * Also fetches existing pending assignments to flag already-assigned units.
+ */
+async function loadBaExtinguishers() {
+  const errEl     = document.getElementById("baStep1Error");
+  const scope     = document.getElementById("baScope").value;
+  const companyId = document.getElementById("baCompany").value;
+  const buildingId= document.getElementById("baBuilding").value;
+  const floorNum  = document.getElementById("baFloor").value;
+  const inspId    = document.getElementById("baInspector").value;
+
+  errEl.textContent = "";
+
+  // Validate
+  if (!scope)     { errEl.textContent = "Please select a scope."; return; }
+  if (!companyId) { errEl.textContent = "Please select a company."; return; }
+  if (!inspId)    { errEl.textContent = "Please select an inspector."; return; }
+  if ((scope === "building" || scope === "floor") && !buildingId) {
+    errEl.textContent = "Please select a building."; return;
+  }
+  if (scope === "floor" && !floorNum) {
+    errEl.textContent = "Please select a floor."; return;
+  }
+
+  // Fetch extinguishers for scope
+  let apiUrl = "";
+  if (scope === "company")          apiUrl = `/api/extinguishers?company_id=${companyId}`;
+  else if (scope === "building")    apiUrl = `/api/extinguishers?building_id=${buildingId}`;
+  else if (scope === "floor")       apiUrl = `/api/extinguishers?building_id=${buildingId}`;
+
+  try {
+    let exts = await fetch(apiUrl).then(r => r.json());
+
+    // Filter by floor client-side
+    if (scope === "floor") {
+      exts = exts.filter(e => String(e.floor_number) === String(floorNum));
+    }
+
+    if (!exts || exts.length === 0) {
+      errEl.textContent = "No extinguishers found for the selected scope."; return;
+    }
+
+    // Fetch existing active assignments to flag duplicates
+    const allAssignments = await fetch(
+      `/api/assignments?org_id=${orgId()}`
+    ).then(r => r.json()).catch(() => []);
+
+    // Build set of extinguisher IDs that already have a pending assignment
+    _baAlreadyAssigned = new Set(
+      allAssignments
+        .filter(a => a.status === "Pending Inspection")
+        .map(a => a.extinguisher_id)
+    );
+
+    _baExtRows = exts;
+    renderBaExtTable();
+
+    // Switch to Step 2
+    document.getElementById("baStep1").classList.add("hidden");
+    document.getElementById("baStep2").classList.remove("hidden");
+
+  } catch(err) {
+    errEl.textContent = `Failed to load extinguishers: ${err.message}`;
+  }
+}
+
+/**
+ * Render the extinguisher selection table in Step 2.
+ * Each row has a checkbox. Already-assigned extinguishers are flagged with ⚠.
+ */
+function renderBaExtTable() {
+  const tbody    = document.getElementById("baExtBody");
+  const alreadyCount = _baExtRows.filter(e => _baAlreadyAssigned.has(e.extinguisher_id)).length;
+
+  // Update the already-assigned note
+  document.getElementById("baAlreadyAssignedNote").textContent =
+    alreadyCount > 0 ? `(⚠ ${alreadyCount} already have a pending assignment)` : "";
+
+  tbody.innerHTML = _baExtRows.map((ext, idx) => {
+    const already  = _baAlreadyAssigned.has(ext.extinguisher_id);
+    const rowBg    = already ? "rgba(234,179,8,0.05)" : "";
+    const statusColor = ext.ext_status === "Active" ? "var(--green)"
+      : ext.ext_status === "Missing" ? "var(--red)" : "var(--muted)";
+
+    return `<tr style="background:${rowBg};cursor:pointer;" onclick="toggleBaRow(${idx})" id="baRow_${idx}">
+      <td style="padding:8px 10px;border-bottom:1px solid var(--border);">
+        <input type="checkbox" class="ba-ext-check" data-idx="${idx}"
+          style="width:15px;height:15px;cursor:pointer;accent-color:var(--orange);"
+          onclick="event.stopPropagation();onBaCheckChange()">
+      </td>
+      <td style="padding:8px 10px;border-bottom:1px solid var(--border);color:var(--orange);font-weight:600;">
+        EXT-${ext.extinguisher_id}
+      </td>
+      <td style="padding:8px 10px;border-bottom:1px solid var(--border);color:var(--text);">
+        ${ext.floor_number != null ? `Floor ${ext.floor_number}` : "—"}
+      </td>
+      <td style="padding:8px 10px;border-bottom:1px solid var(--border);color:var(--text);">
+        ${ext.room_number || "—"}
+      </td>
+      <td style="padding:8px 10px;border-bottom:1px solid var(--border);color:var(--muted2);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+        title="${ext.location_description || ''}">
+        ${ext.location_description || "—"}
+      </td>
+      <td style="padding:8px 10px;border-bottom:1px solid var(--border);color:var(--muted);">
+        ${ext.ext_type || "—"}
+      </td>
+      <td style="padding:8px 10px;border-bottom:1px solid var(--border);color:${statusColor};">
+        ${ext.ext_status || "—"}
+      </td>
+      <td style="padding:8px 10px;border-bottom:1px solid var(--border);font-size:0.65rem;">
+        ${already
+          ? `<span style="color:var(--orange);">⚠ Pending</span>`
+          : `<span style="color:var(--muted);">None</span>`}
+      </td>
+    </tr>`;
+  }).join("");
+
+  // Reset Select All checkbox and count
+  document.getElementById("baSelectAll").checked      = false;
+  document.getElementById("baSelectedCount").textContent = "0";
+  updateBaGenerateBtn();
+}
+
+/** Toggle a single row's checkbox when the row itself is clicked. */
+function toggleBaRow(idx) {
+  const cb = document.querySelector(`.ba-ext-check[data-idx="${idx}"]`);
+  if (cb) { cb.checked = !cb.checked; onBaCheckChange(); }
+}
+
+/** Select or deselect all checkboxes. */
+function toggleBaSelectAll(checked) {
+  document.querySelectorAll(".ba-ext-check").forEach(cb => cb.checked = checked);
+  onBaCheckChange();
+}
+
+/** Update selected count and Generate button state after any checkbox change. */
+function onBaCheckChange() {
+  const selected = document.querySelectorAll(".ba-ext-check:checked").length;
+  const total    = _baExtRows.length;
+
+  document.getElementById("baSelectedCount").textContent = selected;
+
+  // Sync the Select All checkbox state
+  const allCb = document.getElementById("baSelectAll");
+  allCb.checked       = selected === total && total > 0;
+  allCb.indeterminate = selected > 0 && selected < total;
+
+  updateBaGenerateBtn();
+}
+
+/** Enable/disable the Generate button based on selection count. */
+function updateBaGenerateBtn() {
+  const selected = document.querySelectorAll(".ba-ext-check:checked").length;
+  const btn      = document.getElementById("baGenerateBtn");
+  const enabled  = selected > 0;
+  btn.disabled          = !enabled;
+  btn.style.opacity     = enabled ? "1" : "0.5";
+  btn.style.cursor      = enabled ? "pointer" : "not-allowed";
+  btn.textContent       = enabled
+    ? `Generate ${selected} Assignment${selected !== 1 ? "s" : ""}`
+    : "Generate Assignments";
+}
+
+/**
+ * POST one assignment per selected extinguisher sequentially.
+ * Shows a progress bar. Refreshes the assignments table on completion.
+ */
+async function submitBulkAssignments() {
+  const errEl    = document.getElementById("baStep2Error");
+  errEl.textContent = "";
+
+  const inspId   = parseInt(document.getElementById("baInspector").value);
+  const dueDate  = document.getElementById("baDueDate").value;
+  const notes    = document.getElementById("baNotes").value.trim();
+
+  // Collect selected extinguisher IDs
+  const selectedIdxs = [...document.querySelectorAll(".ba-ext-check:checked")]
+    .map(cb => parseInt(cb.dataset.idx));
+  const selectedExts = selectedIdxs.map(i => _baExtRows[i]);
+
+  if (selectedExts.length === 0) { errEl.textContent = "No extinguishers selected."; return; }
+
+  // Show progress, disable button
+  const btn      = document.getElementById("baGenerateBtn");
+  const progWrap = document.getElementById("baProgress");
+  const bar      = document.getElementById("baProgressBar");
+  const label    = document.getElementById("baProgressLabel");
+
+  btn.disabled       = true;
+  btn.textContent    = "Generating…";
+  progWrap.classList.remove("hidden");
+
+  let successCount = 0;
+  const errors     = [];
+
+  for (let i = 0; i < selectedExts.length; i++) {
+    const ext = selectedExts[i];
+    label.textContent = `Generating ${i + 1} of ${selectedExts.length}…`;
+    bar.style.width   = `${Math.round((i / selectedExts.length) * 100)}%`;
+
+    try {
+      const res = await fetch("/api/assignments", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({
+          admin_id:       currentUser.user_id,
+          inspector_id:   inspId,
+          extinguisher_id: ext.extinguisher_id,
+          due_date:       dueDate || null,
+          notes:          notes,
+          org_id:         orgId(),
+        })
+      });
+      if (res.ok) { successCount++; }
+      else {
+        const data = await res.json();
+        errors.push(`EXT-${ext.extinguisher_id}: ${data.error || "Unknown error"}`);
+      }
+    } catch(e) {
+      errors.push(`EXT-${ext.extinguisher_id}: Network error`);
+    }
+  }
+
+  // Final state
+  bar.style.width      = "100%";
+  bar.style.background = errors.length === 0 ? "var(--green)" : "var(--orange)";
+  label.textContent    = errors.length === 0
+    ? `✓ ${successCount} assignment${successCount !== 1 ? "s" : ""} generated successfully!`
+    : `Generated ${successCount} of ${selectedExts.length}. ${errors.length} failed.`;
+
+  if (errors.length > 0) {
+    errEl.textContent  = errors.join(" · ");
+    btn.disabled       = false;
+    btn.textContent    = "Retry Failed";
+    return;
+  }
+
+  // Success — refresh assignments table then close
+  await loadAssignments();
+  loadStats();
+  setTimeout(() => closeBulkAssignModal(), 900);
+}
+
+// ── END BULK ASSIGNMENT GENERATOR ─────────────────────────────────────────────
+
 // ── Assignment modal helpers ───────────────────────────────────────────────────
 async function openAssignModal(editRow=null) {
   editingAssignId = editRow ? editRow.assignment_id : null;
@@ -3723,8 +4377,30 @@ async function openAssignModal(editRow=null) {
   document.getElementById("assignModal").classList.remove("hidden");
 }
 
-// ── Generate Assignment button ─────────────────────────────────────────────────
-document.getElementById("btnGenerateAssign").addEventListener("click", ()=>openAssignModal(null));
+// ── Generate Assignment dropdown wiring ──────────────────────────────────────
+function toggleGenAssignDropdown() {
+  document.getElementById("genAssignDropMenu").classList.toggle("hidden");
+}
+function closeGenAssignDropdown() {
+  document.getElementById("genAssignDropMenu").classList.add("hidden");
+}
+
+// Single Assignment — existing flow
+document.getElementById("btnSingleAssign").addEventListener("click", () => {
+  closeGenAssignDropdown();
+  openAssignModal(null);
+});
+
+// Bulk Assignment — new modal
+document.getElementById("btnBulkAssign").addEventListener("click", () => {
+  closeGenAssignDropdown();
+  openBulkAssignModal();
+});
+
+// Close dropdown when clicking outside
+document.addEventListener("click", e => {
+  if (!e.target.closest("#genAssignDropWrap")) closeGenAssignDropdown();
+});
 
 // ── Assignment status filter ──────────────────────────────────────────────────
 document.getElementById("assignStatusFilter").addEventListener("change", () => loadAssignments());
@@ -5828,7 +6504,550 @@ function generateNFPAForm(report) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-//  DUE DATE ALERTS — matches Lillian's DueDateAlert.h logic for web
+//  BULK NFPA 10 FORM GENERATOR
+//
+//  Two-step flow:
+//    Step 1 — Filter by scope (org/company/building/floor/inspector),
+//             date range, and inspection result
+//    Step 2 — Preview matched reports in a table with checkboxes;
+//             Select All + individual selection
+//    Output — All selected forms concatenated into one print-ready HTML
+//             document, one form per page (page-break-before: always).
+//             Uses hidden iframe so the app never freezes during print.
+//
+//  Each form is identical to the single generateNFPAForm() output —
+//  same 6 sections, same CSS, same NFPA 10 references.
+// ══════════════════════════════════════════════════════════════════════════════
+
+// Reports loaded in Step 1, used in Step 2
+let _bnReports = [];
+// Full extinguisher lookup cache for the bulk form (avoids repeated fetches)
+let _bnExtCache = {};
+
+/**
+ * Open the Bulk NFPA modal and initialize default filter values.
+ */
+async function openBulkNFPAModal() {
+  // Reset
+  _bnReports   = [];
+  _bnExtCache  = {};
+  document.getElementById("bnStep1Error").textContent  = "";
+  document.getElementById("bnStep2Error").textContent  = "";
+  document.getElementById("bnStep1").classList.remove("hidden");
+  document.getElementById("bnStep2").classList.add("hidden");
+  document.getElementById("bnProgress").classList.add("hidden");
+  document.getElementById("bnProgressBar").style.width      = "0%";
+  document.getElementById("bnProgressBar").style.background = "var(--teal)";
+  document.getElementById("bnScope").value  = "all";
+  document.getElementById("bnResult").value = "";
+
+  // Default date range — last 30 days
+  const today    = new Date();
+  const thirtyAgo = new Date(today);
+  thirtyAgo.setDate(thirtyAgo.getDate() - 30);
+  document.getElementById("bnDateTo").value   = today.toISOString().split("T")[0];
+  document.getElementById("bnDateFrom").value = thirtyAgo.toISOString().split("T")[0];
+
+  // Hide all sub-filters
+  ["bnCompanyRow","bnBuildingRow","bnFloorRow","bnInspectorRow"]
+    .forEach(id => document.getElementById(id).classList.add("hidden"));
+
+  // Pre-load companies and inspectors for sub-filter dropdowns
+  try {
+    const [companies, users] = await Promise.all([
+      fetch(`/api/companies?org_id=${orgId()}`).then(r => r.json()),
+      fetch(`/api/users?org_id=${orgId()}`).then(r => r.json()),
+    ]);
+
+    // Populate company dropdown
+    const compSel = document.getElementById("bnCompany");
+    compSel.innerHTML = "<option value=''>— Select company —</option>" +
+      companies.map(c => `<option value="${c.company_id}">${c.name}</option>`).join("");
+
+    // Populate inspector dropdown
+    const inspSel = document.getElementById("bnInspector");
+    const inspectors = users.filter(u => u.role.includes("Inspector"));
+    inspSel.innerHTML = "<option value=''>— Select inspector —</option>" +
+      inspectors.map(u =>
+        `<option value="${u.username}">${u.username} [${u.role.replace(/_/g," ")}]</option>`
+      ).join("");
+  } catch(e) {}
+
+  document.getElementById("bulkNFPAModal").classList.remove("hidden");
+}
+
+/** Show/hide scope-specific sub-filter fields. */
+function onBnScopeChange() {
+  const scope = document.getElementById("bnScope").value;
+  const show  = id => document.getElementById(id).classList.remove("hidden");
+  const hide  = id => document.getElementById(id).classList.add("hidden");
+
+  hide("bnCompanyRow"); hide("bnBuildingRow");
+  hide("bnFloorRow");   hide("bnInspectorRow");
+
+  if (scope === "company")   { show("bnCompanyRow"); }
+  if (scope === "building")  { show("bnCompanyRow"); show("bnBuildingRow"); }
+  if (scope === "floor")     { show("bnCompanyRow"); show("bnBuildingRow"); show("bnFloorRow"); }
+  if (scope === "inspector") { show("bnInspectorRow"); }
+}
+
+/** Load buildings when company changes in scope filter. */
+async function onBnCompanyChange() {
+  const cid  = document.getElementById("bnCompany").value;
+  const bSel = document.getElementById("bnBuilding");
+  const fSel = document.getElementById("bnFloor");
+  bSel.innerHTML = "<option value=''>— Select building —</option>";
+  fSel.innerHTML = "<option value=''>— Select floor —</option>";
+  if (!cid) return;
+  try {
+    const buildings = await fetch(`/api/buildings?company_id=${cid}`).then(r => r.json());
+    bSel.innerHTML = "<option value=''>— Select building —</option>" +
+      buildings.map(b => `<option value="${b.building_id}">${b.name}</option>`).join("");
+  } catch(e) {}
+}
+
+/** Load floor options when building changes in scope filter. */
+async function onBnBuildingChange() {
+  const bid  = document.getElementById("bnBuilding").value;
+  const fSel = document.getElementById("bnFloor");
+  fSel.innerHTML = "<option value=''>— Select floor —</option>";
+  if (!bid) return;
+  try {
+    const exts = await fetch(`/api/extinguishers?building_id=${bid}`).then(r => r.json());
+    const floors = [...new Set(
+      exts.map(e => e.floor_number).filter(f => f != null)
+    )].sort((a, b) => a - b);
+    fSel.innerHTML = "<option value=''>— Select floor —</option>" +
+      floors.map(f => `<option value="${f}">Floor ${f}</option>`).join("");
+  } catch(e) {}
+}
+
+/** Go back to Step 1. */
+function goBackToBnStep1() {
+  document.getElementById("bnStep2").classList.add("hidden");
+  document.getElementById("bnStep1").classList.remove("hidden");
+  document.getElementById("bnStep2Error").textContent = "";
+}
+
+/** Close and reset the bulk NFPA modal. */
+function closeBulkNFPAModal() {
+  document.getElementById("bulkNFPAModal").classList.add("hidden");
+  _bnReports  = [];
+  _bnExtCache = {};
+}
+
+/**
+ * Apply all filters to window._allReports and render the Step 2 selection table.
+ * Also fetches extinguisher data needed for the forms and caches it.
+ */
+async function loadBnReports() {
+  const errEl = document.getElementById("bnStep1Error");
+  errEl.textContent = "";
+
+  const scope      = document.getElementById("bnScope").value;
+  const dateFrom   = document.getElementById("bnDateFrom").value;
+  const dateTo     = document.getElementById("bnDateTo").value;
+  const result     = document.getElementById("bnResult").value;
+  const companyId  = document.getElementById("bnCompany").value;
+  const buildingId = document.getElementById("bnBuilding").value;
+  const floorNum   = document.getElementById("bnFloor").value;
+  const inspector  = document.getElementById("bnInspector").value;
+
+  // Validate scope-specific required fields
+  if (scope === "company"   && !companyId)  { errEl.textContent = "Please select a company.";   return; }
+  if (scope === "building"  && !buildingId) { errEl.textContent = "Please select a building.";  return; }
+  if (scope === "floor"     && !floorNum)   { errEl.textContent = "Please select a floor.";     return; }
+  if (scope === "inspector" && !inspector)  { errEl.textContent = "Please select an inspector."; return; }
+
+  // Start from all loaded reports
+  let reports = [...(window._allReports || [])];
+
+  // Date range filter
+  if (dateFrom) reports = reports.filter(r => r.inspection_date >= dateFrom);
+  if (dateTo)   reports = reports.filter(r => r.inspection_date <= dateTo);
+
+  // Result filter
+  if (result) reports = reports.filter(r => r.inspection_result === result);
+
+  // Scope filter
+  if (scope === "company") {
+    const compName = document.getElementById("bnCompany").selectedOptions[0]?.text || "";
+    reports = reports.filter(r => r.company_name === compName);
+  } else if (scope === "building") {
+    reports = reports.filter(r => String(r.building_id) === String(buildingId));
+    // Fallback — match by building name from the report row
+    if (reports.length === 0) {
+      const bldgName = document.getElementById("bnBuilding").selectedOptions[0]?.text || "";
+      reports = [...(window._allReports || [])].filter(r => {
+        if (dateFrom && r.inspection_date < dateFrom) return false;
+        if (dateTo   && r.inspection_date > dateTo)   return false;
+        if (result   && r.inspection_result !== result) return false;
+        return r.building_name === bldgName;
+      });
+    }
+  } else if (scope === "floor") {
+    reports = reports.filter(r =>
+      String(r.building_id) === String(buildingId) &&
+      String(r.floor_number) === String(floorNum)
+    );
+  } else if (scope === "inspector") {
+    reports = reports.filter(r => r.inspector === inspector);
+  }
+
+  if (reports.length === 0) {
+    errEl.textContent = "No reports match the selected criteria. Try adjusting the filters.";
+    return;
+  }
+
+  // Sort by date descending (most recent first)
+  reports.sort((a, b) =>
+    (b.inspection_date || "").localeCompare(a.inspection_date || "")
+  );
+
+  _bnReports = reports;
+
+  // Pre-fetch all extinguishers for this org and cache by ID
+  // This avoids N separate fetches when building the forms
+  try {
+    const exts = await fetch(`/api/extinguishers?org_id=${orgId()}`).then(r => r.json());
+    _bnExtCache = {};
+    exts.forEach(e => { _bnExtCache[e.extinguisher_id] = e; });
+  } catch(e) {}
+
+  renderBnReportTable();
+
+  document.getElementById("bnStep1").classList.add("hidden");
+  document.getElementById("bnStep2").classList.remove("hidden");
+}
+
+/**
+ * Render the report selection table in Step 2.
+ */
+function renderBnReportTable() {
+  const tbody = document.getElementById("bnReportBody");
+
+  tbody.innerHTML = _bnReports.map((r, idx) => {
+    const resultColor = r.inspection_result === "Pass"  ? "var(--green)"
+      : r.inspection_result === "Fail"                  ? "var(--red)"
+      : r.inspection_result === "Needs Service"         ? "#EAB308"
+      : "var(--muted)";
+
+    const locParts = [
+      r.building_name  ? r.building_name : null,
+      r.floor_number   ? `Fl.${r.floor_number}` : null,
+      r.room_number    ? `Rm.${r.room_number}` : null,
+    ].filter(Boolean).join(" · ") || r.location_description || "—";
+
+    return `<tr style="cursor:pointer;" onclick="toggleBnRow(${idx})" id="bnRow_${idx}">
+      <td style="padding:8px 10px;border-bottom:1px solid var(--border);">
+        <input type="checkbox" class="bn-report-check" data-idx="${idx}"
+          style="width:15px;height:15px;cursor:pointer;accent-color:var(--teal);"
+          onclick="event.stopPropagation();onBnCheckChange()">
+      </td>
+      <td style="padding:8px 10px;border-bottom:1px solid var(--border);color:var(--teal);font-weight:600;">
+        RPT-${r.report_id}
+      </td>
+      <td style="padding:8px 10px;border-bottom:1px solid var(--border);color:var(--text);">
+        ${r.inspection_date || "—"}
+      </td>
+      <td style="padding:8px 10px;border-bottom:1px solid var(--border);color:var(--orange);font-weight:600;">
+        EXT-${r.extinguisher_id}
+      </td>
+      <td style="padding:8px 10px;border-bottom:1px solid var(--border);color:var(--muted2);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+        title="${locParts}">
+        ${locParts}
+      </td>
+      <td style="padding:8px 10px;border-bottom:1px solid var(--border);color:var(--text);">
+        ${r.inspector || "—"}
+      </td>
+      <td style="padding:8px 10px;border-bottom:1px solid var(--border);color:${resultColor};font-weight:600;">
+        ${r.inspection_result || "—"}
+      </td>
+      <td style="padding:8px 10px;border-bottom:1px solid var(--border);color:var(--muted);font-size:0.65rem;">
+        ${r.service_type || "Routine Inspection"}
+      </td>
+    </tr>`;
+  }).join("");
+
+  // Reset Select All and count
+  document.getElementById("bnSelectAll").checked          = false;
+  document.getElementById("bnSelectedCount").textContent  = "0";
+  updateBnGenerateBtn();
+}
+
+/** Toggle a single row's checkbox when the row is clicked. */
+function toggleBnRow(idx) {
+  const cb = document.querySelector(`.bn-report-check[data-idx="${idx}"]`);
+  if (cb) { cb.checked = !cb.checked; onBnCheckChange(); }
+}
+
+/** Select or deselect all checkboxes. */
+function toggleBnSelectAll(checked) {
+  document.querySelectorAll(".bn-report-check").forEach(cb => cb.checked = checked);
+  onBnCheckChange();
+}
+
+/** Update count and Generate button after any checkbox change. */
+function onBnCheckChange() {
+  const selected = document.querySelectorAll(".bn-report-check:checked").length;
+  const total    = _bnReports.length;
+
+  document.getElementById("bnSelectedCount").textContent = selected;
+
+  const allCb = document.getElementById("bnSelectAll");
+  allCb.checked       = selected === total && total > 0;
+  allCb.indeterminate = selected > 0 && selected < total;
+
+  updateBnGenerateBtn();
+}
+
+/** Enable/disable the Generate button. */
+function updateBnGenerateBtn() {
+  const selected = document.querySelectorAll(".bn-report-check:checked").length;
+  const btn      = document.getElementById("bnGenerateBtn");
+  const enabled  = selected > 0;
+  btn.disabled      = !enabled;
+  btn.style.opacity = enabled ? "1" : "0.5";
+  btn.style.cursor  = enabled ? "pointer" : "not-allowed";
+  btn.textContent   = enabled
+    ? `Generate ${selected} NFPA Form${selected !== 1 ? "s" : ""}`
+    : "Generate NFPA Forms";
+}
+
+/**
+ * Build all selected NFPA forms into a single printable HTML document
+ * and deliver it via hidden iframe (desktop) or download (mobile).
+ *
+ * Each form is identical to the single generateNFPAForm() output.
+ * Forms are separated by page-break-before:always so each prints on its own page.
+ */
+async function generateBulkNFPA() {
+  const errEl   = document.getElementById("bnStep2Error");
+  errEl.textContent = "";
+
+  const selectedIdxs = [...document.querySelectorAll(".bn-report-check:checked")]
+    .map(cb => parseInt(cb.dataset.idx));
+  const selectedReports = selectedIdxs.map(i => _bnReports[i]);
+
+  if (selectedReports.length === 0) { errEl.textContent = "No reports selected."; return; }
+
+  // Show progress
+  const btn      = document.getElementById("bnGenerateBtn");
+  const progWrap = document.getElementById("bnProgress");
+  const bar      = document.getElementById("bnProgressBar");
+  const label    = document.getElementById("bnProgressLabel");
+
+  btn.disabled      = true;
+  btn.textContent   = "Building forms…";
+  progWrap.classList.remove("hidden");
+
+  const orgName  = currentUser?.org_name || "Organization";
+  const now      = new Date().toLocaleString();
+  const checkIcon = val => val ? "☑" : "☐";
+
+  // Shared CSS — identical to single form, defined once for the whole document
+  const sharedCSS = `
+    @media print { @page { margin: 0.5in; size: letter; } body { margin: 0; } }
+    body { font-family: Arial, sans-serif; color: #1a1a1a; background: #fff; padding: 1.5rem; max-width: 8.5in; margin: 0 auto; }
+    .form-wrap { page-break-before: always; padding-top: 0.5rem; }
+    .form-wrap:first-child { page-break-before: auto; }
+    .form-header { text-align: center; border-bottom: 3px solid #1a1a1a; padding-bottom: 0.8rem; margin-bottom: 1rem; }
+    .form-header h1 { font-size: 1.3rem; margin: 0; letter-spacing: 0.05em; }
+    .form-header h2 { font-size: 1rem; margin: 0.2rem 0 0; font-weight: 400; }
+    .form-header .subtitle { font-size: 0.75rem; color: #666; margin-top: 0.3rem; }
+    .section { margin-bottom: 1rem; }
+    .section-title { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; background: #1a1a1a; color: #fff; padding: 4px 10px; margin-bottom: 0; }
+    .field-grid { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid #999; border-top: none; }
+    .field-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; border: 1px solid #999; border-top: none; }
+    .field { padding: 6px 10px; border-bottom: 1px solid #ddd; border-right: 1px solid #ddd; }
+    .field:last-child { border-right: none; }
+    .field-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.08em; color: #666; margin-bottom: 2px; }
+    .field-value { font-size: 0.85rem; font-weight: 600; min-height: 1.1em; }
+    .field-full { grid-column: 1 / -1; }
+    .checklist { border: 1px solid #999; border-top: none; }
+    .check-grid { display: grid; grid-template-columns: 1fr 1fr; }
+    .check-item { display: flex; align-items: center; gap: 0.4rem; padding: 5px 10px; border-bottom: 1px solid #eee; border-right: 1px solid #eee; font-size: 0.82rem; }
+    .check-item:nth-child(even) { border-right: none; }
+    .check-icon { font-size: 1.1rem; }
+    .check-pass { color: #15803D; }
+    .check-fail { color: #C1121F; }
+    .result-box { border: 1px solid #999; border-top: none; padding: 10px; display: flex; align-items: center; gap: 1rem; }
+    .result-badge { padding: 4px 16px; border-radius: 4px; font-weight: 700; font-size: 0.9rem; }
+    .result-pass { background: #dcfce7; color: #15803D; border: 1px solid #15803D; }
+    .result-fail { background: #fecaca; color: #C1121F; border: 1px solid #C1121F; }
+    .result-service { background: #fef9c3; color: #a16207; border: 1px solid #a16207; }
+    .sig-grid { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid #999; border-top: none; }
+    .sig-field { padding: 10px; border-right: 1px solid #ddd; }
+    .sig-field:last-child { border-right: none; }
+    .sig-line { border-bottom: 1px solid #1a1a1a; height: 1.5rem; margin-top: 0.5rem; }
+    .footer { margin-top: 1.5rem; text-align: center; font-size: 0.65rem; color: #999; border-top: 1px solid #ddd; padding-top: 0.5rem; }
+    .nfpa-ref { font-size: 0.6rem; color: #999; font-style: italic; margin-top: 0.3rem; }
+  `;
+
+  // Build one HTML form per selected report
+  let formBodies = "";
+  for (let i = 0; i < selectedReports.length; i++) {
+    const r   = selectedReports[i];
+    const ext = _bnExtCache[r.extinguisher_id] || {};
+
+    label.textContent = `Building form ${i + 1} of ${selectedReports.length}…`;
+    bar.style.width   = `${Math.round(((i) / selectedReports.length) * 100)}%`;
+
+    // Yield to the browser so the progress bar actually updates visually
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    const resultClass = r.inspection_result === "Pass"  ? "result-pass"
+      : r.inspection_result === "Fail"                  ? "result-fail"
+      : "result-service";
+
+    formBodies += `
+    <div class="form-wrap">
+      <div class="form-header">
+        <h1>🔥 FIRE EXTINGUISHER INSPECTION REPORT</h1>
+        <h2>${orgName}</h2>
+        <div class="subtitle">NFPA 10 — Standard for Portable Fire Extinguishers · Inspection Record</div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Section 1 — Property Information</div>
+        <div class="field-grid">
+          <div class="field"><div class="field-label">Organization</div><div class="field-value">${orgName}</div></div>
+          <div class="field"><div class="field-label">Inspection Date</div><div class="field-value">${r.inspection_date || "—"}</div></div>
+          <div class="field"><div class="field-label">Company / Facility</div><div class="field-value">${r.company_name || ext.company_name || "—"}</div></div>
+          <div class="field"><div class="field-label">Building</div><div class="field-value">${r.building_name || ext.building_name || "—"}</div></div>
+          <div class="field"><div class="field-label">Floor</div><div class="field-value">${r.floor_number != null ? "Floor "+r.floor_number : ext.floor_number ? "Floor "+ext.floor_number : "—"}</div></div>
+          <div class="field"><div class="field-label">Room</div><div class="field-value">${r.room_number || ext.room_number || "—"}</div></div>
+          <div class="field field-full"><div class="field-label">Location Description</div><div class="field-value">${r.location_description || ext.location_description || "—"}</div></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Section 2 — Extinguisher Identification</div>
+        <div class="field-grid-3">
+          <div class="field"><div class="field-label">Extinguisher ID</div><div class="field-value">#${r.extinguisher_id}</div></div>
+          <div class="field"><div class="field-label">Type / Class</div><div class="field-value">${ext.ext_type || "—"}</div></div>
+          <div class="field"><div class="field-label">Size (lbs)</div><div class="field-value">${ext.ext_size_lbs || "—"}</div></div>
+          <div class="field"><div class="field-label">Manufacturer</div><div class="field-value">${ext.manufacturer || "—"}</div></div>
+          <div class="field"><div class="field-label">Model</div><div class="field-value">${ext.model || "—"}</div></div>
+          <div class="field"><div class="field-label">Serial Number</div><div class="field-value">${ext.serial_number || "—"}</div></div>
+          <div class="field"><div class="field-label">DOT Cert No.</div><div class="field-value">${ext.dot_cert_no || "—"}</div></div>
+          <div class="field"><div class="field-label">Manufacture Date</div><div class="field-value">${ext.manufacture_date || "—"}</div></div>
+          <div class="field"><div class="field-label">Status</div><div class="field-value">${ext.ext_status || "Active"}</div></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Section 3 — Visual Inspection Checklist (NFPA 10 §7.2.2)</div>
+        <div class="checklist"><div class="check-grid">
+          <div class="check-item"><span class="check-icon ${r.chk_mounted ? "check-pass":"check-fail"}">${checkIcon(r.chk_mounted)}</span> Mounted in designated location</div>
+          <div class="check-item"><span class="check-icon ${r.chk_access  ? "check-pass":"check-fail"}">${checkIcon(r.chk_access)}</span> Access and visibility unobstructed</div>
+          <div class="check-item"><span class="check-icon ${r.chk_pressure? "check-pass":"check-fail"}">${checkIcon(r.chk_pressure)}</span> Pressure gauge in operable range</div>
+          <div class="check-item"><span class="check-icon ${r.chk_seal    ? "check-pass":"check-fail"}">${checkIcon(r.chk_seal)}</span> Safety pin and tamper seal intact</div>
+          <div class="check-item"><span class="check-icon ${r.chk_damage  ? "check-pass":"check-fail"}">${checkIcon(r.chk_damage)}</span> No physical damage or corrosion</div>
+          <div class="check-item"><span class="check-icon ${r.chk_nozzle  ? "check-pass":"check-fail"}">${checkIcon(r.chk_nozzle)}</span> Nozzle and hose not blocked or damaged</div>
+          <div class="check-item"><span class="check-icon ${r.chk_label   ? "check-pass":"check-fail"}">${checkIcon(r.chk_label)}</span> Operating instructions label legible</div>
+          <div class="check-item"><span class="check-icon ${r.chk_weight  ? "check-pass":"check-fail"}">${checkIcon(r.chk_weight)}</span> Weight and heft feel correct</div>
+        </div></div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Section 4 — Service History</div>
+        <div class="field-grid">
+          <div class="field"><div class="field-label">Last Annual Maintenance (NFPA 10 §7.3)</div><div class="field-value">${ext.last_annual_date || "Not recorded"}</div></div>
+          <div class="field"><div class="field-label">Last 6-Year Service (NFPA 10 §7.4)</div><div class="field-value">${ext.last_6year_date || "Not recorded"}</div></div>
+          <div class="field"><div class="field-label">Last Hydrostatic Test (NFPA 10 Ch. 8)</div><div class="field-value">${ext.last_hydro_date || "Not recorded"}</div></div>
+          <div class="field"><div class="field-label">Last Routine Inspection</div><div class="field-value">${ext.last_inspection_date || "Not recorded"}</div></div>
+          <div class="field"><div class="field-label">Inspection Interval</div><div class="field-value">Every ${ext.inspection_interval_days || 30} days</div></div>
+          <div class="field"><div class="field-label">Next Due Date</div><div class="field-value">${ext.next_due_date || "—"}</div></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Section 5 — Inspection Result</div>
+        <div class="result-box">
+          <span class="result-badge ${resultClass}">${r.inspection_result || "Not specified"}</span>
+          <span style="font-size:0.82rem;">Service Type: <strong>${r.service_type || "Routine Inspection"}</strong></span>
+        </div>
+        <div class="field-grid" style="border-top:none;">
+          <div class="field field-full"><div class="field-label">Inspector Notes / Observations</div>
+          <div class="field-value" style="min-height:2.5em;">${r.notes || "No notes recorded."}</div></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Section 6 — Inspector Certification</div>
+        <div class="sig-grid">
+          <div class="sig-field"><div class="field-label">Inspector Name</div><div class="field-value">${r.inspector || "—"}</div></div>
+          <div class="sig-field"><div class="field-label">Report ID</div><div class="field-value">RPT-${r.report_id}</div></div>
+          <div class="sig-field"><div class="field-label">Inspector Signature</div><div class="sig-line"></div></div>
+          <div class="sig-field"><div class="field-label">Date Signed</div><div class="sig-line"></div></div>
+        </div>
+      </div>
+
+      <div class="nfpa-ref">
+        This inspection form is structured in accordance with NFPA 10 — Standard for Portable Fire Extinguishers (2022 Edition).
+        Checklist items reference NFPA 10 Section 7.2.2. Service history references Sections 7.3, 7.4, and Chapter 8.
+      </div>
+      <div class="footer">
+        FireWatch — NFPA 10 Compliance Platform · ${orgName} · Report #${r.report_id} · Generated ${now}
+      </div>
+    </div>`;
+  }
+
+  // Final progress state
+  bar.style.width     = "100%";
+  label.textContent   = `✓ ${selectedReports.length} form${selectedReports.length !== 1 ? "s" : ""} ready — opening print dialog…`;
+
+  // Complete HTML document — CSS defined once, all forms inside body
+  const html = `<!DOCTYPE html><html lang="en"><head>
+    <meta charset="UTF-8">
+    <title>NFPA 10 Inspection Forms — ${orgName} (${selectedReports.length} forms)</title>
+    <style>${sharedCSS}</style>
+  </head><body>${formBodies}</body></html>`;
+
+  // Deliver: hidden iframe on desktop, download on mobile
+  const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) || window.innerWidth < 768;
+
+  if (isMobile) {
+    const blob = new Blob([html], { type: "text/html" });
+    const a    = document.createElement("a");
+    a.href     = URL.createObjectURL(blob);
+    a.download = `NFPA10_Bulk_Forms_${orgName.replace(/\s+/g,"_")}_${selectedReports.length}forms.html`;
+    a.click();
+    setTimeout(() => closeBulkNFPAModal(), 500);
+    return;
+  }
+
+  // Remove any leftover print iframe
+  const old = document.getElementById("bulkNFPAPrintFrame");
+  if (old) old.remove();
+
+  const iframe = document.createElement("iframe");
+  iframe.id    = "bulkNFPAPrintFrame";
+  iframe.style.cssText = "position:fixed;width:0;height:0;border:none;left:-9999px;top:-9999px;";
+  document.body.appendChild(iframe);
+
+  iframe.onload = () => {
+    try {
+      iframe.contentWindow.focus();
+      iframe.contentWindow.print();
+    } catch(e) {
+      const win = window.open("", "_blank");
+      if (win) { win.document.write(html); win.document.close(); }
+    }
+    setTimeout(() => closeBulkNFPAModal(), 1000);
+  };
+
+  iframe.contentDocument.open();
+  iframe.contentDocument.write(html);
+  iframe.contentDocument.close();
+}
+
+// Wire the button
+document.getElementById("btnBulkNFPA").addEventListener("click", () => openBulkNFPAModal());
+
+// ── END BULK NFPA 10 FORM GENERATOR ──────────────────────────────────────────
+
 // ══════════════════════════════════════════════════════════════════════════════
 
 // Check all assignments for due date urgency and show an alert banner.
