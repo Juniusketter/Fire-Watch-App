@@ -5,9 +5,8 @@
 #include <string>
 using namespace std;
 
-// Base User class - created by Lilly Bowen, March 3, 2026
+// Base User class - created by Lilly Bowen
 // Extended by Admin, Investigator, ThirdPartyAdmin, ThirdPartyInvestigator
-
 class User {
     private:
         string username;
@@ -25,26 +24,23 @@ class User {
         virtual ~User() {}
 
         //getters and setters
-        void setUsername(string u) {
-            username = u;
-        }
-        string getUsername() {
-            return username;
-        }
-        void setPassword(string p) {
-            password = p;
-        }
-        string getPassword() {
-            return password;
-        }
-        void setCompanyName(string c) {
-            companyName = c;
-        }
-        string getCompanyName() {
-            return companyName;
-        }
+        void setUsername(string u) {username = u;}
+        string getUsername() {return username;}
+        void setPassword(string p) {password = p;}
+        string getPassword() {return password;}
+        void setCompanyName(string c) {companyName = c;}
+        string getCompanyName() {return companyName;}
 
-        // Login - returns true on success, false on failure (avoids infinite recursion)
+       /* 
+            login()
+              checks the user's assigned username and password against the input provided 
+        
+            Parameters:
+              u - username input by user
+              p - password input by user
+        
+            Returns: true if usernames and passwords match, false otherwise.
+        */ 
         bool login(string u, string p) {
             if (u == username && p == password) {
                 cout << "Login successful! Welcome, " << username << "." << endl;
@@ -55,6 +51,7 @@ class User {
                 return false;
             }
         }
+
         //logout function
         void logout() {
             cout << "Logout successful! Goodbye, " << username << "." << endl;
