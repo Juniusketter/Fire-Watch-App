@@ -185,6 +185,9 @@
     .btn-add{background:var(--green);color:white;border-color:var(--green);}
     .btn-edit{background:var(--blue);color:white;border-color:var(--blue);}
     .btn-delete{background:var(--red);color:white;border-color:var(--red);}
+    /* QR Sheet scope dropdown options */
+    .qr-sheet-option{display:flex;align-items:center;gap:8px;width:100%;padding:10px 14px;border:none;background:none;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:0.75rem;cursor:pointer;text-align:left;transition:background 0.12s;}
+    .qr-sheet-option:hover{background:var(--bg3);}
 
     /* ── Report filter bar ───────────────────────────────────── */
     .filter-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;width:100%;margin-top:6px;padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;}
@@ -363,6 +366,10 @@
       .stat-label{font-size:0.65rem;}
     }
   </style>
+  <!-- QR Code generation (client-side, no server needed) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- QR Code scanning via camera — ZXing library (unpkg UMD bundle) -->
+  <script src="https://unpkg.com/@zxing/library@0.18.6/umd/index.min.js"></script>
 </head>
 <body>
 
@@ -794,6 +801,10 @@
           <span class="si-icon">🔔</span> Notifications
           <span class="notif-badge hidden" id="sidebarNotifBadge">0</span>
         </button>
+        <!-- QR Scanner — available to all roles; opens device camera to scan an extinguisher QR code -->
+        <button class="sidebar-item" onclick="openQRScanner()">
+          <span class="si-icon">📷</span> Scan QR Code
+        </button>
         <button class="sidebar-item" data-view="profile" onclick="showView('profile')">
           <span class="si-icon">👤</span> My Profile
         </button>
@@ -875,16 +886,56 @@
           <button class="btn-crud btn-add" id="btnAddCompany">＋ Add Company</button>
           <button class="btn-crud btn-edit" id="btnEditCompany">✎ Edit</button>
           <button class="btn-crud btn-delete" id="btnDeleteCompany">✕ Delete</button>
+          <!-- QR Sheet: at company level -->
+          <div style="position:relative;display:inline-block;" id="qrSheetDropdownCompany">
+            <button class="btn-crud btn-edit" id="btnQRSheetCompany"
+              style="background:var(--bg3);border-color:var(--teal);color:var(--teal);"
+              onclick="toggleQRDropdown('qrDropMenuCompany')">
+              🔲 Print QR Labels ▾
+            </button>
+            <div id="qrDropMenuCompany" class="hidden" style="position:absolute;top:100%;left:0;margin-top:4px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;min-width:200px;z-index:200;box-shadow:0 8px 24px rgba(0,0,0,0.5);overflow:hidden;">
+              <button class="qr-sheet-option" onclick="printQRSheet('company');toggleQRDropdown('qrDropMenuCompany')">🏢 This Company</button>
+              <button class="qr-sheet-option" onclick="printQRSheet('org');toggleQRDropdown('qrDropMenuCompany')" style="border-top:1px solid var(--border);">🌐 Entire Organization</button>
+            </div>
+          </div>
         </div>
         <div id="drillToolbarBuilding" class="hidden">
           <button class="btn-crud btn-add" id="btnAddBuilding">＋ Add Building</button>
           <button class="btn-crud btn-edit" id="btnEditBuilding">✎ Edit</button>
           <button class="btn-crud btn-delete" id="btnDeleteBuilding">✕ Delete</button>
+          <!-- QR Sheet: at building level -->
+          <div style="position:relative;display:inline-block;" id="qrSheetDropdownBuilding">
+            <button class="btn-crud btn-edit" id="btnQRSheetBuilding"
+              style="background:var(--bg3);border-color:var(--teal);color:var(--teal);"
+              onclick="toggleQRDropdown('qrDropMenuBuilding')">
+              🔲 Print QR Labels ▾
+            </button>
+            <div id="qrDropMenuBuilding" class="hidden" style="position:absolute;top:100%;left:0;margin-top:4px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;min-width:200px;z-index:200;box-shadow:0 8px 24px rgba(0,0,0,0.5);overflow:hidden;">
+              <button class="qr-sheet-option" onclick="printQRSheet('company');toggleQRDropdown('qrDropMenuBuilding')">🏢 This Company</button>
+              <button class="qr-sheet-option" onclick="printQRSheet('org');toggleQRDropdown('qrDropMenuBuilding')" style="border-top:1px solid var(--border);">🌐 Entire Organization</button>
+            </div>
+          </div>
         </div>
         <div id="drillToolbarExt" class="hidden">
           <button class="btn-crud btn-add" id="btnAdd">＋ Add Extinguisher</button>
+          <button class="btn-crud btn-add" id="btnBulkAdd" onclick="openBulkExtModal()" style="background:var(--teal);border-color:var(--teal);">＋ Bulk Add</button>
+          <button class="btn-crud btn-add" id="btnCsvImport" onclick="openCsvImportModal()" style="background:var(--purple);border-color:var(--purple);">📂 Import CSV</button>
           <button class="btn-crud btn-edit" id="btnEdit">✎ Edit</button>
           <button class="btn-crud btn-delete" id="btnDelete">✕ Delete</button>
+          <!-- QR Sheet: at extinguisher level -->
+          <div style="position:relative;display:inline-block;" id="qrSheetDropdownExt">
+            <button class="btn-crud btn-edit" id="btnQRSheetExt"
+              style="background:var(--bg3);border-color:var(--teal);color:var(--teal);"
+              onclick="toggleQRDropdown('qrDropMenuExt')">
+              🔲 Print QR Labels ▾
+            </button>
+            <div id="qrDropMenuExt" class="hidden" style="position:absolute;top:100%;left:0;margin-top:4px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;min-width:200px;z-index:200;box-shadow:0 8px 24px rgba(0,0,0,0.5);overflow:hidden;">
+              <button class="qr-sheet-option" onclick="printQRSheet('floor');toggleQRDropdown('qrDropMenuExt')">🏢 This Floor</button>
+              <button class="qr-sheet-option" onclick="printQRSheet('building');toggleQRDropdown('qrDropMenuExt')" style="border-top:1px solid var(--border);">🏗 This Building</button>
+              <button class="qr-sheet-option" onclick="printQRSheet('company');toggleQRDropdown('qrDropMenuExt')" style="border-top:1px solid var(--border);">🏢 This Company</button>
+              <button class="qr-sheet-option" onclick="printQRSheet('org');toggleQRDropdown('qrDropMenuExt')" style="border-top:1px solid var(--border);">🌐 Entire Organization</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1290,6 +1341,213 @@
   </div>
 </div>
 
+<!-- CSV IMPORT MODAL -->
+<div class="modal-overlay hidden" id="csvImportModal" onclick="if(event.target===this)closeCsvImportModal()">
+  <div class="modal-box" style="max-width:760px;width:96%;">
+    <h3>Import Extinguishers from CSV</h3>
+
+    <!-- Step 1: Setup -->
+    <div id="csvStep1">
+      <!-- Shared: Company + Building -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 1rem;">
+        <div class="form-row">
+          <label>Company *</label>
+          <select id="csvCompany" onchange="csvLoadBuildings()">
+            <option value="">— Select company —</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Building *</label>
+          <select id="csvBuilding">
+            <option value="">— Select building —</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Template download + upload zone -->
+      <div style="border-top:1px solid var(--border);margin:0.5rem 0 0.75rem;padding-top:0.75rem;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.6rem;">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:0.7rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);">CSV File</span>
+          <button onclick="downloadCsvTemplate()"
+            style="background:none;border:1px solid var(--muted);border-radius:3px;color:var(--muted2);font-family:'IBM Plex Mono',monospace;font-size:0.68rem;padding:3px 10px;cursor:pointer;letter-spacing:0.05em;">
+            ⬇ Download Template
+          </button>
+        </div>
+
+        <!-- Drop zone -->
+        <div id="csvDropZone"
+          style="border:2px dashed var(--border);border-radius:6px;padding:2rem 1rem;text-align:center;cursor:pointer;transition:border-color 0.15s,background 0.15s;"
+          onclick="document.getElementById('csvFileInput').click()"
+          ondragover="event.preventDefault();this.style.borderColor='var(--purple)';this.style.background='rgba(124,58,237,0.06)'"
+          ondragleave="this.style.borderColor='var(--border)';this.style.background=''"
+          ondrop="event.preventDefault();this.style.borderColor='var(--border)';this.style.background='';handleCsvDrop(event)">
+          <div style="font-size:1.8rem;margin-bottom:0.4rem;">📄</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:0.78rem;color:var(--muted2);">
+            Drop your CSV here or <span style="color:var(--purple);text-decoration:underline;">click to browse</span>
+          </div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:0.65rem;color:var(--muted);margin-top:0.3rem;" id="csvFileName">
+            No file selected
+          </div>
+        </div>
+        <input type="file" id="csvFileInput" accept=".csv,text/csv" style="display:none" onchange="handleCsvFile(this.files[0])">
+      </div>
+
+      <div class="modal-error" id="csvStep1Error"></div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeCsvImportModal()">Cancel</button>
+        <button class="btn-save" id="csvPreviewBtn" onclick="showCsvPreview()" disabled
+          style="opacity:0.5;cursor:not-allowed;">Preview →</button>
+      </div>
+    </div>
+
+    <!-- Step 2: Preview table -->
+    <div id="csvStep2" class="hidden">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.6rem;">
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:0.7rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);">
+          Preview — <span id="csvValidCount" style="color:var(--green);">0 valid</span>
+          <span id="csvErrorCount" style="color:var(--red);margin-left:0.5rem;"></span>
+        </span>
+        <button onclick="goBackToCsvStep1()"
+          style="background:none;border:none;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:0.72rem;cursor:pointer;">
+          ← Back
+        </button>
+      </div>
+
+      <!-- Scrollable preview table -->
+      <div style="overflow-x:auto;max-height:320px;overflow-y:auto;border:1px solid var(--border);border-radius:4px;margin-bottom:0.75rem;">
+        <table id="csvPreviewTable" style="width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:0.68rem;">
+          <thead>
+            <tr style="background:var(--bg3);position:sticky;top:0;">
+              <th style="padding:6px 8px;text-align:left;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap;">#</th>
+              <th style="padding:6px 8px;text-align:left;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap;">Floor</th>
+              <th style="padding:6px 8px;text-align:left;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap;">Room</th>
+              <th style="padding:6px 8px;text-align:left;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap;">Location</th>
+              <th style="padding:6px 8px;text-align:left;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap;">Serial</th>
+              <th style="padding:6px 8px;text-align:left;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap;">Size</th>
+              <th style="padding:6px 8px;text-align:left;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap;">Type</th>
+              <th style="padding:6px 8px;text-align:left;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap;">Due Date</th>
+              <th style="padding:6px 8px;text-align:left;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap;">Interval</th>
+              <th style="padding:6px 8px;text-align:left;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap;">Status</th>
+              <th style="padding:6px 8px;text-align:left;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap;">Issues</th>
+            </tr>
+          </thead>
+          <tbody id="csvPreviewBody"></tbody>
+        </table>
+      </div>
+
+      <!-- Progress bar (shown during import) -->
+      <div id="csvProgress" class="hidden" style="margin-bottom:0.75rem;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:0.72rem;color:var(--muted);margin-bottom:4px;" id="csvProgressLabel">Importing 0 of 0…</div>
+        <div style="background:var(--bg3);border-radius:4px;height:6px;overflow:hidden;">
+          <div id="csvProgressBar" style="height:100%;background:var(--purple);width:0%;transition:width 0.15s ease;"></div>
+        </div>
+      </div>
+
+      <div class="modal-error" id="csvStep2Error"></div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeCsvImportModal()">Cancel</button>
+        <button class="btn-save" id="csvImportBtn" onclick="submitCsvImport()"
+          style="background:var(--purple);border-color:var(--purple);">
+          📂 Import All Valid Rows
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- BULK ADD EXTINGUISHERS MODAL -->
+<!-- Shared fields (Company, Building, Floor, Interval, Type, Status) apply to all rows.
+     Each row represents one extinguisher with its own Room, Location, Serial, Due Date. -->
+<div class="modal-overlay hidden" id="bulkExtModal" onclick="if(event.target===this)closeBulkExtModal()">
+  <div class="modal-box" style="max-width:680px;width:96%;">
+    <h3>Bulk Add Extinguishers</h3>
+
+    <!-- Shared fields — set once, applied to every row -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 1rem;">
+      <div class="form-row">
+        <label>Company *</label>
+        <select id="bfCompany" onchange="bulkLoadBuildings()">
+          <option value="">— Select company —</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Building *</label>
+        <select id="bfBuilding">
+          <option value="">— Select building —</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Floor</label>
+        <input type="number" id="bfFloor" value="1" min="0">
+      </div>
+      <div class="form-row">
+        <label>Inspection Interval (days)</label>
+        <input type="number" id="bfInterval" value="30" min="1">
+      </div>
+      <div class="form-row">
+        <label>Type / Class</label>
+        <select id="bfExtType">
+          <option value="">— Select —</option>
+          <option value="A">Class A — Ordinary Combustibles</option>
+          <option value="B">Class B — Flammable Liquids</option>
+          <option value="C">Class C — Electrical</option>
+          <option value="ABC">ABC — Multi-Purpose</option>
+          <option value="BC">BC — Gas/Electrical</option>
+          <option value="D">Class D — Combustible Metals</option>
+          <option value="K">Class K — Kitchen/Cooking</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Status</label>
+        <select id="bfExtStatus">
+          <option value="Active">Active</option>
+          <option value="Out of Service">Out of Service</option>
+          <option value="Retired">Retired</option>
+          <option value="Missing">Missing</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Divider -->
+    <div style="border-top:1px solid var(--border);margin:0.25rem 0 0.75rem;padding-top:0.6rem;display:flex;align-items:center;justify-content:space-between;">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:0.7rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);">
+        Extinguisher Rows <span id="bulkRowCount" style="color:var(--orange);">3</span>
+      </span>
+      <button onclick="addBulkRow()" style="background:none;border:1px solid var(--teal);border-radius:3px;color:var(--teal);font-family:'IBM Plex Mono',monospace;font-size:0.7rem;font-weight:700;padding:4px 10px;cursor:pointer;letter-spacing:0.05em;">
+        ＋ Add Row
+      </button>
+    </div>
+
+    <!-- Column headers -->
+    <div style="display:grid;grid-template-columns:80px 1fr 1fr 1fr 120px 28px;gap:6px;margin-bottom:4px;padding:0 2px;">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);">Room</span>
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);">Location Description</span>
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);">Serial Number</span>
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);">Size (lbs)</span>
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);">Due Date</span>
+      <span></span>
+    </div>
+
+    <!-- Scrollable row list -->
+    <div id="bulkExtRows" style="max-height:280px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding-right:2px;"></div>
+
+    <!-- Progress bar (hidden until submit) -->
+    <div id="bulkProgress" class="hidden" style="margin-top:0.75rem;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:0.72rem;color:var(--muted);margin-bottom:4px;" id="bulkProgressLabel">Adding 0 of 0…</div>
+      <div style="background:var(--bg3);border-radius:4px;height:6px;overflow:hidden;">
+        <div id="bulkProgressBar" style="height:100%;background:var(--orange);width:0%;transition:width 0.2s ease;"></div>
+      </div>
+    </div>
+
+    <div class="modal-error" id="bulkExtError"></div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeBulkExtModal()">Cancel</button>
+      <button class="btn-save" id="bulkSaveBtn" onclick="submitBulkExtinguishers()">Add All</button>
+    </div>
+  </div>
+</div>
+
 <!-- ADD / EDIT COMPANY MODAL -->
 <div class="modal-overlay hidden" id="companyModal">
   <div class="modal-box">
@@ -1336,6 +1594,98 @@
     </div>
     <div class="ext-detail-grid" id="detailExtGrid"></div>
     <div class="ext-detail-footer" id="detailExtFooter"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     QR CODE DISPLAY MODAL
+     Shows generated QR code for a specific extinguisher.
+     All roles can view, download, and print from here.
+     ══════════════════════════════════════════════════════ -->
+<div class="modal-overlay hidden" id="qrDisplayModal" onclick="if(event.target===this)closeQRModal()">
+  <div class="modal-box" style="max-width:420px;width:92%;text-align:center;">
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+      <div style="text-align:left;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:0.62rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted);margin-bottom:3px;">QR Code</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:1rem;color:var(--orange);" id="qrDisplayExtId">EXT-—</div>
+        <div style="font-family:'IBM Plex Sans',sans-serif;font-size:0.82rem;color:var(--muted2);margin-top:2px;" id="qrDisplayExtTitle">—</div>
+      </div>
+      <button onclick="closeQRModal()" style="background:none;border:none;color:var(--muted2);font-size:1.3rem;cursor:pointer;padding:4px 8px;line-height:1;">✕</button>
+    </div>
+
+    <!-- QR Code canvas area -->
+    <div style="display:flex;justify-content:center;margin-bottom:1rem;">
+      <div id="qrCodeCanvas"
+        style="background:#fff;padding:16px;border-radius:10px;display:inline-block;box-shadow:0 4px 20px rgba(0,0,0,0.4);">
+        <!-- qrcode.js renders here -->
+      </div>
+    </div>
+
+    <!-- Encoded URL display -->
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:0.62rem;color:var(--muted);margin-bottom:0.3rem;word-break:break-all;padding:0 0.5rem;" id="qrDisplayUrl">—</div>
+    <div style="font-size:0.7rem;color:var(--muted);margin-bottom:1.2rem;">Scan to open this extinguisher's detail page instantly</div>
+
+    <!-- Action buttons -->
+    <div style="display:flex;gap:0.5rem;justify-content:center;flex-wrap:wrap;">
+      <button onclick="downloadQR()" class="btn-crud btn-add" style="font-size:0.75rem;padding:7px 18px;min-height:36px;">
+        ⬇ Download PNG
+      </button>
+      <button onclick="printQRLabel()" class="btn-crud btn-edit" style="font-size:0.75rem;padding:7px 18px;min-height:36px;">
+        🖨 Print Label
+      </button>
+      <button onclick="closeQRModal()" class="btn-crud" style="font-size:0.75rem;padding:7px 18px;min-height:36px;background:var(--bg3);border-color:var(--border);color:var(--muted);">
+        Close
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     QR CODE SCANNER MODAL
+     Opens device camera to scan a FireWatch QR code.
+     On successful scan, closes and opens the matching
+     extinguisher detail popup automatically.
+     ══════════════════════════════════════════════════════ -->
+<div class="modal-overlay hidden" id="qrScannerModal" onclick="if(event.target===this)closeQRScanner()">
+  <div class="modal-box" style="max-width:440px;width:92%;">
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+      <div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:0.62rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted);margin-bottom:3px;">QR Scanner</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:1rem;color:var(--orange);">Scan Extinguisher QR Code</div>
+      </div>
+      <button onclick="closeQRScanner()" style="background:none;border:none;color:var(--muted2);font-size:1.3rem;cursor:pointer;padding:4px 8px;line-height:1;">✕</button>
+    </div>
+
+    <!-- Camera viewfinder -->
+    <div style="position:relative;width:100%;border-radius:8px;overflow:hidden;background:#000;aspect-ratio:1/1;margin-bottom:1rem;">
+      <video id="qrScanVideo" style="width:100%;height:100%;object-fit:cover;display:block;" autoplay muted playsinline></video>
+      <!-- Targeting overlay — visual guide for the user -->
+      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;">
+        <div style="width:60%;height:60%;border:2px solid var(--orange);border-radius:8px;box-shadow:0 0 0 9999px rgba(0,0,0,0.45);"></div>
+      </div>
+      <!-- Status overlay shown while scanning -->
+      <div id="qrScanStatus" style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.65);color:var(--muted2);font-family:'IBM Plex Mono',monospace;font-size:0.7rem;text-align:center;padding:6px;">
+        Point camera at a FireWatch QR code…
+      </div>
+    </div>
+
+    <!-- Error message (shown if camera not available) -->
+    <div id="qrScanError" class="hidden" style="background:rgba(193,18,31,0.12);border:1px solid rgba(193,18,31,0.3);border-radius:6px;padding:0.75rem;font-size:0.78rem;color:#f87171;margin-bottom:1rem;text-align:center;"></div>
+
+    <!-- Camera selector (shown if multiple cameras) -->
+    <div id="qrCameraSelectWrap" class="hidden" style="margin-bottom:0.75rem;">
+      <label style="font-family:'IBM Plex Mono',monospace;font-size:0.68rem;color:var(--muted);display:block;margin-bottom:4px;">Camera</label>
+      <select id="qrCameraSelect" style="width:100%;padding:6px 10px;border-radius:4px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:0.75rem;cursor:pointer;">
+      </select>
+    </div>
+
+    <div style="display:flex;gap:0.5rem;justify-content:center;">
+      <button onclick="closeQRScanner()" class="btn-crud" style="font-size:0.75rem;padding:7px 18px;min-height:36px;background:var(--bg3);border-color:var(--border);color:var(--muted);">
+        Cancel
+      </button>
+    </div>
   </div>
 </div>
 
@@ -1749,6 +2099,8 @@ function showDashboard() {
   fetchNotifications();
   // Check for overdue/due-soon assignments on login
   setTimeout(() => checkDueDateAlerts(), 1500);
+  // Check for QR deep-link (?ext=ID) — slight delay so the app page is visible first
+  setTimeout(() => checkExtDeepLink(), 300);
   // Update sidebar user info
   document.getElementById("sidebarUsername").textContent = currentUser.username;
   document.getElementById("sidebarRole").textContent = currentUser.role.replace(/_/g," ");
@@ -1793,6 +2145,8 @@ function buildTabs() {
     document.getElementById("btnEditBuilding").style.display = "none";
     document.getElementById("btnDeleteBuilding").style.display = "none";
     document.getElementById("btnDelete").style.display = "none"; // no delete extinguisher for inspectors
+    document.getElementById("btnBulkAdd").style.display = "none"; // no bulk add for inspectors
+    document.getElementById("btnCsvImport").style.display = "none"; // no CSV import for inspectors
   } else if (isThirdAdmin()) {
     tabs = [{id:"panelAssignments",label:"Assignments"},{id:"panelUsers",label:"My Team"}];
     document.getElementById("statBoxExt").style.display="none";
@@ -2483,6 +2837,754 @@ function clearModal() {
   document.getElementById("fExtStatus").value = "Active";
   document.getElementById("modalError").textContent = "";
 }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// BULK ADD EXTINGUISHERS
+// Lets an Admin add multiple extinguishers at once.
+// Shared fields (Company, Building, Floor, Interval, Type, Status) are set
+// once and applied to every row. Each row only needs the unique fields:
+// Room, Location Description, Serial Number, Size, and Due Date.
+//
+// Flow:
+//   Admin clicks "＋ Bulk Add" → openBulkExtModal()
+//   → fills shared fields + rows → submitBulkExtinguishers()
+//   → POSTs each row to /api/extinguishers sequentially with progress bar
+//   → on completion, refreshes the extinguisher table
+// ══════════════════════════════════════════════════════════════════════════════
+
+let _bulkRowId = 0; // incrementing ID for each row element
+
+/**
+ * Open the bulk add modal.
+ * Pre-populates Company and Building from the current drill-down context
+ * so the user doesn't have to re-select what they're already looking at.
+ */
+async function openBulkExtModal() {
+  // Reset state
+  document.getElementById("bulkExtError").textContent = "";
+  document.getElementById("bulkProgress").classList.add("hidden");
+  document.getElementById("bulkProgressBar").style.width = "0%";
+  document.getElementById("bulkSaveBtn").disabled = false;
+  document.getElementById("bulkSaveBtn").textContent = "Add All";
+  _bulkRowId = 0;
+
+  // Load companies into the shared company dropdown
+  const compSel = document.getElementById("bfCompany");
+  compSel.innerHTML = "<option value=''>— Select company —</option>";
+  try {
+    const companies = await fetch(`/api/companies?org_id=${orgId()}`).then(r => r.json());
+    companies.forEach(c => {
+      const opt = document.createElement("option");
+      opt.value = c.company_id;
+      opt.text  = c.name;
+      compSel.appendChild(opt);
+    });
+  } catch(e) {}
+
+  // Pre-select company and building from current drill context
+  if (_selectedCompany) {
+    compSel.value = _selectedCompany.company_id;
+    await bulkLoadBuildings();
+    if (_selectedBuilding) {
+      document.getElementById("bfBuilding").value = _selectedBuilding.building_id;
+    }
+  }
+
+  // Pre-set floor from current view
+  if (_selectedBuilding) {
+    const floor = _getCurrentFloor();
+    if (floor) document.getElementById("bfFloor").value = floor;
+  }
+
+  // Render 3 blank rows to start
+  document.getElementById("bulkExtRows").innerHTML = "";
+  addBulkRow();
+  addBulkRow();
+  addBulkRow();
+
+  document.getElementById("bulkExtModal").classList.remove("hidden");
+}
+
+/** Load buildings for the selected company into the bulk modal building dropdown. */
+async function bulkLoadBuildings() {
+  const companyId = document.getElementById("bfCompany").value;
+  const bSel = document.getElementById("bfBuilding");
+  bSel.innerHTML = "<option value=''>— Select building —</option>";
+  if (!companyId) return;
+  try {
+    const buildings = await fetch(`/api/buildings?company_id=${companyId}`).then(r => r.json());
+    buildings.forEach(b => {
+      const opt = document.createElement("option");
+      opt.value = b.building_id;
+      opt.text  = b.name;
+      bSel.appendChild(opt);
+    });
+  } catch(e) {}
+}
+
+/** Add a new blank extinguisher row to the bulk modal row list. */
+function addBulkRow() {
+  const id  = ++_bulkRowId;
+  const row = document.createElement("div");
+  row.id    = `bulkRow_${id}`;
+  row.style.cssText = "display:grid;grid-template-columns:80px 1fr 1fr 1fr 120px 28px;gap:6px;align-items:center;";
+
+  // Input style shared across all cells
+  const inp = "width:100%;padding:6px 8px;background:var(--bg);border:1px solid var(--border);border-radius:3px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:0.75rem;";
+
+  row.innerHTML = `
+    <input type="text"   placeholder="e.g. 101"            style="${inp}" data-field="room">
+    <input type="text"   placeholder="Near the elevator"   style="${inp}" data-field="location_description">
+    <input type="text"   placeholder="SN-0001"             style="${inp}" data-field="serial_number">
+    <input type="number" placeholder="e.g. 5"  min="1" max="350" step="0.5" style="${inp}" data-field="ext_size_lbs">
+    <input type="date"                                      style="${inp}" data-field="next_due_date">
+    <button onclick="removeBulkRow(${id})" title="Remove row"
+      style="background:none;border:none;color:var(--muted);font-size:1rem;cursor:pointer;padding:2px;line-height:1;transition:color 0.15s;"
+      onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--muted)'">✕</button>
+  `;
+
+  document.getElementById("bulkExtRows").appendChild(row);
+  updateBulkRowCount();
+
+  // Focus the Room field of the new row
+  row.querySelector("input").focus();
+}
+
+/** Remove a row by ID. Always keeps at least 1 row. */
+function removeBulkRow(id) {
+  const rows = document.getElementById("bulkExtRows").children;
+  if (rows.length <= 1) {
+    document.getElementById("bulkExtError").textContent = "At least one row is required.";
+    return;
+  }
+  const el = document.getElementById(`bulkRow_${id}`);
+  if (el) el.remove();
+  updateBulkRowCount();
+  document.getElementById("bulkExtError").textContent = "";
+}
+
+/** Update the row count badge in the modal header. */
+function updateBulkRowCount() {
+  const count = document.getElementById("bulkExtRows").children.length;
+  document.getElementById("bulkRowCount").textContent = count;
+}
+
+/** Close the bulk add modal and reset everything. */
+function closeBulkExtModal() {
+  document.getElementById("bulkExtModal").classList.add("hidden");
+  document.getElementById("bulkExtRows").innerHTML = "";
+  document.getElementById("bulkExtError").textContent = "";
+  document.getElementById("bulkProgress").classList.add("hidden");
+}
+
+/**
+ * Submit all bulk rows to the API sequentially.
+ * Shows a progress bar as each extinguisher is added.
+ * On completion, refreshes the extinguisher table and shows a summary.
+ */
+async function submitBulkExtinguishers() {
+  const errorEl = document.getElementById("bulkExtError");
+  errorEl.textContent = "";
+
+  // ── Validate shared fields ──────────────────────────────────────────────────
+  const buildingId = parseInt(document.getElementById("bfBuilding").value);
+  if (!buildingId) { errorEl.textContent = "Please select a building."; return; }
+
+  const companyId  = parseInt(document.getElementById("bfCompany").value);
+  const floor      = parseInt(document.getElementById("bfFloor").value)    || 1;
+  const interval   = parseInt(document.getElementById("bfInterval").value) || 30;
+  const extType    = document.getElementById("bfExtType").value;
+  const extStatus  = document.getElementById("bfExtStatus").value;
+
+  // Get building address for the address field (mirrors single-add logic)
+  let bldgAddress = "", bldgName = "";
+  try {
+    const buildings = await fetch(`/api/buildings?company_id=${companyId}`).then(r => r.json());
+    const bldg = buildings.find(b => b.building_id === buildingId);
+    bldgAddress = bldg?.address || bldg?.name || "";
+    bldgName    = bldg?.name    || "";
+  } catch(e) {}
+
+  // ── Collect rows ────────────────────────────────────────────────────────────
+  const rowEls = Array.from(document.getElementById("bulkExtRows").children);
+  if (rowEls.length === 0) { errorEl.textContent = "Add at least one row."; return; }
+
+  // Parse each row into a payload object
+  const payloads = rowEls.map(row => {
+    const get = field => row.querySelector(`[data-field="${field}"]`)?.value?.trim() || "";
+    const size = parseFloat(row.querySelector("[data-field='ext_size_lbs']")?.value) || null;
+    return {
+      address:                  bldgAddress,
+      building_number:          bldgName,
+      floor_number:             floor,
+      room_number:              get("room"),
+      location_description:     get("location_description"),
+      inspection_interval_days: interval,
+      next_due_date:            get("next_due_date") || null,
+      building_id:              buildingId,
+      org_id:                   orgId(),
+      ext_type:                 extType,
+      ext_size_lbs:             size,
+      serial_number:            get("serial_number"),
+      ext_status:               extStatus,
+    };
+  });
+
+  // ── Submit with progress bar ────────────────────────────────────────────────
+  const saveBtn      = document.getElementById("bulkSaveBtn");
+  const progressWrap = document.getElementById("bulkProgress");
+  const progressBar  = document.getElementById("bulkProgressBar");
+  const progressLbl  = document.getElementById("bulkProgressLabel");
+
+  saveBtn.disabled       = true;
+  saveBtn.textContent    = "Adding…";
+  progressWrap.classList.remove("hidden");
+
+  let successCount = 0;
+  const errors     = [];
+
+  for (let i = 0; i < payloads.length; i++) {
+    progressLbl.textContent = `Adding ${i + 1} of ${payloads.length}…`;
+    progressBar.style.width = `${Math.round(((i) / payloads.length) * 100)}%`;
+
+    try {
+      const res = await fetch("/api/extinguishers", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify(payloads[i])
+      });
+      if (res.ok) {
+        successCount++;
+      } else {
+        const data = await res.json();
+        errors.push(`Row ${i + 1}: ${data.error || "Unknown error"}`);
+      }
+    } catch(e) {
+      errors.push(`Row ${i + 1}: Network error`);
+    }
+  }
+
+  // ── Final progress state ────────────────────────────────────────────────────
+  progressBar.style.width = "100%";
+  progressBar.style.background = errors.length === 0 ? "var(--green)" : "var(--orange)";
+  progressLbl.textContent = errors.length === 0
+    ? `✓ All ${successCount} extinguisher${successCount !== 1 ? "s" : ""} added successfully!`
+    : `Added ${successCount} of ${payloads.length}. ${errors.length} failed.`;
+
+  if (errors.length > 0) {
+    errorEl.textContent = errors.join(" · ");
+    saveBtn.disabled    = false;
+    saveBtn.textContent = "Retry Failed";
+    return;
+  }
+
+  // ── Success — refresh table and close ──────────────────────────────────────
+  await renderExtinguisherTable(buildingId);
+  loadStats();
+
+  // Brief pause so user sees the green 100% bar before modal closes
+  setTimeout(() => closeBulkExtModal(), 900);
+}
+
+// ── END BULK ADD EXTINGUISHERS ────────────────────────────────────────────────
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CSV IMPORT EXTINGUISHERS
+// Two-step flow:
+//   Step 1 — Select Company/Building, download template or drop CSV file
+//   Step 2 — Preview parsed rows in a table; valid rows green, invalid red;
+//             click "Import All Valid Rows" to POST each valid row
+//
+// CSV columns (case-insensitive, order flexible):
+//   floor, room, location_description, serial_number, ext_size_lbs,
+//   ext_type, next_due_date, inspection_interval_days, manufacturer,
+//   model, dot_cert_no, status
+//
+// Only floor OR location_description is required per row.
+// Invalid rows are shown with a red Issues column but never skipped silently.
+// ══════════════════════════════════════════════════════════════════════════════
+
+// Template column headers — the exact names the CSV parser expects
+const CSV_TEMPLATE_HEADERS = [
+  "floor", "room", "location_description", "serial_number",
+  "ext_size_lbs", "ext_type", "next_due_date",
+  "inspection_interval_days", "manufacturer", "model",
+  "dot_cert_no", "status"
+];
+
+// Sample rows included in the template so users know the format
+const CSV_TEMPLATE_SAMPLE_ROWS = [
+  ["1", "101", "Near the elevator",    "SN-2024-001", "5",  "ABC", "2026-04-30", "30", "Kidde",  "Pro 210", "",      "Active"],
+  ["1", "102", "Next to fire door",    "SN-2024-002", "10", "ABC", "2026-04-30", "30", "Amerex", "B500",    "",      "Active"],
+  ["2", "201", "Behind the front desk","SN-2024-003", "5",  "K",   "2026-04-30", "30", "Ansul",  "SENTRY",  "A739",  "Active"],
+];
+
+// Parsed CSV rows stored between Step 1 and Step 2
+let _csvParsedRows = [];
+
+/**
+ * Open the CSV import modal.
+ * Pre-populates Company/Building from current drill context.
+ */
+async function openCsvImportModal() {
+  // Reset all state
+  _csvParsedRows = [];
+  document.getElementById("csvStep1Error").textContent = "";
+  document.getElementById("csvStep2Error").textContent = "";
+  document.getElementById("csvFileName").textContent   = "No file selected";
+  document.getElementById("csvFileInput").value        = "";
+  document.getElementById("csvPreviewBtn").disabled    = true;
+  document.getElementById("csvPreviewBtn").style.opacity = "0.5";
+  document.getElementById("csvPreviewBtn").style.cursor  = "not-allowed";
+  document.getElementById("csvProgress").classList.add("hidden");
+  document.getElementById("csvProgressBar").style.width = "0%";
+  document.getElementById("csvImportBtn").disabled = false;
+  document.getElementById("csvImportBtn").textContent = "📂 Import All Valid Rows";
+
+  // Show Step 1, hide Step 2
+  document.getElementById("csvStep1").classList.remove("hidden");
+  document.getElementById("csvStep2").classList.add("hidden");
+
+  // Load companies
+  const compSel = document.getElementById("csvCompany");
+  compSel.innerHTML = "<option value=''>— Select company —</option>";
+  try {
+    const companies = await fetch(`/api/companies?org_id=${orgId()}`).then(r => r.json());
+    companies.forEach(c => {
+      const opt = document.createElement("option");
+      opt.value = c.company_id;
+      opt.text  = c.name;
+      compSel.appendChild(opt);
+    });
+  } catch(e) {}
+
+  // Pre-select from drill context
+  if (_selectedCompany) {
+    compSel.value = _selectedCompany.company_id;
+    await csvLoadBuildings();
+    if (_selectedBuilding) {
+      document.getElementById("csvBuilding").value = _selectedBuilding.building_id;
+    }
+  }
+
+  document.getElementById("csvImportModal").classList.remove("hidden");
+}
+
+/** Load buildings for the selected company into the CSV modal building dropdown. */
+async function csvLoadBuildings() {
+  const companyId = document.getElementById("csvCompany").value;
+  const bSel = document.getElementById("csvBuilding");
+  bSel.innerHTML = "<option value=''>— Select building —</option>";
+  if (!companyId) return;
+  try {
+    const buildings = await fetch(`/api/buildings?company_id=${companyId}`).then(r => r.json());
+    buildings.forEach(b => {
+      const opt = document.createElement("option");
+      opt.value = b.building_id;
+      opt.text  = b.name;
+      bSel.appendChild(opt);
+    });
+  } catch(e) {}
+}
+
+/** Close and fully reset the CSV import modal. */
+function closeCsvImportModal() {
+  document.getElementById("csvImportModal").classList.add("hidden");
+  _csvParsedRows = [];
+}
+
+/** Go back from Step 2 preview to Step 1 file selection. */
+function goBackToCsvStep1() {
+  document.getElementById("csvStep2").classList.add("hidden");
+  document.getElementById("csvStep1").classList.remove("hidden");
+  document.getElementById("csvStep2Error").textContent = "";
+}
+
+/**
+ * Generate and download a CSV template with headers and sample rows.
+ * The template is a real .csv file so users can open it in Excel/Sheets.
+ */
+function downloadCsvTemplate() {
+  const rows = [
+    CSV_TEMPLATE_HEADERS.join(","),
+    ...CSV_TEMPLATE_SAMPLE_ROWS.map(r =>
+      r.map(cell => cell.includes(",") ? `"${cell}"` : cell).join(",")
+    )
+  ];
+  const blob = new Blob([rows.join("\r\n")], { type: "text/csv" });
+  const a    = document.createElement("a");
+  a.href     = URL.createObjectURL(blob);
+  a.download = "FireWatch_Extinguisher_Import_Template.csv";
+  a.click();
+}
+
+/** Handle file drop onto the drop zone. */
+function handleCsvDrop(event) {
+  const file = event.dataTransfer.files[0];
+  if (file) handleCsvFile(file);
+}
+
+/**
+ * Read and parse a CSV file.
+ * Updates the file name display and enables the Preview button on success.
+ *
+ * @param {File} file
+ */
+function handleCsvFile(file) {
+  const errorEl = document.getElementById("csvStep1Error");
+  errorEl.textContent = "";
+
+  if (!file) return;
+  if (!file.name.toLowerCase().endsWith(".csv")) {
+    errorEl.textContent = "Please upload a .csv file.";
+    return;
+  }
+
+  document.getElementById("csvFileName").textContent = `📄 ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      _csvParsedRows = parseCsvText(e.target.result);
+      if (_csvParsedRows.length === 0) {
+        errorEl.textContent = "No data rows found in this CSV.";
+        return;
+      }
+      // Enable the Preview button
+      const btn = document.getElementById("csvPreviewBtn");
+      btn.disabled = false;
+      btn.style.opacity = "1";
+      btn.style.cursor  = "pointer";
+      errorEl.textContent = "";
+      document.getElementById("csvFileName").textContent += ` — ${_csvParsedRows.length} row${_csvParsedRows.length !== 1 ? "s" : ""} found`;
+    } catch(err) {
+      errorEl.textContent = `Parse error: ${err.message}`;
+    }
+  };
+  reader.onerror = () => { errorEl.textContent = "Failed to read file."; };
+  reader.readAsText(file);
+}
+
+/**
+ * Parse CSV text into an array of row objects.
+ * Handles quoted fields, Windows/Unix line endings, and case-insensitive headers.
+ * Skips completely empty rows and the sample header comment row if present.
+ *
+ * @param {string} text - raw CSV file content
+ * @returns {Array<Object>} - array of {colName: value} objects (raw strings)
+ */
+function parseCsvText(text) {
+  // Normalize line endings
+  const lines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+
+  // Find header row — first non-empty line
+  let headerIdx = -1;
+  let headers   = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    const cols = splitCsvLine(line).map(h => h.trim().toLowerCase());
+    // Must contain at least one known column to be considered the header
+    if (cols.some(c => CSV_TEMPLATE_HEADERS.includes(c))) {
+      headers   = cols;
+      headerIdx = i;
+      break;
+    }
+  }
+
+  if (headerIdx === -1) {
+    throw new Error(
+      "No recognizable header row found. Download the template to see the expected column names."
+    );
+  }
+
+  // Parse data rows
+  const rows = [];
+  for (let i = headerIdx + 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue; // skip blank lines
+
+    const cells = splitCsvLine(line);
+    const obj   = {};
+    headers.forEach((h, idx) => {
+      obj[h] = (cells[idx] || "").trim();
+    });
+
+    // Skip rows where every field is empty (fully blank rows)
+    if (Object.values(obj).every(v => !v)) continue;
+
+    rows.push(obj);
+  }
+
+  return rows;
+}
+
+/**
+ * Split a single CSV line into fields, respecting quoted fields.
+ * Handles commas and quotes inside quoted fields correctly.
+ *
+ * @param {string} line
+ * @returns {string[]}
+ */
+function splitCsvLine(line) {
+  const fields = [];
+  let current  = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const ch   = line[i];
+    const next = line[i + 1];
+
+    if (inQuotes) {
+      if (ch === '"' && next === '"') { current += '"'; i++; }      // escaped quote
+      else if (ch === '"')            { inQuotes = false; }          // end of quoted field
+      else                            { current += ch; }
+    } else {
+      if (ch === '"')  { inQuotes = true; }
+      else if (ch === ",") { fields.push(current); current = ""; }
+      else             { current += ch; }
+    }
+  }
+  fields.push(current);
+  return fields;
+}
+
+/**
+ * Validate a single parsed row and return an array of issue strings.
+ * A row is valid if issues.length === 0.
+ *
+ * @param {Object} row - parsed CSV row object
+ * @returns {string[]} - list of validation issues
+ */
+function validateCsvRow(row) {
+  const issues = [];
+
+  // At least floor OR location is required
+  if (!row.floor && !row.location_description) {
+    issues.push("floor or location_description required");
+  }
+
+  // Floor must be a non-negative integer if provided
+  if (row.floor && (isNaN(parseInt(row.floor)) || parseInt(row.floor) < 0)) {
+    issues.push("floor must be a number ≥ 0");
+  }
+
+  // Size must be a positive number if provided
+  if (row.ext_size_lbs && (isNaN(parseFloat(row.ext_size_lbs)) || parseFloat(row.ext_size_lbs) <= 0)) {
+    issues.push("ext_size_lbs must be a positive number");
+  }
+
+  // Interval must be a positive integer if provided
+  if (row.inspection_interval_days && (isNaN(parseInt(row.inspection_interval_days)) || parseInt(row.inspection_interval_days) < 1)) {
+    issues.push("inspection_interval_days must be ≥ 1");
+  }
+
+  // Due date must be a valid date if provided
+  if (row.next_due_date) {
+    const d = new Date(row.next_due_date);
+    if (isNaN(d.getTime())) issues.push("next_due_date invalid (use YYYY-MM-DD)");
+  }
+
+  // Status must be one of the allowed values if provided
+  const validStatuses = ["active", "out of service", "retired", "missing"];
+  if (row.status && !validStatuses.includes(row.status.toLowerCase())) {
+    issues.push(`status must be: Active, Out of Service, Retired, or Missing`);
+  }
+
+  // Type must be one of the allowed values if provided
+  const validTypes = ["a","b","c","abc","bc","d","k"];
+  if (row.ext_type && !validTypes.includes(row.ext_type.toLowerCase())) {
+    issues.push(`ext_type must be: A, B, C, ABC, BC, D, or K`);
+  }
+
+  return issues;
+}
+
+/**
+ * Parse rows and render the Step 2 preview table.
+ * Valid rows get a green left border, invalid rows get red with an Issues column.
+ */
+async function showCsvPreview() {
+  const errorEl = document.getElementById("csvStep1Error");
+
+  // Validate building selection
+  const buildingId = parseInt(document.getElementById("csvBuilding").value);
+  if (!buildingId) {
+    errorEl.textContent = "Please select a building before previewing.";
+    return;
+  }
+
+  if (_csvParsedRows.length === 0) {
+    errorEl.textContent = "No rows to preview. Please upload a CSV file first.";
+    return;
+  }
+
+  // Validate all rows
+  const validated = _csvParsedRows.map((row, i) => ({
+    ...row,
+    _rowNum: i + 1,
+    _issues: validateCsvRow(row)
+  }));
+
+  const validCount   = validated.filter(r => r._issues.length === 0).length;
+  const invalidCount = validated.length - validCount;
+
+  // Update counters
+  document.getElementById("csvValidCount").textContent =
+    `${validCount} valid`;
+  document.getElementById("csvErrorCount").textContent =
+    invalidCount > 0 ? `· ${invalidCount} with issues` : "";
+
+  // Build table rows
+  const tbody = document.getElementById("csvPreviewBody");
+  tbody.innerHTML = "";
+
+  validated.forEach(row => {
+    const isValid  = row._issues.length === 0;
+    const rowColor = isValid ? "rgba(21,128,61,0.06)" : "rgba(193,18,31,0.08)";
+    const border   = isValid ? "3px solid var(--green)" : "3px solid var(--red)";
+    const td       = s => `<td style="padding:5px 8px;border-bottom:1px solid var(--border);color:var(--text);white-space:nowrap;">${s || "<span style='color:var(--muted)'>—</span>"}</td>`;
+
+    const tr = document.createElement("tr");
+    tr.style.cssText = `background:${rowColor};border-left:${border};`;
+    tr.innerHTML =
+      td(row._rowNum) +
+      td(row.floor) +
+      td(row.room) +
+      `<td style="padding:5px 8px;border-bottom:1px solid var(--border);color:var(--text);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${row.location_description||''}">${row.location_description || "<span style='color:var(--muted)'>—</span>"}</td>` +
+      td(row.serial_number) +
+      td(row.ext_size_lbs ? row.ext_size_lbs + " lbs" : "") +
+      td(row.ext_type) +
+      td(row.next_due_date) +
+      td(row.inspection_interval_days || "30") +
+      td(row.status || "Active") +
+      `<td style="padding:5px 8px;border-bottom:1px solid var(--border);color:${isValid ? "var(--green)" : "var(--red)"};font-size:0.65rem;max-width:180px;">${isValid ? "✓ OK" : row._issues.join("; ")}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  // Disable import button if zero valid rows
+  const importBtn = document.getElementById("csvImportBtn");
+  if (validCount === 0) {
+    importBtn.disabled = true;
+    importBtn.style.opacity = "0.5";
+    document.getElementById("csvStep2Error").textContent =
+      "No valid rows to import. Fix the issues in your CSV and re-upload.";
+  } else {
+    importBtn.disabled = false;
+    importBtn.style.opacity = "1";
+    importBtn.textContent = `📂 Import ${validCount} Valid Row${validCount !== 1 ? "s" : ""}`;
+    document.getElementById("csvStep2Error").textContent = "";
+  }
+
+  // Store validated rows for the import step
+  _csvParsedRows = validated;
+
+  // Switch to Step 2
+  document.getElementById("csvStep1").classList.add("hidden");
+  document.getElementById("csvStep2").classList.remove("hidden");
+}
+
+/**
+ * POST all valid rows to /api/extinguishers sequentially.
+ * Shows a progress bar, then refreshes the table on completion.
+ */
+async function submitCsvImport() {
+  const buildingId = parseInt(document.getElementById("csvBuilding").value);
+  const companyId  = parseInt(document.getElementById("csvCompany").value);
+  if (!buildingId) {
+    document.getElementById("csvStep2Error").textContent = "No building selected.";
+    return;
+  }
+
+  // Get building info for address field (mirrors single-add logic)
+  let bldgAddress = "", bldgName = "";
+  try {
+    const buildings = await fetch(`/api/buildings?company_id=${companyId}`).then(r => r.json());
+    const bldg = buildings.find(b => b.building_id === buildingId);
+    bldgAddress = bldg?.address || bldg?.name || "";
+    bldgName    = bldg?.name    || "";
+  } catch(e) {}
+
+  // Only import valid rows
+  const validRows = _csvParsedRows.filter(r => r._issues.length === 0);
+  if (validRows.length === 0) return;
+
+  // Build payloads
+  const payloads = validRows.map(row => ({
+    address:                  bldgAddress,
+    building_number:          bldgName,
+    floor_number:             parseInt(row.floor)  || 1,
+    room_number:              row.room              || "",
+    location_description:     row.location_description || "",
+    inspection_interval_days: parseInt(row.inspection_interval_days) || 30,
+    next_due_date:            row.next_due_date     || null,
+    building_id:              buildingId,
+    org_id:                   orgId(),
+    ext_type:                 row.ext_type          || "",
+    ext_size_lbs:             parseFloat(row.ext_size_lbs) || null,
+    serial_number:            row.serial_number     || "",
+    dot_cert_no:              row.dot_cert_no       || "",
+    manufacturer:             row.manufacturer      || "",
+    model:                    row.model             || "",
+    ext_status:               row.status
+      ? row.status.charAt(0).toUpperCase() + row.status.slice(1).toLowerCase()
+      : "Active",
+  }));
+
+  // Show progress, disable button
+  const importBtn  = document.getElementById("csvImportBtn");
+  const progressEl = document.getElementById("csvProgress");
+  const bar        = document.getElementById("csvProgressBar");
+  const label      = document.getElementById("csvProgressLabel");
+
+  importBtn.disabled     = true;
+  importBtn.textContent  = "Importing…";
+  progressEl.classList.remove("hidden");
+
+  let successCount = 0;
+  const errors     = [];
+
+  for (let i = 0; i < payloads.length; i++) {
+    label.textContent    = `Importing ${i + 1} of ${payloads.length}…`;
+    bar.style.width      = `${Math.round((i / payloads.length) * 100)}%`;
+
+    try {
+      const res = await fetch("/api/extinguishers", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify(payloads[i])
+      });
+      if (res.ok) { successCount++; }
+      else {
+        const data = await res.json();
+        errors.push(`Row ${i + 1}: ${data.error || "Unknown error"}`);
+      }
+    } catch(e) {
+      errors.push(`Row ${i + 1}: Network error`);
+    }
+  }
+
+  // Final state
+  bar.style.width      = "100%";
+  bar.style.background = errors.length === 0 ? "var(--green)" : "var(--orange)";
+  label.textContent    = errors.length === 0
+    ? `✓ ${successCount} extinguisher${successCount !== 1 ? "s" : ""} imported successfully!`
+    : `Imported ${successCount} of ${payloads.length}. ${errors.length} failed.`;
+
+  if (errors.length > 0) {
+    document.getElementById("csvStep2Error").textContent = errors.join(" · ");
+    importBtn.disabled   = false;
+    importBtn.textContent = "Retry";
+    return;
+  }
+
+  // Success — refresh table and close after a moment
+  await renderExtinguisherTable(buildingId);
+  loadStats();
+  setTimeout(() => closeCsvImportModal(), 1000);
+}
+
+// ── END CSV IMPORT ────────────────────────────────────────────────────────────
 
 // ── Assignment modal helpers ───────────────────────────────────────────────────
 async function openAssignModal(editRow=null) {
@@ -3639,6 +4741,10 @@ function openExtDetail(row) {
         onclick="document.getElementById('extDetailModal').classList.add('hidden'); window._returnToPriorityQueue=false; document.getElementById('btnDelete').click();">
         ✕ Delete
       </button>
+      <button class="btn-crud btn-edit" style="font-size:0.72rem;padding:6px 14px;min-height:34px;background:var(--bg3);border-color:var(--teal);color:var(--teal);"
+        onclick="openQRModal(${row.extinguisher_id}, ${JSON.stringify(row.location_description || row.building_name || row.address || 'Extinguisher ' + row.extinguisher_id).replace(/"/g,'&quot;')})">
+        🔲 QR Code
+      </button>
     `;
   } else if ((isInv() || isThirdInv()) && !window._platformReadOnly) {
     // Inspectors: Edit extinguisher details + Submit Report for this extinguisher
@@ -3651,6 +4757,10 @@ function openExtDetail(row) {
         onclick="document.getElementById('extDetailModal').classList.add('hidden'); window._returnToPriorityQueue=false; openReportForExtinguisher(${row.extinguisher_id});">
         📋 Submit Report
       </button>
+      <button class="btn-crud btn-edit" style="font-size:0.72rem;padding:6px 14px;min-height:34px;background:var(--bg3);border-color:var(--teal);color:var(--teal);"
+        onclick="openQRModal(${row.extinguisher_id}, ${JSON.stringify(row.location_description || row.building_name || row.address || 'Extinguisher ' + row.extinguisher_id).replace(/"/g,'&quot;')})">
+        🔲 QR Code
+      </button>
       <button class="btn-crud btn-edit" style="font-size:0.72rem;padding:6px 14px;min-height:34px;background:var(--bg3);border-color:var(--border);color:var(--muted);"
         onclick="document.getElementById('extDetailModal').classList.add('hidden'); returnToPriorityQueue();">
         Close
@@ -3658,6 +4768,10 @@ function openExtDetail(row) {
     `;
   } else {
     footer.innerHTML = `
+      <button class="btn-crud btn-edit" style="font-size:0.72rem;padding:6px 14px;min-height:34px;background:var(--bg3);border-color:var(--teal);color:var(--teal);"
+        onclick="openQRModal(${row.extinguisher_id}, ${JSON.stringify(row.location_description || row.building_name || row.address || 'Extinguisher ' + row.extinguisher_id).replace(/"/g,'&quot;')})">
+        🔲 QR Code
+      </button>
       <button class="btn-crud btn-edit" style="font-size:0.72rem;padding:6px 14px;min-height:34px;background:var(--bg3);border-color:var(--border);color:var(--muted);"
         onclick="document.getElementById('extDetailModal').classList.add('hidden'); returnToPriorityQueue();">
         Close
@@ -5433,7 +6547,656 @@ async function loadPlatformAuditLog() {
   el.innerHTML = html + `</tbody></table>`;
 }
 
-// ── Session restore on page load ──────────────────────────────────────────────
+
+// ══════════════════════════════════════════════════════════════════════════════
+// QR CODE FEATURE
+// Two-way: generate a QR per extinguisher OR scan one with the camera.
+//
+// Generate flow:
+//   openExtDetail(row) → user clicks "🔲 QR Code" → openQRModal(id, title)
+//   → qrcode.js renders QR into #qrCodeCanvas → user downloads or prints
+//
+// Scan flow:
+//   Sidebar "📷 Scan QR Code" → openQRScanner() → ZXing reads camera frames
+//   → on decode, closeQRScanner() + navigateToExtinguisher(id)
+//
+// Deep-link flow:
+//   QR encodes: https://fire-watch-app.onrender.com/?ext=<id>
+//   On page load after login, checkExtDeepLink() reads the ?ext= param
+//   and auto-opens that extinguisher's detail popup.
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ── QR GENERATE ───────────────────────────────────────────────────────────────
+
+// Track the current QR extinguisher id so Download/Print can reference it
+let _qrCurrentExtId = null;
+let _qrCurrentTitle = "";
+
+/**
+ * Opens the QR display modal and renders a QR code for the given extinguisher.
+ * The QR encodes a deep-link URL that auto-opens this extinguisher on scan.
+ *
+ * @param {number} extId    - extinguisher_id from the database
+ * @param {string} title    - human-readable label (location / building name)
+ */
+function openQRModal(extId, title) {
+  _qrCurrentExtId = extId;
+  _qrCurrentTitle = title;
+
+  // Build the deep-link URL — works on Render or locally
+  const base = window.location.origin + window.location.pathname;
+  const url  = `${base}?ext=${extId}`;
+
+  // Update modal header text
+  document.getElementById("qrDisplayExtId").textContent    = `EXT-${extId}`;
+  document.getElementById("qrDisplayExtTitle").textContent = title;
+  document.getElementById("qrDisplayUrl").textContent      = url;
+
+  // Clear any previous QR code then render a fresh one
+  const canvas = document.getElementById("qrCodeCanvas");
+  canvas.innerHTML = "";
+
+  // qrcode.js — renders a QR into the container div
+  // Error correction level H (30%) so the logo/label overlays still scan fine
+  new QRCode(canvas, {
+    text:          url,
+    width:         220,
+    height:        220,
+    colorDark:     "#000000",
+    colorLight:    "#ffffff",
+    correctLevel:  QRCode.CorrectLevel.H
+  });
+
+  // Show modal, hide ext detail so they don't stack
+  document.getElementById("extDetailModal").classList.add("hidden");
+  document.getElementById("qrDisplayModal").classList.remove("hidden");
+}
+
+/** Close the QR display modal and return to the extinguisher detail. */
+function closeQRModal() {
+  document.getElementById("qrDisplayModal").classList.add("hidden");
+}
+
+/**
+ * Download the rendered QR code as a PNG file named by extinguisher ID.
+ * qrcode.js renders an <img> tag (base64 src) inside the container.
+ */
+function downloadQR() {
+  // qrcode.js produces an <img> inside the canvas div
+  const img = document.querySelector("#qrCodeCanvas img");
+  if (!img) { alert("QR code not ready yet. Please wait a moment."); return; }
+
+  const link    = document.createElement("a");
+  link.href     = img.src;
+  link.download = `FireWatch_EXT-${_qrCurrentExtId}_QR.png`;
+  link.click();
+}
+
+/**
+ * Print a tidy label sheet for this extinguisher:
+ * Shows the QR code, EXT id, location title, and "Scan to inspect" note.
+ * Opens in a new tab/window formatted for printing.
+ */
+function printQRLabel() {
+  const img = document.querySelector("#qrCodeCanvas img");
+  if (!img) { alert("QR code not ready yet. Please wait a moment."); return; }
+
+  const isMobile = /Mobi|Android/i.test(navigator.userAgent) || window.innerWidth < 768;
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>FireWatch QR Label — EXT-${_qrCurrentExtId}</title>
+  <style>
+    @page { size: 4in 3in; margin: 0.25in; }
+    body {
+      font-family: 'IBM Plex Mono', 'Courier New', monospace;
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; min-height: 100vh; margin: 0;
+      background: #fff; color: #000; text-align: center;
+    }
+    .label-box {
+      border: 2px solid #000; border-radius: 8px;
+      padding: 16px 20px; max-width: 380px; width: 100%;
+    }
+    .label-header {
+      font-size: 11px; letter-spacing: 0.15em;
+      text-transform: uppercase; color: #555; margin-bottom: 6px;
+    }
+    .label-id {
+      font-size: 22px; font-weight: 700;
+      color: #e85d04; margin-bottom: 4px;
+    }
+    .label-title {
+      font-size: 11px; color: #333;
+      margin-bottom: 12px; white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis;
+    }
+    .label-qr img { width: 160px; height: 160px; }
+    .label-footer {
+      font-size: 9px; color: #777;
+      margin-top: 10px; letter-spacing: 0.05em;
+    }
+    .label-url {
+      font-size: 7px; color: #aaa;
+      margin-top: 4px; word-break: break-all;
+    }
+  </style></head><body>
+  <div class="label-box">
+    <div class="label-header">🔥 FireWatch · NFPA Compliance</div>
+    <div class="label-id">EXT-${_qrCurrentExtId}</div>
+    <div class="label-title">${_qrCurrentTitle}</div>
+    <div class="label-qr"><img src="${img.src}" alt="QR Code"></div>
+    <div class="label-footer">Scan to view, inspect, or report this extinguisher</div>
+    <div class="label-url">${document.getElementById("qrDisplayUrl").textContent}</div>
+  </div>
+  <script>window.onload = function(){ window.print(); }<\/script>
+  </body></html>`;
+
+  if (isMobile) {
+    // Mobile: download as HTML file (popup blocked on most mobile browsers)
+    const blob = new Blob([html], { type: "text/html" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `FireWatch_EXT-${_qrCurrentExtId}_Label.html`;
+    a.click();
+  } else {
+    const win = window.open("", "_blank");
+    if (win) { win.document.write(html); win.document.close(); }
+    else { alert("Pop-up blocked. Please allow pop-ups to print labels."); }
+  }
+}
+
+// ── QR SCANNER ────────────────────────────────────────────────────────────────
+
+// ZXing browser scanner instance — kept so we can stop it on close
+let _zxingScanner   = null;
+let _scanStream     = null;  // MediaStream so we can stop camera tracks on close
+
+/**
+ * Open the QR scanner modal and start the camera.
+ * Uses @zxing/library@0.18.6 — global ZXing, class BrowserMultiFormatReader.
+ * Reads camera frames continuously; on first valid FireWatch QR, navigates.
+ */
+async function openQRScanner() {
+  closeSidebar(); // close mobile sidebar if open
+  const modal     = document.getElementById("qrScannerModal");
+  const video     = document.getElementById("qrScanVideo");
+  const statusEl  = document.getElementById("qrScanStatus");
+  const errorEl   = document.getElementById("qrScanError");
+  const camWrap   = document.getElementById("qrCameraSelectWrap");
+  const camSelect = document.getElementById("qrCameraSelect");
+
+  // Reset state from any previous scan session
+  errorEl.classList.add("hidden");
+  errorEl.textContent = "";
+  statusEl.textContent = "Requesting camera access…";
+  camWrap.classList.add("hidden");
+  camSelect.innerHTML = "";
+  modal.classList.remove("hidden");
+
+  // Verify ZXing loaded from CDN
+  if (typeof ZXing === "undefined" || !ZXing.BrowserMultiFormatReader) {
+    errorEl.textContent = "QR scanner library failed to load. Check your internet connection and refresh the page.";
+    errorEl.classList.remove("hidden");
+    statusEl.textContent = "Scanner unavailable.";
+    return;
+  }
+
+  try {
+    // IMPORTANT: Request camera permission via getUserMedia FIRST.
+    // Browsers will not expose device labels or enumerate cameras until
+    // the user has granted permission. Without this step, listVideoInputDevices()
+    // returns an empty array even when cameras are physically present.
+    // We request the environment-facing camera (rear on phones) as the default.
+    let permStream;
+    try {
+      permStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: "environment" } },
+        audio: false
+      });
+    } catch (permErr) {
+      // Permission denied or no camera hardware at all
+      const msg = permErr.name === "NotFoundError" || permErr.name === "DevicesNotFoundError"
+        ? "No camera found on this device."
+        : permErr.name === "NotAllowedError" || permErr.name === "PermissionDeniedError"
+        ? "Camera permission denied. Click the camera icon in your browser address bar and allow access, then try again."
+        : `Camera unavailable: ${permErr.message}`;
+      throw new Error(msg);
+    }
+
+    // Permission granted — stop the permission-check stream immediately.
+    // ZXing will open its own stream using the chosen deviceId below.
+    permStream.getTracks().forEach(t => t.stop());
+
+    // Now enumerate cameras — labels are available after permission is granted
+    const codeReader = new ZXing.BrowserMultiFormatReader();
+    _zxingScanner = codeReader;
+    const devices = await codeReader.listVideoInputDevices();
+
+    // Prefer environment-facing (rear) camera on devices with multiple cameras
+    let selectedDeviceId = devices.length > 0 ? devices[0].deviceId : undefined;
+
+    if (devices.length > 1) {
+      // Populate the camera switcher dropdown
+      devices.forEach(d => {
+        const opt = document.createElement("option");
+        opt.value = d.deviceId;
+        opt.text  = d.label || `Camera ${camSelect.options.length + 1}`;
+        camSelect.appendChild(opt);
+      });
+      // Pick rear/environment camera if label contains a hint, otherwise last device
+      const rearIdx = devices.findIndex(d =>
+        /back|rear|environment/i.test(d.label)
+      );
+      camSelect.selectedIndex = rearIdx >= 0 ? rearIdx : devices.length - 1;
+      selectedDeviceId = camSelect.value;
+      camWrap.classList.remove("hidden");
+    }
+
+    await _startZXingScanner(codeReader, selectedDeviceId);
+
+    // Allow user to switch cameras mid-scan
+    camSelect.onchange = async () => {
+      await _stopZXingScanner();
+      const freshReader = new ZXing.BrowserMultiFormatReader();
+      _zxingScanner = freshReader;
+      await _startZXingScanner(freshReader, camSelect.value);
+    };
+
+  } catch (err) {
+    errorEl.textContent = err.message;
+    errorEl.classList.remove("hidden");
+    statusEl.textContent = "Camera unavailable.";
+  }
+}
+
+/**
+ * Internal: begin ZXing decoding on a specific camera device.
+ * Fires the callback on every frame; we resolve on the first valid FireWatch QR.
+ *
+ * @param {ZXing.BrowserMultiFormatReader} reader - ZXing reader instance
+ * @param {string} deviceId - MediaDevices deviceId for the chosen camera
+ */
+async function _startZXingScanner(reader, deviceId) {
+  const video    = document.getElementById("qrScanVideo");
+  const statusEl = document.getElementById("qrScanStatus");
+
+  statusEl.textContent = "Scanning — point camera at a FireWatch QR code…";
+
+  try {
+    // decodeFromVideoDevice(deviceId, videoElement, callback)
+    // callback fires for every decoded frame (result) or decode failure (err)
+    await reader.decodeFromVideoDevice(deviceId, video, (result, err) => {
+      // err is normal on frames with no QR — ignore it
+      if (!result) return;
+
+      const text = result.getText();
+
+      // Validate: must contain ?ext=<number> (FireWatch deep-link format)
+      const match = text.match(/[?&]ext=(\d+)/);
+      if (!match) {
+        statusEl.textContent = "Not a FireWatch QR code — keep scanning…";
+        return;
+      }
+
+      // ✅ Valid FireWatch QR — stop scanning and navigate
+      const extId = parseInt(match[1], 10);
+      statusEl.textContent = `✓ Found EXT-${extId} — opening…`;
+      closeQRScanner();
+      navigateToExtinguisher(extId);
+    });
+
+    // Capture stream reference for clean shutdown
+    _scanStream = video.srcObject;
+
+  } catch (err) {
+    const errorEl = document.getElementById("qrScanError");
+    errorEl.textContent = `Failed to start scanner: ${err.message}`;
+    errorEl.classList.remove("hidden");
+    statusEl.textContent = "Scanner error.";
+  }
+}
+
+/**
+ * Stop the ZXing scanner and release the camera stream.
+ * Called both on manual close and on successful scan.
+ */
+async function _stopZXingScanner() {
+  if (_zxingScanner) {
+    try { _zxingScanner.reset(); } catch(e) {}
+    _zxingScanner = null;
+  }
+  // Stop all camera tracks to turn off the camera indicator light
+  if (_scanStream) {
+    _scanStream.getTracks().forEach(t => t.stop());
+    _scanStream = null;
+  }
+  const video = document.getElementById("qrScanVideo");
+  if (video) video.srcObject = null;
+}
+
+/** Close the QR scanner modal and stop the camera. */
+async function closeQRScanner() {
+  await _stopZXingScanner();
+  document.getElementById("qrScannerModal").classList.add("hidden");
+}
+
+// ── DEEP-LINK NAVIGATION ──────────────────────────────────────────────────────
+
+/**
+ * Navigate directly to a specific extinguisher's detail popup.
+ * Called after a successful QR scan (and on page load if ?ext= param exists).
+ *
+ * Strategy:
+ *  1. Check window._allExtinguishers cache first (instant if already loaded)
+ *  2. Fall back to fetching /api/extinguishers/<id> directly (works even if
+ *     the user hasn't drilled into that building yet)
+ *
+ * @param {number} extId - extinguisher_id to navigate to
+ */
+async function navigateToExtinguisher(extId) {
+  // Make sure we're showing the dashboard
+  showView("dashboard");
+
+  // 1. Try the in-memory cache first
+  const cached = (window._allExtinguishers || []).find(e => e.extinguisher_id === extId);
+  if (cached) {
+    openExtDetail(cached);
+    return;
+  }
+
+  // 2. Fetch directly from the API — always works regardless of drill level
+  try {
+    const row = await fetch(`/api/extinguishers/${extId}`).then(r => r.json());
+    if (row && row.extinguisher_id) {
+      openExtDetail(row);
+    } else {
+      alert(`Extinguisher EXT-${extId} not found. It may belong to a different organization.`);
+    }
+  } catch(err) {
+    alert(`Could not load extinguisher EXT-${extId}: ${err.message}`);
+  }
+}
+
+/**
+ * Check for a ?ext= deep-link param after the user is logged in.
+ * Called at the end of showDashboard() so data has time to start loading.
+ *
+ * If the URL contains ?ext=42 (from a scanned QR code), auto-open EXT-42.
+ * The param is removed from the URL bar after processing so it doesn't
+ * re-trigger on manual refresh.
+ */
+function checkExtDeepLink() {
+  const params = new URLSearchParams(window.location.search);
+  const extId  = params.get("ext");
+  if (!extId || isNaN(parseInt(extId, 10))) return;
+
+  // Clean the URL immediately (no page reload — just updates address bar)
+  const cleanUrl = window.location.pathname;
+  window.history.replaceState({}, document.title, cleanUrl);
+
+  // Navigate to the extinguisher (with polling in case data isn't ready)
+  navigateToExtinguisher(parseInt(extId, 10));
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// BULK QR LABEL SHEET
+// Prints a grid of QR code labels for multiple extinguishers at once.
+//
+// Scopes (set by which toolbar button the Admin clicked):
+//   'floor'    — all extinguishers on the current floor in the selected building
+//   'building' — all extinguishers in the selected building
+//   'company'  — all extinguishers in the selected company
+//   'org'      — all extinguishers in the entire organization
+//
+// The QR codes are generated as pure SVG (no external library) so the
+// print page is fully self-contained and works offline after first load.
+// ══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Toggle a QR scope dropdown menu open/closed.
+ * Closes all other QR dropdowns first so only one is open at a time.
+ * Also closes when user clicks anywhere outside.
+ *
+ * @param {string} menuId - element ID of the dropdown menu div
+ */
+function toggleQRDropdown(menuId) {
+  const allMenus = ["qrDropMenuCompany","qrDropMenuBuilding","qrDropMenuExt"];
+  allMenus.forEach(id => {
+    const el = document.getElementById(id);
+    if (el && id !== menuId) el.classList.add("hidden");
+  });
+  const target = document.getElementById(menuId);
+  if (target) target.classList.toggle("hidden");
+}
+
+// Close QR dropdowns when clicking anywhere outside them
+document.addEventListener("click", e => {
+  const insideDropdown = e.target.closest("#qrSheetDropdownCompany,#qrSheetDropdownBuilding,#qrSheetDropdownExt");
+  if (!insideDropdown) {
+    ["qrDropMenuCompany","qrDropMenuBuilding","qrDropMenuExt"].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.classList.add("hidden");
+    });
+  }
+});
+
+/**
+ * Fetch extinguishers for the requested scope and open a printable QR label sheet.
+ *
+ * @param {'floor'|'building'|'company'|'org'} scope
+ */
+async function printQRSheet(scope) {
+  const base = window.location.origin + window.location.pathname;
+
+  // ── Determine API URL and sheet title based on scope ────────────────────────
+  let apiUrl = "", title = "", subtitle = "";
+
+  if (scope === "floor") {
+    if (!_selectedBuilding) { alert("No building selected. Drill into a building first."); return; }
+    const floorNum = _getCurrentFloor();
+    if (!floorNum) { alert("Could not determine the current floor."); return; }
+    apiUrl   = `/api/extinguishers?building_id=${_selectedBuilding.building_id}`;
+    title    = `Floor ${floorNum} \u2014 ${_selectedBuilding.name}`;
+    subtitle = _selectedCompany?.name || "";
+  } else if (scope === "building") {
+    if (!_selectedBuilding) { alert("No building selected. Drill into a building first."); return; }
+    apiUrl   = `/api/extinguishers?building_id=${_selectedBuilding.building_id}`;
+    title    = _selectedBuilding.name;
+    subtitle = _selectedCompany?.name || "";
+  } else if (scope === "company") {
+    if (!_selectedCompany) { alert("No company selected. Click a company card first."); return; }
+    apiUrl   = `/api/extinguishers?company_id=${_selectedCompany.company_id}`;
+    title    = _selectedCompany.name;
+    subtitle = "All Buildings";
+  } else if (scope === "org") {
+    const oid = orgId();
+    if (!oid) { alert("Could not determine organization."); return; }
+    apiUrl   = `/api/extinguishers?org_id=${oid}`;
+    title    = currentUser.org_name || "Organization";
+    subtitle = "All Companies & Buildings";
+  }
+
+  // ── Fetch extinguisher data ──────────────────────────────────────────────────
+  let rows;
+  try {
+    rows = await fetch(apiUrl).then(r => r.json());
+  } catch(err) {
+    alert(`Failed to load extinguishers: ${err.message}`);
+    return;
+  }
+  if (!rows || rows.length === 0) { alert(`No extinguishers found for scope: ${scope}.`); return; }
+
+  // Filter by floor client-side when scope = 'floor'
+  if (scope === "floor") {
+    const floorNum = _getCurrentFloor();
+    rows = rows.filter(r => String(r.floor_number) === String(floorNum));
+    if (rows.length === 0) { alert(`No extinguishers found on Floor ${floorNum}.`); return; }
+  }
+
+  // ── Generate QR code data URLs for every extinguisher ───────────────────────
+  // We render each QR into a hidden canvas using qrcode.js, then export as a
+  // PNG data URL. This gives us a self-contained base64 image that embeds
+  // perfectly into the print HTML without any CDN dependency.
+  const qrDataUrls = {};
+  const tmpContainer = document.createElement("div");
+  tmpContainer.style.cssText = "position:absolute;left:-9999px;top:-9999px;";
+  document.body.appendChild(tmpContainer);
+
+  for (const ext of rows) {
+    const url    = `${base}?ext=${ext.extinguisher_id}`;
+    const tmpDiv = document.createElement("div");
+    tmpContainer.appendChild(tmpDiv);
+    try {
+      new QRCode(tmpDiv, {
+        text:         url,
+        width:        200,
+        height:       200,
+        colorDark:    "#000000",
+        colorLight:   "#ffffff",
+        correctLevel: QRCode.CorrectLevel.H
+      });
+      // qrcode.js renders a <canvas> inside tmpDiv — export it as PNG data URL
+      const canvas = tmpDiv.querySelector("canvas");
+      qrDataUrls[ext.extinguisher_id] = canvas
+        ? canvas.toDataURL("image/png")
+        : null;
+    } catch(e) {
+      qrDataUrls[ext.extinguisher_id] = null;
+    }
+  }
+  document.body.removeChild(tmpContainer);
+
+  // ── Build label card HTML for each extinguisher ─────────────────────────────
+  const now = new Date().toLocaleDateString("en-US", {year:"numeric", month:"long", day:"numeric"});
+
+  const labelCards = rows.map(ext => {
+    const url      = `${base}?ext=${ext.extinguisher_id}`;
+    const dataUrl  = qrDataUrls[ext.extinguisher_id];
+    const qrImg    = dataUrl
+      ? `<img src="${dataUrl}" width="140" height="140" alt="QR EXT-${ext.extinguisher_id}" style="display:block;">`
+      : `<div style="width:140px;height:140px;background:#f0f0f0;display:flex;align-items:center;justify-content:center;font-size:10px;color:#aaa;border:1px solid #ddd;border-radius:4px;">QR unavailable</div>`;
+
+    const metaLines = [
+      ext.company_name  ? `\uD83C\uDFE2 ${ext.company_name}`  : null,
+      ext.building_name ? `\uD83C\uDFD7 ${ext.building_name}` : null,
+      ext.floor_number  != null ? `Floor ${ext.floor_number}` : null,
+      ext.room_number   ? `Rm ${ext.room_number}`             : null,
+    ].filter(Boolean).slice(0, 3).map(l => `<div>${l}</div>`).join("");
+
+    return `<div class="label-card">
+      <div class="label-brand">\uD83D\uDD25 FireWatch \u00B7 NFPA Compliance</div>
+      <div class="label-ext-id">EXT-${ext.extinguisher_id}</div>
+      ${ext.location_description ? `<div class="label-loc">${ext.location_description}</div>` : ""}
+      <div class="label-qr">${qrImg}</div>
+      <div class="label-meta">${metaLines}</div>
+      ${ext.next_due_date ? `<div class="label-due">Due: ${ext.next_due_date}</div>` : ""}
+      <div class="label-url">${url}</div>
+    </div>`;
+  }).join("");
+
+  // ── Build self-contained print HTML ─────────────────────────────────────────
+  // QR codes are embedded as base64 PNGs — no external resources needed.
+  // Print is triggered via window.print() inside the iframe onload.
+  const html = `<!DOCTYPE html><html lang="en"><head>
+  <meta charset="UTF-8">
+  <title>FireWatch QR Labels \u2014 ${title}</title>
+  <style>
+    @page { size: letter; margin: 0.4in; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Courier New', monospace; background: #fff; color: #000; }
+    .sheet-header { text-align:center; padding-bottom:12px; border-bottom:2px solid #e85d04; margin-bottom:16px; }
+    .sheet-brand  { font-size:10px; letter-spacing:0.2em; text-transform:uppercase; color:#888; }
+    .sheet-title  { font-size:20px; font-weight:700; color:#e85d04; margin:4px 0 2px; }
+    .sheet-sub    { font-size:11px; color:#555; }
+    .sheet-meta   { font-size:9px; color:#aaa; margin-top:4px; }
+    .label-grid   { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+    .label-card   { border:1.5px solid #222; border-radius:6px; padding:10px 8px; text-align:center;
+                    page-break-inside:avoid; break-inside:avoid;
+                    display:flex; flex-direction:column; align-items:center; gap:4px; }
+    .label-brand  { font-size:7px; letter-spacing:0.1em; text-transform:uppercase; color:#888; }
+    .label-ext-id { font-size:15px; font-weight:700; color:#e85d04; letter-spacing:0.05em; }
+    .label-loc    { font-size:8px; color:#333; max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .label-qr     { margin:4px 0; line-height:0; }
+    .label-meta   { font-size:7px; color:#555; line-height:1.6; }
+    .label-due    { font-size:7px; color:#c1121f; font-weight:700; }
+    .label-url    { font-size:6px; color:#bbb; word-break:break-all; max-width:100%; }
+    .sheet-footer { margin-top:16px; padding-top:10px; border-top:1px solid #ddd;
+                    text-align:center; font-size:8px; color:#aaa; }
+  </style>
+  </head><body>
+  <div class="sheet-header">
+    <div class="sheet-brand">FireWatch \u00B7 NFPA 10 Compliance Tracking</div>
+    <div class="sheet-title">${title}</div>
+    ${subtitle ? `<div class="sheet-sub">${subtitle}</div>` : ""}
+    <div class="sheet-meta">Generated ${now} \u00B7 ${rows.length} extinguisher${rows.length !== 1 ? "s" : ""}</div>
+  </div>
+  <div class="label-grid">${labelCards}</div>
+  <div class="sheet-footer">
+    FireWatch NFPA Compliance Platform \u00B7 Scan any QR code to view, inspect, or report that extinguisher \u00B7 ${base}
+  </div>
+  <script>window.onload = function(){ window.print(); }<\/script>
+  </body></html>`;
+
+  // ── Deliver to user ──────────────────────────────────────────────────────────
+  // Desktop: inject into a hidden <iframe> instead of window.open() so the
+  // app never freezes while the print dialog is open.
+  // Mobile:  download as an HTML file (popups are blocked on most mobile browsers).
+  const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) || window.innerWidth < 768;
+
+  if (isMobile) {
+    const blob = new Blob([html], { type: "text/html" });
+    const a    = document.createElement("a");
+    a.href     = URL.createObjectURL(blob);
+    a.download = `FireWatch_QR_Labels_${scope}_${Date.now()}.html`;
+    a.click();
+    return;
+  }
+
+  // Remove any leftover print iframe from a previous call
+  const existingFrame = document.getElementById("qrPrintFrame");
+  if (existingFrame) existingFrame.remove();
+
+  // Create a hidden iframe, write the print HTML into it, and let its
+  // own window.print() fire — the parent page stays fully interactive.
+  const iframe = document.createElement("iframe");
+  iframe.id    = "qrPrintFrame";
+  iframe.style.cssText = "position:fixed;width:0;height:0;border:none;left:-9999px;top:-9999px;";
+  document.body.appendChild(iframe);
+
+  iframe.onload = () => {
+    try {
+      iframe.contentWindow.focus();
+      iframe.contentWindow.print();
+    } catch(e) {
+      // Fallback: open in new tab if iframe print fails (e.g. strict CSP)
+      const win = window.open("", "_blank");
+      if (win) { win.document.write(html); win.document.close(); }
+    }
+  };
+
+  // Write HTML into the iframe document
+  iframe.contentDocument.open();
+  iframe.contentDocument.write(html);
+  iframe.contentDocument.close();
+}
+
+/**
+ * Get the floor number currently being viewed.
+ * Reads from window._lastExtRows which is populated by renderExtinguisherTable.
+ */
+function _getCurrentFloor() {
+  const rows = window._lastExtRows || [];
+  if (rows.length === 0) return null;
+  const counts = {};
+  rows.forEach(r => { if (r.floor_number != null) counts[r.floor_number] = (counts[r.floor_number]||0)+1; });
+  const floors = Object.keys(counts);
+  if (floors.length === 0) return null;
+  return floors.reduce((a, b) => counts[a] >= counts[b] ? a : b);
+}
+
+// ── END BULK QR LABEL SHEET ───────────────────────────────────────────────────
+
+
 // If the user refreshes the page, restore their session from localStorage
 // so they don't have to log in again.
 (function restoreSession() {
