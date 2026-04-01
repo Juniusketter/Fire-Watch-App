@@ -3116,17 +3116,24 @@ async function loadExtinguishers() {
     let rows;
     if (isThirdInv()) {
       // 3rd Party: only the specific assigned unit(s)
-      const assignedExtIds = new Set(activeAssignments.map(a => a.extinguisher_id).filter(Boolean));
-      rows = allRows.filter(e => assignedExtIds.has(e.extinguisher_id));
+      // Coerce to Number to prevent string vs integer type mismatch
+      const assignedExtIds = new Set(activeAssignments.map(a => Number(a.extinguisher_id)).filter(Boolean));
+      rows = allRows.filter(e => assignedExtIds.has(Number(e.extinguisher_id)));
     } else {
       // Primary Inspector: all extinguishers in their assigned buildings
+      // Coerce to Number to prevent string vs integer type mismatch from SQLite JSON
       const assignedBuildingIds = new Set(
-        activeAssignments.map(a => a.building_id).filter(Boolean)
+        activeAssignments.map(a => Number(a.building_id)).filter(Boolean)
       );
-      rows = allRows.filter(e => assignedBuildingIds.has(e.building_id));
+      rows = allRows.filter(e => assignedBuildingIds.has(Number(e.building_id)));
     }
 
     window._lastExtRows = rows;
+    if (!rows.length) {
+      document.getElementById("tableExtWrap").innerHTML =
+        "<p class='empty-msg'>[ NO EXTINGUISHERS FOUND FOR YOUR ASSIGNED BUILDINGS ]</p>";
+      return;
+    }
     const cols = ["extinguisher_id","building_name","floor_number","room_number",
                   "location_description","ext_type","ext_status","next_due_date"];
     renderTable("tableExtWrap", cols, rows, row => openExtDetail(row));
@@ -3215,6 +3222,12 @@ async function drillTo(level, data) {
 
 async function renderCompanyGrid() {
   const grid = document.getElementById("companyGrid");
+  // Guard: if org_id not yet available, retry after short delay
+  if (!orgId()) {
+    grid.innerHTML = `<div class="drill-empty">Loading…</div>`;
+    setTimeout(renderCompanyGrid, 500);
+    return;
+  }
   // Only show loading spinner on first paint (grid is empty)
   if (!grid.children.length) grid.innerHTML = `<div class="drill-empty">Loading companies…</div>`;
   try {
@@ -9760,7 +9773,7 @@ async function navigateToExtinguisher(extId) {
 
     if (isThirdInv()) {
       // 3rd Party: must match a specific assigned extinguisher ID
-      const isAssigned = activeAssignments.some(a => a.extinguisher_id === extId);
+      const isAssigned = activeAssignments.some(a => Number(a.extinguisher_id) === Number(extId));
       if (!isAssigned) {
         alert(`EXT-${extId} is not in your current assignments.\nYou can only access extinguishers assigned to you.`);
         return;
@@ -9768,11 +9781,11 @@ async function navigateToExtinguisher(extId) {
     } else {
       // Primary Inspector: must be in an assigned building
       const assignedBuildingIds = new Set(
-        activeAssignments.map(a => a.building_id).filter(Boolean)
+        activeAssignments.map(a => Number(a.building_id)).filter(Boolean)
       );
       // Also check in-memory ext cache to get the building_id for this ext
       const ext = (window._allExtinguishers || []).find(e => e.extinguisher_id === extId);
-      if (ext && assignedBuildingIds.size > 0 && !assignedBuildingIds.has(ext.building_id)) {
+      if (ext && assignedBuildingIds.size > 0 && !assignedBuildingIds.has(Number(ext.building_id))) {
         alert(`EXT-${extId} is not in one of your assigned buildings.`);
         return;
       }
