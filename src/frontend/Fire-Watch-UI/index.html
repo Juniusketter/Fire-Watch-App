@@ -3129,6 +3129,9 @@ async function loadExtinguishers() {
     }
 
     window._lastExtRows = rows;
+    // Update the Extinguishers stat box with actual assigned-building count
+    const statExtEl = document.getElementById("statExt");
+    if (statExtEl) statExtEl.textContent = rows.length;
     if (!rows.length) {
       document.getElementById("tableExtWrap").innerHTML =
         "<p class='empty-msg'>[ NO EXTINGUISHERS FOUND FOR YOUR ASSIGNED BUILDINGS ]</p>";
@@ -3358,6 +3361,9 @@ async function loadAssignments() {
   const rows = filterVal === "active"
     ? allRows.filter(r => !r.status || !r.status.toLowerCase().includes("complete"))
     : allRows;
+
+  // Store ALL rows immediately so loadExtinguishers can use building_id scoping
+  window._lastAssignRows = allRows;
 
   // Update stat box using the FILTERED allRows (post-scoping for ThirdAdmin)
   const statAssign = document.getElementById("statAssign");
