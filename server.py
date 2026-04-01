@@ -185,6 +185,13 @@ def run_migrations():
         if "cert_number" not in user_cols:
             conn.execute("ALTER TABLE Users ADD COLUMN cert_number TEXT DEFAULT ''")
             print("  [Migration] Added Users.cert_number")
+        # Ground-reality fields — Sprint 5 enterprise update
+        if "company_id" not in user_cols:
+            conn.execute("ALTER TABLE Users ADD COLUMN company_id INTEGER REFERENCES Companies(company_id)")
+            print("  [Migration] Added Users.company_id (Client role scoping)")
+        if "subcontractor_company_name" not in user_cols:
+            conn.execute("ALTER TABLE Users ADD COLUMN subcontractor_company_name TEXT DEFAULT ''")
+            print("  [Migration] Added Users.subcontractor_company_name (3rd party PDF legal name)")
 
         # ── Assignments ────────────────────────────────────────────────────
         assign_cols = [r[1] for r in conn.execute("PRAGMA table_info(Assignments)").fetchall()]
@@ -219,6 +226,22 @@ def run_migrations():
             if col not in report_cols:
                 conn.execute(f"ALTER TABLE Reports ADD COLUMN {col} {col_type}")
                 print(f"  [Migration] Added Reports.{col}")
+        # Report legal immutability — Sprint 5
+        if "approval_status" not in report_cols:
+            conn.execute("ALTER TABLE Reports ADD COLUMN approval_status TEXT DEFAULT 'Approved'")
+            print("  [Migration] Added Reports.approval_status")
+        if "reviewed_by" not in report_cols:
+            conn.execute("ALTER TABLE Reports ADD COLUMN reviewed_by INTEGER REFERENCES Users(user_id)")
+            print("  [Migration] Added Reports.reviewed_by")
+        if "reviewed_at" not in report_cols:
+            conn.execute("ALTER TABLE Reports ADD COLUMN reviewed_at TEXT")
+            print("  [Migration] Added Reports.reviewed_at")
+        if "void_reason" not in report_cols:
+            conn.execute("ALTER TABLE Reports ADD COLUMN void_reason TEXT DEFAULT ''")
+            print("  [Migration] Added Reports.void_reason")
+        if "po_number" not in report_cols:
+            conn.execute("ALTER TABLE Reports ADD COLUMN po_number TEXT DEFAULT ''")
+            print("  [Migration] Added Reports.po_number")
 
         # ── Companies table ────────────────────────────────────────────────
         if "Companies" not in tables:
@@ -282,11 +305,29 @@ def run_migrations():
             "ext_status":          "TEXT DEFAULT 'Active'",    # Active, Out of Service, Retired, Missing
             "last_inspection_date":"DATE",                     # last routine monthly inspection
             "dot_cert_no":         "TEXT DEFAULT ''",           # DOT certification number (e.g. A739)
+            "condemned_date":      "DATE",                     # set when ext is condemned/removed
+            "replaced_by_id":      "INTEGER",                  # FK to replacement extinguisher record
         }
         for col, col_type in nfpa_cols.items():
             if col not in ext_cols:
                 conn.execute(f"ALTER TABLE Extinguishers ADD COLUMN {col} {col_type}")
                 print(f"  [Migration] Added Extinguishers.{col}")
+
+        # ── AuditorTokens table — time-limited AHJ/Fire Marshal access ─────
+        if "AuditorTokens" not in tables:
+            conn.execute("""
+                CREATE TABLE AuditorTokens (
+                    token_id    INTEGER PRIMARY KEY AUTOINCREMENT,
+                    token       TEXT NOT NULL UNIQUE,
+                    org_id      INTEGER NOT NULL REFERENCES Organizations(org_id),
+                    building_id INTEGER NOT NULL REFERENCES Buildings(building_id),
+                    created_by  INTEGER REFERENCES Users(user_id),
+                    created_at  TEXT DEFAULT (datetime('now')),
+                    expires_at  TEXT NOT NULL,
+                    label       TEXT DEFAULT ''
+                )
+            """)
+            print("  [Migration] Created AuditorTokens table")
 
         conn.commit()
 
@@ -490,8 +531,9 @@ def login():
 
     with get_db() as conn:
         row = conn.execute(
-            """SELECT user_id, username, role, org_id,
-                      first_name, last_name, middle_name, email, phone, cert_number
+            """SELECT user_id, username, role, org_id, company_id,
+                      first_name, last_name, middle_name, email, phone, cert_number,
+                      subcontractor_company_name
                FROM Users
                WHERE username = ? AND password_hash = ?""",
             (username, password)
@@ -531,6 +573,7 @@ def login():
             "username":        row["username"],
             "role":            row["role"],
             "org_id":          row["org_id"],
+            "company_id":      row["company_id"],  # Client role scoping
             "org_name":        org_name,
             "platform_status": platform_status,
             # PII fields — used for NFPA form Section 6 (Inspector Certification)
@@ -540,6 +583,7 @@ def login():
             "email":        row["email"]        or "",
             "phone":        row["phone"]        or "",
             "cert_number":  row["cert_number"]  or "",
+            "subcontractor_company_name": row["subcontractor_company_name"] or "",
         })
     platform_log("unknown", "login_failed", username, "Invalid credentials")
     return jsonify({"success": False, "error": "Invalid username or password"}), 401
@@ -722,11 +766,15 @@ def delete_building(building_id):
 def get_extinguishers():
     """List extinguishers with JOINs to Buildings and Companies for location context.
     Supports filtering by building_id, company_id, or org_id.
-    Returns all 19+ columns including NFPA 10 compliance metadata.
-    Uses SELECT e.* so new columns added via migration are auto-included."""
+    Returns all columns including NFPA 10 compliance metadata.
+    Client role: automatically scoped to their company_id only.
+    Inspector / 3rd Party Inspector: scoped to buildings in their assigned work orders."""
     building_id = request.args.get("building_id")
     company_id  = request.args.get("company_id")
     org_id      = request.args.get("org_id")
+    # API-level Client scoping — enforce even if someone calls the API directly
+    client_company_id = request.args.get("client_company_id")
+
     with get_db() as conn:
         base = """
             SELECT e.*,
@@ -737,7 +785,13 @@ def get_extinguishers():
             LEFT JOIN Buildings b ON b.building_id = e.building_id
             LEFT JOIN Companies c ON c.company_id  = b.company_id
         """
-        if building_id:
+        if client_company_id:
+            # Client role — strictly scoped to their company only
+            rows = conn.execute(
+                base + " WHERE c.company_id=? ORDER BY b.name, e.floor_number, e.room_number",
+                (client_company_id,)
+            ).fetchall()
+        elif building_id:
             rows = conn.execute(base + " WHERE e.building_id=? ORDER BY e.floor_number, e.room_number",
                                 (building_id,)).fetchall()
         elif company_id:
@@ -877,6 +931,7 @@ def get_assignments():
                    e.floor_number, e.room_number, e.location_description,
                    e.next_due_date, e.building_id,
                    b.name  AS building_name,
+                   c.company_id AS company_id,
                    c.name  AS company_name,
                    c.address AS company_address
             FROM Assignments a
@@ -935,35 +990,68 @@ def update_assignment(assign_id):
 # ── REPORTS ────────────────────────────────────────────────────────────────────
 @app.route("/api/reports", methods=["GET"])
 def get_reports():
-    user_id = request.args.get("user_id")
-    org_id  = request.args.get("org_id")
+    """Fetch reports with full context.
+    Client role: scoped to their company_id (only see their own building reports).
+    Inspector/3rd Party Inspector: scoped to their own submitted reports.
+    Admin: sees all org reports including Pending_Review from 3rd party.
+    Approval status is always included so the UI can show quarantine state."""
+    user_id          = request.args.get("user_id")
+    org_id           = request.args.get("org_id")
+    client_company_id = request.args.get("client_company_id")  # Client role scoping
+    approval_filter  = request.args.get("approval_status")      # optional: Approved/Pending_Review/Void
+
     with get_db() as conn:
         base = """
             SELECT r.report_id, r.extinguisher_id, r.inspection_date,
                    r.notes, r.photo_path,
-                   u.username  AS inspector,
+                   r.approval_status, r.reviewed_by, r.reviewed_at,
+                   r.void_reason, r.po_number,
+                   r.service_type, r.inspection_result,
+                   r.chk_mounted, r.chk_access, r.chk_pressure, r.chk_seal,
+                   r.chk_damage, r.chk_nozzle, r.chk_label, r.chk_weight,
+                   u.username      AS inspector,
+                   u.first_name    AS inspector_first_name,
+                   u.last_name     AS inspector_last_name,
+                   u.cert_number   AS inspector_cert,
+                   u.subcontractor_company_name AS inspector_subcontractor,
+                   u.role          AS inspector_role,
+                   u_r.username    AS reviewed_by_name,
                    e.floor_number, e.room_number, e.location_description,
                    e.next_due_date, e.building_id,
-                   b.name      AS building_name,
-                   c.name      AS company_name,
-                   c.company_id AS company_id,
-                   c.address   AS company_address
+                   b.name          AS building_name,
+                   c.name          AS company_name,
+                   c.company_id    AS company_id,
+                   c.address       AS company_address
             FROM Reports r
             LEFT JOIN Users u         ON r.inspector_id    = u.user_id
+            LEFT JOIN Users u_r       ON r.reviewed_by     = u_r.user_id
             LEFT JOIN Extinguishers e ON r.extinguisher_id = e.extinguisher_id
             LEFT JOIN Buildings b     ON e.building_id     = b.building_id
             LEFT JOIN Companies c     ON b.company_id      = c.company_id
         """
-        if user_id:
-            rows = conn.execute(
-                base + " WHERE r.inspector_id=? AND (r.org_id=? OR ? IS NULL)",
-                (user_id, org_id, org_id)
-            ).fetchall()
-        else:
-            rows = conn.execute(
-                base + " WHERE (r.org_id=? OR ? IS NULL)",
-                (org_id, org_id)
-            ).fetchall()
+        conditions = []
+        params = []
+
+        if client_company_id:
+            # Client: only see APPROVED reports for their company
+            conditions.append("c.company_id = ?")
+            params.append(client_company_id)
+            conditions.append("(r.approval_status = 'Approved' OR r.approval_status IS NULL)")
+        elif user_id:
+            conditions.append("r.inspector_id = ?")
+            params.append(user_id)
+
+        if org_id and not client_company_id:
+            conditions.append("(r.org_id = ? OR ? IS NULL)")
+            params.extend([org_id, org_id])
+
+        if approval_filter:
+            conditions.append("r.approval_status = ?")
+            params.append(approval_filter)
+
+        where = (" WHERE " + " AND ".join(conditions)) if conditions else ""
+        rows = conn.execute(base + where + " ORDER BY r.inspection_date DESC", params).fetchall()
+
     return jsonify([dict(r) for r in rows])
 
 @app.route("/api/reports", methods=["POST"])
@@ -979,13 +1067,29 @@ def create_report():
             report_cols = [r[1] for r in conn.execute("PRAGMA table_info(Reports)").fetchall()]
             if "photo_path" not in report_cols:
                 conn.execute("ALTER TABLE Reports ADD COLUMN photo_path TEXT")
+            # Determine approval status based on submitting inspector's role
+            # 3rd Party Inspector reports go into quarantine (Pending_Review)
+            # until a Primary Admin counter-signs them
+            inspector_id   = d.get("inspector_id")
+            approval_status = "Approved"
+            if inspector_id:
+                insp = conn.execute(
+                    "SELECT role FROM Users WHERE user_id=?", (inspector_id,)
+                ).fetchone()
+                if insp and insp["role"] == "3rd_Party_Inspector":
+                    approval_status = "Pending_Review"
+
+            service_type = d.get("service_type", "Routine Inspection")
+            insp_date    = d.get("inspection_date")
+
             conn.execute(
                 "INSERT INTO Reports (extinguisher_id, inspector_id, inspection_date, notes, photo_path, org_id, service_type,"
-                " chk_mounted, chk_access, chk_pressure, chk_seal, chk_damage, chk_nozzle, chk_label, chk_weight, inspection_result) "
-                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                (d.get("extinguisher_id"), d.get("inspector_id"),
-                 d.get("inspection_date"), d.get("notes",""),
-                 d.get("photo_path"), d.get("org_id"), d.get("service_type", "Routine Inspection"),
+                " chk_mounted, chk_access, chk_pressure, chk_seal, chk_damage, chk_nozzle, chk_label, chk_weight,"
+                " inspection_result, approval_status, po_number) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (d.get("extinguisher_id"), inspector_id,
+                 insp_date, d.get("notes",""),
+                 d.get("photo_path"), d.get("org_id"), service_type,
                  1 if d.get("chk_mounted") else 0,
                  1 if d.get("chk_access") else 0,
                  1 if d.get("chk_pressure") else 0,
@@ -994,8 +1098,26 @@ def create_report():
                  1 if d.get("chk_nozzle") else 0,
                  1 if d.get("chk_label") else 0,
                  1 if d.get("chk_weight") else 0,
-                 d.get("inspection_result", ""))
+                 d.get("inspection_result", ""),
+                 approval_status,
+                 d.get("po_number", ""))
             )
+
+            # Update extinguisher service history dates based on service type
+            # Annual Maintenance → last_annual_date
+            # 6-Year Service → last_6year_date
+            # Hydrostatic Test → last_hydro_date
+            ext_id = d.get("extinguisher_id")
+            if insp_date and ext_id:
+                if service_type == "Annual Maintenance":
+                    conn.execute("UPDATE Extinguishers SET last_annual_date=? WHERE extinguisher_id=?",
+                                 (insp_date, ext_id))
+                elif service_type == "6-Year Service":
+                    conn.execute("UPDATE Extinguishers SET last_6year_date=? WHERE extinguisher_id=?",
+                                 (insp_date, ext_id))
+                elif service_type == "Hydrostatic Test":
+                    conn.execute("UPDATE Extinguishers SET last_hydro_date=? WHERE extinguisher_id=?",
+                                 (insp_date, ext_id))
             # Update extinguisher's last_report_id and last inspection date
             report_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
             conn.execute(
@@ -1106,7 +1228,7 @@ def create_user():
     username   = (d.get("username")   or "").strip()
     password   = (d.get("password")   or "").strip()
     role       = (d.get("role")       or "").strip()
-    org_id     = d.get("org_id")
+    org_id      = d.get("org_id")
     # PII fields — first_name, last_name, email mandatory; others optional
     first_name  = (d.get("first_name")  or "").strip()
     last_name   = (d.get("last_name")   or "").strip()
@@ -1114,6 +1236,9 @@ def create_user():
     email       = (d.get("email")       or "").strip()
     phone       = (d.get("phone")       or "").strip()
     cert_number = (d.get("cert_number") or "").strip()
+    # Enterprise fields
+    company_id                = d.get("company_id")  # Client role scoping (nullable)
+    subcontractor_company_name = (d.get("subcontractor_company_name") or "").strip()
 
     # Mandatory field validation
     if not username:
@@ -1128,8 +1253,10 @@ def create_user():
         return jsonify({"error": "Last name is required."}), 400
     if not email:
         return jsonify({"error": "Email address is required."}), 400
+    if role == "Client" and not company_id:
+        return jsonify({"error": "A company must be assigned to Client accounts."}), 400
 
-    valid_roles = ["Admin", "Inspector", "3rd_Party_Admin", "3rd_Party_Inspector"]
+    valid_roles = ["Admin", "Inspector", "3rd_Party_Admin", "3rd_Party_Inspector", "Client"]
     if role not in valid_roles:
         return jsonify({"error": f"Invalid role. Must be one of: {', '.join(valid_roles)}"}), 400
 
@@ -1143,10 +1270,12 @@ def create_user():
             conn.execute(
                 """INSERT INTO Users
                    (username, password_hash, role, org_id,
-                    first_name, last_name, middle_name, email, phone, cert_number)
-                   VALUES (?,?,?,?,?,?,?,?,?,?)""",
+                    first_name, last_name, middle_name, email, phone, cert_number,
+                    company_id, subcontractor_company_name)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (username, password, role, org_id,
-                 first_name, last_name, middle_name, email, phone, cert_number)
+                 first_name, last_name, middle_name, email, phone, cert_number,
+                 company_id, subcontractor_company_name)
             )
         platform_log(username, "user_created", username, f"role={role}")
         return jsonify({"success": True}), 201
@@ -1167,8 +1296,10 @@ def update_user(user_id):
     email       = d.get("email")
     phone       = d.get("phone")
     cert_number = d.get("cert_number")
+    company_id                = d.get("company_id")           # Client scoping
+    subcontractor_company_name = d.get("subcontractor_company_name")  # 3rd party PDF name
 
-    valid_roles = ["Admin", "Inspector", "3rd_Party_Admin", "3rd_Party_Inspector"]
+    valid_roles = ["Admin", "Inspector", "3rd_Party_Admin", "3rd_Party_Inspector", "Client"]
     if role and role not in valid_roles:
         return jsonify({"error": f"Invalid role. Must be one of: {', '.join(valid_roles)}"}), 400
 
@@ -1209,6 +1340,11 @@ def update_user(user_id):
                 updates.append("phone=?");         params.append(phone.strip())
             if cert_number is not None:
                 updates.append("cert_number=?");   params.append(cert_number.strip())
+            if company_id is not None:
+                updates.append("company_id=?");    params.append(company_id or None)
+            if subcontractor_company_name is not None:
+                updates.append("subcontractor_company_name=?")
+                params.append(subcontractor_company_name.strip())
 
             if updates:
                 params.append(user_id)
@@ -1695,6 +1831,321 @@ def platform_audit_log():
             "SELECT * FROM PlatformAuditLog ORDER BY timestamp DESC LIMIT ?", (limit,)
         ).fetchall()
     return jsonify([dict(r) for r in rows])
+
+
+# ── REPORT COUNTER-SIGN (Admin approves a 3rd Party report) ──────────────────
+@app.route("/api/reports/<int:report_id>/approve", methods=["POST"])
+def approve_report(report_id):
+    """Counter-sign a Pending_Review report submitted by a 3rd Party Inspector.
+    Sets approval_status = Approved, records the reviewing admin and timestamp.
+    Only Primary Admins can counter-sign — this is a legal attestation."""
+    d = request.get_json() or {}
+    admin_id = d.get("admin_id")
+    if not admin_id:
+        return jsonify({"error": "admin_id is required"}), 400
+    try:
+        with get_db() as conn:
+            # Verify the report exists and is in Pending_Review
+            report = conn.execute(
+                "SELECT report_id, approval_status FROM Reports WHERE report_id=?", (report_id,)
+            ).fetchone()
+            if not report:
+                return jsonify({"error": "Report not found"}), 404
+            if report["approval_status"] == "Void":
+                return jsonify({"error": "Cannot approve a voided report"}), 400
+            conn.execute(
+                """UPDATE Reports SET
+                   approval_status='Approved',
+                   reviewed_by=?,
+                   reviewed_at=datetime('now')
+                   WHERE report_id=?""",
+                (admin_id, report_id)
+            )
+        platform_log("admin", "report_approved", str(report_id),
+                     f"Counter-signed by admin_id={admin_id}")
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ── REPORT VOID (Admin voids a report with reason) ────────────────────────────
+@app.route("/api/reports/<int:report_id>/void", methods=["POST"])
+def void_report(report_id):
+    """Void a report — marks it permanently invalid with a reason.
+    Industry standard: reports cannot be deleted, only voided.
+    The voided record remains in the audit trail."""
+    d = request.get_json() or {}
+    reason   = (d.get("reason") or "").strip()
+    admin_id = d.get("admin_id")
+    if not reason:
+        return jsonify({"error": "A void reason is required"}), 400
+    try:
+        with get_db() as conn:
+            conn.execute(
+                """UPDATE Reports SET
+                   approval_status='Void',
+                   void_reason=?,
+                   reviewed_by=?,
+                   reviewed_at=datetime('now')
+                   WHERE report_id=?""",
+                (reason, admin_id, report_id)
+            )
+        platform_log("admin", "report_voided", str(report_id), f"Reason: {reason}")
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ── EXTINGUISHER CONDEMN & REPLACE ────────────────────────────────────────────
+@app.route("/api/extinguishers/<int:ext_id>/condemn", methods=["POST"])
+def condemn_extinguisher(ext_id):
+    """Mark an extinguisher as Condemned/Removed (preserving full history),
+    and create a new replacement extinguisher on the same wall hook.
+    Returns the new extinguisher_id so the UI can open the edit modal.
+    This is the legally correct workflow — never overwrite serial numbers."""
+    d = request.get_json() or {}
+    try:
+        with get_db() as conn:
+            # Get the old extinguisher to copy location data
+            old = conn.execute(
+                "SELECT * FROM Extinguishers WHERE extinguisher_id=?", (ext_id,)
+            ).fetchone()
+            if not old:
+                return jsonify({"error": "Extinguisher not found"}), 404
+
+            # Mark old as condemned — preserve all history
+            conn.execute(
+                """UPDATE Extinguishers SET
+                   ext_status='Condemned/Removed',
+                   condemned_date=date('now')
+                   WHERE extinguisher_id=?""",
+                (ext_id,)
+            )
+
+            # Create new replacement record — inherit location, interval, org
+            # Serial number, DOT cert, manufacturer intentionally blank (new unit)
+            conn.execute(
+                """INSERT INTO Extinguishers
+                   (address, building_number, floor_number, room_number,
+                    location_description, inspection_interval_days,
+                    building_id, org_id, ext_status, replaced_by_id)
+                   VALUES (?,?,?,?,?,?,?,?,'Active',?)""",
+                (old["address"], old["building_number"], old["floor_number"],
+                 old["room_number"], old["location_description"],
+                 old["inspection_interval_days"],
+                 old["building_id"], old["org_id"], ext_id)
+            )
+            new_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+
+            # Link old to new
+            conn.execute(
+                "UPDATE Extinguishers SET replaced_by_id=? WHERE extinguisher_id=?",
+                (new_id, ext_id)
+            )
+
+        platform_log("inspector", "extinguisher_condemned", str(ext_id),
+                     f"Replaced by new EXT-{new_id}")
+        return jsonify({"success": True, "new_extinguisher_id": new_id}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ── AHJ / FIRE MARSHAL AUDITOR TOKEN ─────────────────────────────────────────
+@app.route("/api/auditor/tokens", methods=["POST"])
+def create_auditor_token():
+    """Generate a time-limited read-only auditor link for a specific building.
+    The token gives a Fire Marshal or insurance auditor access to one building's
+    approved reports and extinguisher list — nothing else.
+    Tokens expire after 24 hours by default (configurable up to 72h)."""
+    import secrets, datetime
+    d         = request.get_json() or {}
+    org_id    = d.get("org_id")
+    building_id = d.get("building_id")
+    admin_id  = d.get("admin_id")
+    label     = (d.get("label") or "AHJ Auditor").strip()
+    hours     = min(int(d.get("hours", 24)), 72)  # max 72 hours
+
+    if not org_id or not building_id:
+        return jsonify({"error": "org_id and building_id are required"}), 400
+
+    token     = secrets.token_urlsafe(32)
+    expires   = (datetime.datetime.utcnow() + datetime.timedelta(hours=hours)).strftime("%Y-%m-%d %H:%M:%S")
+
+    try:
+        with get_db() as conn:
+            conn.execute(
+                """INSERT INTO AuditorTokens
+                   (token, org_id, building_id, created_by, expires_at, label)
+                   VALUES (?,?,?,?,?,?)""",
+                (token, org_id, building_id, admin_id, expires, label)
+            )
+        platform_log("admin", "auditor_token_created", label,
+                     f"building_id={building_id}, expires={expires}")
+        return jsonify({"success": True, "token": token, "expires_at": expires}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/auditor/<token>", methods=["GET"])
+def auditor_access(token):
+    """Validate an auditor token and return read-only data for the scoped building.
+    Returns extinguishers, approved reports only, and building info.
+    Returns 403 if the token is expired or invalid."""
+    import datetime
+    with get_db() as conn:
+        tok = conn.execute(
+            "SELECT * FROM AuditorTokens WHERE token=?", (token,)
+        ).fetchone()
+        if not tok:
+            return jsonify({"error": "Invalid or expired auditor link"}), 403
+        # Check expiry
+        expires = datetime.datetime.strptime(tok["expires_at"], "%Y-%m-%d %H:%M:%S")
+        if datetime.datetime.utcnow() > expires:
+            return jsonify({"error": "This auditor link has expired"}), 403
+
+        # Fetch scoped data — approved reports only, one building
+        building = conn.execute(
+            """SELECT b.*, c.name AS company_name, o.name AS org_name
+               FROM Buildings b
+               LEFT JOIN Companies c ON c.company_id=b.company_id
+               LEFT JOIN Organizations o ON o.org_id=b.org_id
+               WHERE b.building_id=?""",
+            (tok["building_id"],)
+        ).fetchone()
+
+        exts = conn.execute(
+            """SELECT e.*, b2.name AS building_name, c2.name AS company_name
+               FROM Extinguishers e
+               LEFT JOIN Buildings b2 ON b2.building_id=e.building_id
+               LEFT JOIN Companies c2 ON c2.company_id=b2.company_id
+               WHERE e.building_id=?
+               ORDER BY e.floor_number, e.room_number""",
+            (tok["building_id"],)
+        ).fetchall()
+
+        reports = conn.execute(
+            """SELECT r.*, u.username AS inspector, u.first_name, u.last_name,
+                      u.cert_number, u.subcontractor_company_name
+               FROM Reports r
+               LEFT JOIN Extinguishers e ON r.extinguisher_id=e.extinguisher_id
+               LEFT JOIN Users u ON r.inspector_id=u.user_id
+               WHERE e.building_id=?
+                 AND (r.approval_status='Approved' OR r.approval_status IS NULL)
+               ORDER BY r.inspection_date DESC""",
+            (tok["building_id"],)
+        ).fetchall()
+
+    platform_log("auditor", "auditor_access", tok["label"],
+                 f"token={token[:8]}... building_id={tok['building_id']}")
+    return jsonify({
+        "label":        tok["label"],
+        "expires_at":   tok["expires_at"],
+        "building":     dict(building) if building else {},
+        "extinguishers":[dict(r) for r in exts],
+        "reports":      [dict(r) for r in reports],
+    })
+
+@app.route("/api/auditor/tokens", methods=["GET"])
+def list_auditor_tokens():
+    """List all auditor tokens for an org (Admin only). Shows active + expired."""
+    org_id = request.args.get("org_id")
+    with get_db() as conn:
+        rows = conn.execute(
+            """SELECT t.*, b.name AS building_name, c.name AS company_name
+               FROM AuditorTokens t
+               LEFT JOIN Buildings b ON b.building_id=t.building_id
+               LEFT JOIN Companies c ON c.company_id=b.company_id
+               WHERE t.org_id=?
+               ORDER BY t.created_at DESC""",
+            (org_id,)
+        ).fetchall()
+    return jsonify([dict(r) for r in rows])
+
+@app.route("/api/auditor/tokens/<int:token_id>", methods=["DELETE"])
+def revoke_auditor_token(token_id):
+    """Revoke (delete) an auditor token immediately."""
+    try:
+        with get_db() as conn:
+            conn.execute("DELETE FROM AuditorTokens WHERE token_id=?", (token_id,))
+        platform_log("admin", "auditor_token_revoked", str(token_id), "Manually revoked")
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ── CLIENT COMPLIANCE STATS ───────────────────────────────────────────────────
+@app.route("/api/client/stats", methods=["GET"])
+def client_stats():
+    """Compliance dashboard stats for the Client role.
+    Scoped strictly to their company_id.
+    Returns: total extinguishers, compliant count, deficiencies, next inspection."""
+    company_id = request.args.get("company_id")
+    if not company_id:
+        return jsonify({"error": "company_id required"}), 400
+
+    with get_db() as conn:
+        today = __import__('datetime').date.today().isoformat()
+
+        exts = conn.execute(
+            """SELECT e.extinguisher_id, e.ext_status, e.next_due_date,
+                      e.last_inspection_date, e.floor_number, e.room_number,
+                      e.location_description, b.name AS building_name,
+                      e.last_report_id
+               FROM Extinguishers e
+               LEFT JOIN Buildings b ON b.building_id=e.building_id
+               WHERE b.company_id=?
+                 AND (e.ext_status IS NULL OR e.ext_status != 'Condemned/Removed')
+               ORDER BY e.next_due_date""",
+            (company_id,)
+        ).fetchall()
+
+        # Latest approved report per extinguisher
+        reports = conn.execute(
+            """SELECT r.extinguisher_id, r.inspection_result, r.inspection_date,
+                      r.service_type, r.report_id
+               FROM Reports r
+               LEFT JOIN Extinguishers e ON r.extinguisher_id=e.extinguisher_id
+               LEFT JOIN Buildings b ON e.building_id=b.building_id
+               WHERE b.company_id=?
+                 AND (r.approval_status='Approved' OR r.approval_status IS NULL)
+               ORDER BY r.inspection_date DESC""",
+            (company_id,)
+        ).fetchall()
+
+    # Build latest result per extinguisher
+    latest = {}
+    for r in reports:
+        if r["extinguisher_id"] not in latest:
+            latest[r["extinguisher_id"]] = dict(r)
+
+    total = len(exts)
+    compliant = 0
+    deficiencies = []
+    overdue = []
+
+    for e in exts:
+        eid = e["extinguisher_id"]
+        rep = latest.get(eid)
+        passed = rep and rep["inspection_result"] == "Pass"
+        if passed:
+            compliant += 1
+        else:
+            deficiencies.append({
+                "extinguisher_id":    eid,
+                "building_name":      e["building_name"],
+                "floor":              e["floor_number"],
+                "room":               e["room_number"],
+                "location":           e["location_description"],
+                "last_result":        rep["inspection_result"] if rep else "Never inspected",
+                "last_inspection":    rep["inspection_date"]   if rep else None,
+            })
+        if e["next_due_date"] and e["next_due_date"] < today:
+            overdue.append(eid)
+
+    return jsonify({
+        "total":           total,
+        "compliant":       compliant,
+        "non_compliant":   total - compliant,
+        "overdue":         len(overdue),
+        "compliance_pct":  round((compliant / total * 100), 1) if total > 0 else 100,
+        "deficiencies":    deficiencies,
+        "extinguishers":   [dict(e) for e in exts],
+    })
 
 # ── START ──────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":

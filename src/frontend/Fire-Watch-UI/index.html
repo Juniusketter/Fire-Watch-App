@@ -304,7 +304,7 @@
     .ext-detail-footer{padding:0.85rem 1.2rem;border-top:1px solid var(--border);display:flex;gap:0.6rem;justify-content:flex-end;background:var(--bg3);}
 
     /* MODALS */
-    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);display:flex;align-items:flex-end;justify-content:center;z-index:200;backdrop-filter:blur(2px);padding:0;}
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);display:flex;align-items:flex-end;justify-content:center;z-index:300;backdrop-filter:blur(2px);padding:0;}
     .modal-box{background:var(--bg2);border:1px solid var(--border);border-top:2px solid var(--orange);border-radius:12px 12px 0 0;padding:1.75rem var(--pad-mobile);width:100%;max-height:92vh;overflow-y:auto;box-shadow:0 -12px 40px rgba(0,0,0,0.6);animation:slideUp 0.25s ease-out;}
     @keyframes slideUp{from{transform:translateY(100%);opacity:0;}to{transform:translateY(0);opacity:1;}}
     .modal-box::before{content:'';display:block;width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 1.25rem;}
@@ -855,7 +855,20 @@
           <div class="stat-box color-purple" id="statBoxUsers"><div class="stat-label" id="statLabelUsers">Users</div><div class="stat-val" id="statUsers">—</div></div>
         </div>
         <!-- Due Date Alert Banner — compact single bar -->
-        <div id="dueDateAlertBanner" class="hidden" style="display:none;padding:0.5rem var(--pad-desk);border-bottom:1px solid var(--border);background:var(--bg2);">
+        <!-- AUTO-LOGOUT WARNING BANNER -->
+<div id="inactivityWarningBanner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9990;
+  background:#7C3AED;color:#fff;padding:0.6rem 1.5rem;
+  display:none;align-items:center;justify-content:space-between;gap:1rem;
+  font-family:'IBM Plex Mono',monospace;font-size:0.78rem;box-shadow:0 -4px 20px rgba(0,0,0,0.4);">
+  <span>⏱ Session expiring due to inactivity — logging out in <strong id="inactivityCountdown">120</strong>s.
+    Move your mouse or press any key to stay logged in.</span>
+  <button onclick="resetInactivityTimer()" style="background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.4);
+    color:#fff;padding:4px 14px;border-radius:4px;cursor:pointer;font-size:0.75rem;font-family:inherit;">
+    Stay Logged In
+  </button>
+</div>
+
+<div id="dueDateAlertBanner" class="hidden" style="display:none;padding:0.5rem var(--pad-desk);border-bottom:1px solid var(--border);background:var(--bg2);">
           <div id="dueDateAlertContent" style="display:flex;align-items:flex-start;gap:0.5rem;font-family:'IBM Plex Mono',monospace;flex-wrap:wrap;"></div>
         </div>
         <!-- Mobile search bar — hidden on desktop, shown on mobile -->
@@ -865,6 +878,26 @@
             autocomplete="off" />
           <div class="search-results-dropdown hidden" style="position:absolute;top:100%;left:0.5rem;right:0.5rem;margin-top:4px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;max-height:400px;overflow-y:auto;z-index:200;box-shadow:0 12px 32px rgba(0,0,0,0.5);"></div>
         </div>
+        <!-- Client Compliance Banner — shown only for Client role -->
+        <div id="clientComplianceBanner" style="display:none;padding:1rem var(--pad-desk);border-bottom:1px solid var(--border);background:var(--bg2);">
+          <div style="display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap;">
+            <div id="clientPieWrap" style="flex:none;">
+              <canvas id="clientPieChart" width="80" height="80"></canvas>
+            </div>
+            <div style="flex:1;min-width:200px;">
+              <div style="font-size:1.4rem;font-weight:700;color:var(--text);" id="clientPctLabel">—% Compliant</div>
+              <div style="font-size:0.8rem;color:var(--muted);margin-top:2px;" id="clientSubLabel">Loading compliance data...</div>
+            </div>
+            <div style="flex:none;display:flex;gap:0.75rem;flex-wrap:wrap;">
+              <button class="btn-save" style="font-size:0.78rem;padding:8px 18px;" onclick="downloadClientReport()">⬇ Download Annual Report</button>
+            </div>
+          </div>
+          <div id="clientDeficiencyList" style="margin-top:0.75rem;display:none;">
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--red);margin-bottom:0.5rem;">Current Deficiencies</div>
+            <div id="clientDeficiencyItems"></div>
+          </div>
+        </div>
+
         <div class="tab-bar" id="tabBar"></div>
         <div class="tab-panels">
     <!-- Extinguishers — drill-down: Company → Building → Extinguisher -->
@@ -1014,6 +1047,14 @@
         </div>
         <button class="btn-crud btn-add" id="btnGeneratePdfReport" style="background:var(--purple,#7C3AED);">📋 Generate PDF Report</button>
         <button class="btn-crud btn-add" id="btnBulkNFPA" style="background:var(--teal);border-color:var(--teal);">📄 Bulk NFPA Forms</button>
+        <!-- AHJ Auditor Link — Admin only, shown after buildTabs -->
+        <button class="btn-crud btn-add" id="btnAHJLink" style="display:none;background:var(--purple,#7C3AED);">🔒 Auditor Link</button>
+        <!-- Pending Review badge counter — shown to Admin when 3rd party reports need counter-signing -->
+        <div id="pendingReviewWrap" style="display:none;align-items:center;gap:6px;margin-left:auto;padding:4px 10px;background:#FEF3C7;border:1px solid #D97706;border-radius:6px;font-family:'IBM Plex Mono',monospace;font-size:0.72rem;color:#92400E;">
+          <span>⏳</span>
+          <span id="pendingReviewCount">0</span>
+          <span>pending review</span>
+        </div>
         <!-- Filter bar — always visible when reports panel is shown -->
         <div class="filter-bar" id="reportFilterBar">
           <div class="filter-group">
@@ -2221,6 +2262,100 @@
   </div>
 </div>
 
+
+<!-- CONDEMN & REPLACE MODAL -->
+<div class="modal-overlay hidden" id="condemnModal">
+  <div class="modal-box">
+    <h3>Condemn &amp; Replace Extinguisher</h3>
+    <div style="background:var(--bg3);border:1px solid var(--red);border-radius:8px;padding:0.85rem;margin-bottom:1rem;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:0.7rem;color:var(--red);font-weight:700;margin-bottom:0.4rem;">⚠ LEGAL ACTION — CANNOT BE UNDONE</div>
+      <div style="font-size:0.8rem;color:var(--muted);">This will permanently mark the current unit as <strong style="color:var(--text);">Condemned / Removed</strong> and preserve its full inspection history. A blank replacement record will be created at the same location — you will enter the new unit's serial number, type, and DOT cert in the next step.</div>
+    </div>
+    <div id="condemnExtInfo" style="font-size:0.82rem;color:var(--muted);margin-bottom:1rem;padding:0.5rem 0.75rem;background:var(--bg3);border-radius:6px;border:1px solid var(--border);"></div>
+    <div class="form-row">
+      <label>Reason for Condemnation *</label>
+      <select id="condemnReason">
+        <option value="">— select reason —</option>
+        <option value="Corrosion / Rust damage">Corrosion / Rust damage</option>
+        <option value="Physical damage (dents, punctures)">Physical damage (dents, punctures)</option>
+        <option value="Failed hydrostatic test">Failed hydrostatic test</option>
+        <option value="Expired beyond service life">Expired beyond service life</option>
+        <option value="Discharge without refill">Discharge without refill</option>
+        <option value="Missing / Stolen">Missing / Stolen</option>
+        <option value="Other">Other</option>
+      </select>
+    </div>
+    <div class="form-row" id="condemnOtherRow" style="display:none;">
+      <label>Describe reason</label>
+      <input type="text" id="condemnOtherText" placeholder="Describe the condition" />
+    </div>
+    <div class="modal-error" id="condemnError"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="condemnCancel">Cancel</button>
+      <button class="btn-save" style="background:var(--red);" id="condemnConfirm">Condemn &amp; Create Replacement</button>
+    </div>
+  </div>
+</div>
+
+<!-- VOID REPORT MODAL -->
+<div class="modal-overlay hidden" id="voidReportModal">
+  <div class="modal-box">
+    <h3>Void Report</h3>
+    <div style="background:var(--bg3);border:1px solid var(--red);border-radius:8px;padding:0.75rem;margin-bottom:1rem;font-size:0.8rem;color:var(--muted);">
+      Voiding permanently marks this report as invalid. The record is preserved in the audit trail — reports cannot be deleted. Only use this for reports submitted in error or containing fraudulent data.
+    </div>
+    <div class="form-row">
+      <label>Void Reason *</label>
+      <textarea id="voidReasonText" rows="3" placeholder="Describe why this report is being voided..." style="width:100%;padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:0.8rem;resize:vertical;"></textarea>
+    </div>
+    <div class="modal-error" id="voidReportError"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="voidReportCancel">Cancel</button>
+      <button class="btn-save" style="background:var(--red);" id="voidReportConfirm">Void Report</button>
+    </div>
+  </div>
+</div>
+
+<!-- AHJ AUDITOR LINK MODAL (Admin only) -->
+<div class="modal-overlay hidden" id="ahjModal">
+  <div class="modal-box">
+    <h3>Generate Auditor Access Link</h3>
+    <div style="font-size:0.8rem;color:var(--muted);margin-bottom:1rem;">Generate a time-limited, read-only link for a Fire Marshal or insurance auditor. They will see approved inspection reports and extinguisher status for one building only — nothing else.</div>
+    <div class="form-row">
+      <label>Building *</label>
+      <select id="ahjBuilding">
+        <option value="">— select building —</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label>Link Label (e.g. "Fire Marshal Annual Audit 2026")</label>
+      <input type="text" id="ahjLabel" placeholder="e.g. Fire Marshal Annual Audit 2026" />
+    </div>
+    <div class="form-row">
+      <label>Expires After</label>
+      <select id="ahjHours">
+        <option value="24">24 hours</option>
+        <option value="48">48 hours</option>
+        <option value="72">72 hours</option>
+      </select>
+    </div>
+    <div class="modal-error" id="ahjError"></div>
+    <!-- Generated link display -->
+    <div id="ahjLinkWrap" style="display:none;margin-top:1rem;padding:0.75rem;background:var(--bg3);border:1px solid var(--border);border-radius:8px;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:0.65rem;color:var(--muted);margin-bottom:0.4rem;text-transform:uppercase;">Shareable Auditor Link</div>
+      <div id="ahjLinkText" style="font-size:0.75rem;color:var(--orange);word-break:break-all;margin-bottom:0.6rem;"></div>
+      <div style="font-size:0.7rem;color:var(--muted);" id="ahjExpiry"></div>
+      <button class="btn-save" style="margin-top:0.5rem;font-size:0.75rem;padding:6px 16px;" onclick="copyAhjLink()">Copy Link</button>
+    </div>
+    <!-- Existing tokens list -->
+    <div id="ahjTokenList" style="margin-top:1rem;"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="ahjCancel">Close</button>
+      <button class="btn-save" id="ahjGenerate">Generate Link</button>
+    </div>
+  </div>
+</div>
+
 <!-- ADD / EDIT USER MODAL (Admin only) -->
 <div class="modal-overlay hidden" id="userModal">
   <div class="modal-box">
@@ -2284,6 +2419,7 @@
         <option value="Admin">Admin</option>
         <option value="3rd_Party_Admin">3rd Party Admin</option>
         <option value="3rd_Party_Inspector">3rd Party Inspector</option>
+        <option value="Client">Client (Facility Manager)</option>
       </select>
     </div>
     <!-- Cert number: only shown when role is Inspector or 3rd Party Inspector -->
@@ -2292,6 +2428,24 @@
       <input type="text" id="uCertNumber" placeholder="e.g. CA-FE-123456" />
       <div style="font-size:0.65rem;color:var(--muted);margin-top:4px;">
         Automatically printed below the inspector's signature on NFPA 10 forms.
+      </div>
+    </div>
+    <!-- Subcontractor company name: shown for 3rd Party roles -->
+    <div class="form-row" id="uSubcontractorRow" style="display:none;">
+      <label>Subcontractor Company Name <span style="color:var(--muted);font-weight:400;">(optional)</span></label>
+      <input type="text" id="uSubcontractorName" placeholder="e.g. Bob's Hydro Testing LLC" />
+      <div style="font-size:0.65rem;color:var(--muted);margin-top:4px;">
+        Printed on NFPA 10 forms to legally identify the subcontracting firm.
+      </div>
+    </div>
+    <!-- Client company scoping: shown only for Client role -->
+    <div class="form-row" id="uClientCompanyRow" style="display:none;">
+      <label>Assign to Company *</label>
+      <select id="uClientCompanyId">
+        <option value="">— select company —</option>
+      </select>
+      <div style="font-size:0.65rem;color:var(--muted);margin-top:4px;">
+        This client will only see data for the selected company (their building).
       </div>
     </div>
 
@@ -2358,6 +2512,13 @@ const isAdmin      = () => currentUser?.role === "Admin";
 const isInv        = () => currentUser?.role === "Inspector";
 const isThirdAdmin = () => currentUser?.role === "3rd_Party_Admin";
 const isThirdInv   = () => currentUser?.role === "3rd_Party_Inspector";
+const isClient     = () => currentUser?.role === "Client";
+// isPrimaryInspector: primary org inspectors — reports auto-approved
+const isPrimaryInspector = () => currentUser?.role === "Inspector";
+// isAnyInspector: any role that submits reports (primary or sub)
+const isAnyInspector = () => isInv() || isThirdInv();
+// isAnyAdmin: any admin-type role (primary or subcontractor manager)
+const isAnyAdmin     = () => isAdmin() || isThirdAdmin();
 
 // ── Login ──────────────────────────────────────────────────────────────────────
 document.getElementById("loginBtn").addEventListener("click", doLogin);
@@ -2381,6 +2542,8 @@ async function doLogin() {
       currentUser = {
         user_id: data.user_id, username: data.username, role: data.role,
         org_id: data.org_id, org_name: data.org_name, platform_status: data.platform_status,
+        // Client role scoping — null for all other roles
+        company_id: data.company_id || null,
         // PII fields — used for NFPA form Section 6 (Inspector Certification)
         full_name:   data.full_name   || data.username,
         first_name:  data.first_name  || "",
@@ -2388,6 +2551,8 @@ async function doLogin() {
         email:       data.email       || "",
         phone:       data.phone       || "",
         cert_number: data.cert_number || "",
+        // 3rd Party — printed on NFPA PDF as subcontractor legal name
+        subcontractor_company_name: data.subcontractor_company_name || "",
       };
       localStorage.setItem("fw_session", JSON.stringify(currentUser));
       showDashboard();
@@ -2489,6 +2654,7 @@ function showDashboard() {
     orgPill.classList.remove("show");
   }
   buildTabs(); loadStats(); loadAllData();
+  startInactivityWatch(); // begin 15-min inactivity countdown
   captureBaseline();
   startPolling();
   fetchNotifications();
@@ -2516,6 +2682,26 @@ function buildTabs() {
   ["statBoxExt","statBoxAssign","statBoxReports","statBoxUsers"].forEach(id => document.getElementById(id).style.display="");
   // Hide all toolbars first
   ["extToolbar","assignToolbar","reportToolbar","userToolbar"].forEach(id => document.getElementById(id).classList.add("hidden"));
+  // Reset elements that only show for specific roles — hide first, show in branch if needed
+  document.getElementById("clientComplianceBanner").style.display = "none";
+  document.getElementById("btnAHJLink").style.display = "none";
+  document.getElementById("exportDropdown").style.display = "none";
+  document.getElementById("drillBreadcrumb").style.display = "";   // show for non-Client roles
+  // Restore assignment toolbar buttons hidden for ThirdAdmin
+  document.getElementById("btnPriorityQueue").style.display = "";
+  document.getElementById("btnEditAssign").style.display    = "";
+  // Reset stat labels to defaults
+  document.getElementById("statLabelExt").textContent     = "Extinguishers";
+  document.getElementById("statLabelAssign").textContent  = "Assignments";
+  document.getElementById("statLabelReports").textContent = "Inspections";
+  document.getElementById("statLabelUsers").textContent   = "Users";
+  // Reset inspector-hidden buttons so they show again for Admin
+  ["btnAddCompany","btnEditCompany","btnDeleteCompany",
+   "btnAddBuilding","btnEditBuilding","btnDeleteBuilding",
+   "btnDelete","btnAddDropTrigger","btnBulkAdd","btnCsvImport"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = "";
+  });
 
   let tabs = [];
   if (isAdmin()) {
@@ -2525,36 +2711,88 @@ function buildTabs() {
     document.getElementById("reportToolbar").classList.remove("hidden");
     document.getElementById("exportDropdown").style.display = "";
     document.getElementById("userToolbar").classList.remove("hidden");
+    document.getElementById("btnAHJLink").style.display = "";
   } else if (isInv()) {
     tabs = [{id:"panelExtinguishers",label:"Extinguishers"},{id:"panelAssignments",label:"My Assignments"},{id:"panelReports",label:"My Reports"}];
-    document.getElementById("statBoxUsers").style.display="none";
-    document.getElementById("statLabelAssign").textContent="My Assignments";
-    document.getElementById("statLabelReports").textContent="My Reports";
+    document.getElementById("statBoxUsers").style.display = "none";
+    document.getElementById("statLabelAssign").textContent  = "My Assignments";
+    document.getElementById("statLabelReports").textContent = "My Reports";
     document.getElementById("extToolbar").classList.remove("hidden");
     document.getElementById("reportToolbar").classList.remove("hidden");
-    // Inspectors: hide Company/Building add/edit/delete, keep Ext add/edit only
-    document.getElementById("btnAddCompany").style.display = "none";
-    document.getElementById("btnEditCompany").style.display = "none";
-    document.getElementById("btnDeleteCompany").style.display = "none";
-    document.getElementById("btnAddBuilding").style.display = "none";
-    document.getElementById("btnEditBuilding").style.display = "none";
-    document.getElementById("btnDeleteBuilding").style.display = "none";
-    document.getElementById("btnDelete").style.display = "none"; // no delete extinguisher for inspectors
-    // Inspectors get single-add only — hide the dropdown trigger and show a plain Add button
-    document.getElementById("btnAddDropTrigger").style.display = "none";
-    document.getElementById("btnBulkAdd").style.display = "none";  // inside dropdown, belt-and-suspenders
-    document.getElementById("btnCsvImport").style.display = "none"; // inside dropdown, belt-and-suspenders
+    // Inspector: Generate PDF Report is an admin-scoped custom report tool — hide it
+    document.getElementById("btnGeneratePdfReport").style.display = "none";
+    // Inspector: hide company drill-down immediately to prevent flicker
+    // They get a flat table of assigned extinguishers, not the full client list
+    document.getElementById("drillBreadcrumb").style.display = "none";
+    document.getElementById("drillCompanyView").classList.add("hidden");
+    document.getElementById("drillBuildingView").classList.add("hidden");
+    document.getElementById("drillExtView").classList.remove("hidden");
+    // Inspectors: hide bulk QR sheet print (admin batch tool, not for field inspectors)
+    ["qrSheetDropdownCompany","qrSheetDropdownBuilding","qrSheetDropdownExt"].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = "none";
+    });
+    // Inspectors: hide all write controls
+    ["btnAddCompany","btnEditCompany","btnDeleteCompany",
+     "btnAddBuilding","btnEditBuilding","btnDeleteBuilding",
+     "btnDelete","btnAddDropTrigger","btnBulkAdd","btnCsvImport"].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = "none";
+    });
   } else if (isThirdAdmin()) {
-    tabs = [{id:"panelAssignments",label:"Assignments"},{id:"panelUsers",label:"My Team"}];
+    tabs = [
+      {id:"panelAssignments", label:"Assignments"},
+      {id:"panelReports",     label:"Team Reports"},
+      {id:"panelUsers",       label:"My Team"},
+    ];
     document.getElementById("statBoxExt").style.display="none";
-    document.getElementById("statBoxReports").style.display="none";
-    document.getElementById("statLabelUsers").textContent="Team Members";
+    document.getElementById("statLabelUsers").textContent  = "Team Members";
+    document.getElementById("statLabelReports").textContent = "Team Reports";
     document.getElementById("assignToolbar").classList.remove("hidden");
-  } else if (isThirdInv()) {
-    tabs = [{id:"panelAssignments",label:"My Assignments"}];
-    ["statBoxExt","statBoxReports","statBoxUsers"].forEach(id => document.getElementById(id).style.display="none");
-    document.getElementById("statLabelAssign").textContent="My Assignments";
     document.getElementById("reportToolbar").classList.remove("hidden");
+    // 3rd Party Admin: hide Primary-org-only tools
+    document.getElementById("btnPriorityQueue").style.display = "none";
+    document.getElementById("btnEditAssign").style.display    = "none";
+    // 3rd Party Admin: hide Submit Report (they manage, not inspect) and Export
+    document.getElementById("btnSubmitReport").style.display     = "none";
+    document.getElementById("btnGeneratePdfReport").style.display = "none";
+    document.getElementById("exportDropdown").style.display       = "none";
+  } else if (isThirdInv()) {
+    tabs = [
+      {id:"panelAssignments", label:"My Assignments"},
+      {id:"panelReports",     label:"My Reports"},
+    ];
+    ["statBoxExt","statBoxUsers"].forEach(id => document.getElementById(id).style.display="none");
+    document.getElementById("statLabelAssign").textContent  = "My Assignments";
+    document.getElementById("statLabelReports").textContent = "My Reports";
+    document.getElementById("reportToolbar").classList.remove("hidden");
+    // 3rd Party Inspector: show Submit Report button, hide Generate PDF/Export (Admin-only)
+    document.getElementById("btnSubmitReport").style.display  = "";
+    document.getElementById("btnGeneratePdfReport").style.display = "none";
+    document.getElementById("exportDropdown").style.display   = "none";
+  } else if (isClient()) {
+    // Client / Facility Manager — read-only compliance portal
+    tabs = [
+      {id:"panelExtinguishers", label:"My Equipment"},
+      {id:"panelReports",       label:"Inspection Reports"},
+    ];
+    // Hide all write-capable toolbars — Client is strictly read-only
+    ["extToolbar","assignToolbar","reportToolbar","userToolbar"].forEach(id =>
+      document.getElementById(id).classList.add("hidden")
+    );
+    // Show only relevant stats
+    ["statBoxAssign","statBoxUsers"].forEach(id => document.getElementById(id).style.display="none");
+    document.getElementById("statLabelExt").textContent     = "My Extinguishers";
+    document.getElementById("statLabelReports").textContent = "Inspections";
+    // Show compliance dashboard banner
+    document.getElementById("clientComplianceBanner").style.display="";
+    // Hide the entire drill breadcrumb and all drill views — Client gets a flat list
+    document.getElementById("drillBreadcrumb").style.display  = "none";
+    document.getElementById("drillCompanyView").classList.add("hidden");
+    document.getElementById("drillBuildingView").classList.add("hidden");
+    document.getElementById("drillExtView").classList.remove("hidden");
+    // Set drill state to "client" so drillTo() and loadExtinguishers() are no-ops
+    _drillLevel = "client";
   }
 
   tabs.forEach((t,i) => {
@@ -2595,12 +2833,27 @@ async function loadStats() {
       document.getElementById("statAssign").textContent=a.length;
       document.getElementById("statReports").textContent=r.length;
     } else if (isThirdAdmin()) {
-      document.getElementById("statAssign").textContent=data.assignments;
-      const users=await fetch(`/api/users${oid?`?org_id=${oid}`:""}`).then(r=>r.json());
-      document.getElementById("statUsers").textContent=users.filter(u=>u.role==="3rd_Party_Inspector").length;
+      // Fetch team users to scope both assignment and report counts
+      const users = await fetch(`/api/users${oid ? `?org_id=${oid}` : ""}`).then(r=>r.json());
+      const thirdPartyNames = new Set(
+        users.filter(u => u.role === "3rd_Party_Inspector").map(u => u.username)
+      );
+      // Assignment count: only their team's assignments (same logic as loadAssignments)
+      const allAssign = await fetch(`/api/assignments?org_id=${oid}`).then(r=>r.json());
+      const teamAssign = allAssign.filter(a => thirdPartyNames.has(a.inspector));
+      document.getElementById("statAssign").textContent = teamAssign.length;
+      // Report count: only their team's reports
+      const allReports = await fetch(`/api/reports?org_id=${oid}`).then(r=>r.json());
+      const teamReports = allReports.filter(r => thirdPartyNames.has(r.inspector));
+      document.getElementById("statReports").textContent = teamReports.length;
+      document.getElementById("statUsers").textContent = users.filter(u=>u.role==="3rd_Party_Inspector").length;
     } else if (isThirdInv()) {
       const a=await fetch(`/api/assignments?user_id=${currentUser.user_id}&org_id=${oid}`).then(r=>r.json());
       document.getElementById("statAssign").textContent=a.length;
+    } else if (isClient()) {
+      const stats = await fetch(`/api/client/stats?company_id=${currentUser.company_id}`).then(r=>r.json());
+      document.getElementById("statExt").textContent = stats.total || 0;
+      document.getElementById("statReports").textContent = stats.compliant + "/" + stats.total + " compliant";
     }
   } catch(e) { console.error("Stats error",e); }
 }
@@ -2612,11 +2865,86 @@ async function loadStats() {
 function loadAllData() {
   if (isAdmin())           { loadExtinguishers(); loadAssignments(); loadReports(); loadUsers(); }
   else if (isInv())        { loadExtinguishers(); loadAssignments(); loadReports(); }
-  else if (isThirdAdmin()) { loadAssignments(); loadUsers(); }
-  else if (isThirdInv())   { loadAssignments(); }
+  else if (isThirdAdmin()) { loadAssignments(); loadReports(); loadUsers(); }
+  else if (isThirdInv())   { loadAssignments(); loadReports(); }
+  else if (isClient())     { loadClientDashboard(); loadExtinguishers(); loadReports(); }
 }
 
 async function loadExtinguishers() {
+  // Client role: flat table scoped to their company — no drill-down
+  if (isClient()) {
+    if (!currentUser.company_id) return;
+    const rows = await fetch(`/api/extinguishers?client_company_id=${currentUser.company_id}`).then(r=>r.json()).catch(()=>[]);
+    window._lastExtRows = rows;
+    document.getElementById("drillCompanyView").classList.add("hidden");
+    document.getElementById("drillBuildingView").classList.add("hidden");
+    document.getElementById("drillExtView").classList.remove("hidden");
+    const cols = ["extinguisher_id","building_name","floor_number","room_number",
+                  "ext_type","serial_number","ext_status","next_due_date","last_inspection_date"];
+    renderTable("tableExtWrap", cols, rows, row => openExtDetail(row));
+    return;
+  }
+
+  // Primary Inspector: sees ALL extinguishers in their assigned BUILDINGS.
+  // Real-world: an inspector is dispatched to a building, not to individual units.
+  // They walk every floor and check every unit in that building.
+  // They must not see extinguishers in buildings they have no assignments for.
+  //
+  // 3rd Party Inspector: strictly scoped to their specific assigned unit only.
+  // Real-world: subcontractor is hired for a specific job (e.g. hydro test on EXT-4).
+  // They have no business seeing any other equipment in the building.
+  if (isInv() || isThirdInv()) {
+    // Fetch assignments directly if not yet cached — loadExtinguishers and
+    // loadAssignments run in parallel so _lastAssignRows may not be ready yet
+    let assignments = window._lastAssignRows || [];
+    if (!assignments.length) {
+      try {
+        const oid = orgId();
+        assignments = await fetch(
+          `/api/assignments?org_id=${oid}&user_id=${currentUser.user_id}`
+        ).then(r => r.json());
+        window._lastAssignRows = assignments;
+      } catch(e) { assignments = []; }
+    }
+    const activeAssignments = assignments.filter(
+      a => !String(a.status || "").toLowerCase().includes("complete")
+    );
+
+    document.getElementById("drillCompanyView").classList.add("hidden");
+    document.getElementById("drillBuildingView").classList.add("hidden");
+    document.getElementById("drillExtView").classList.remove("hidden");
+    document.getElementById("drillBreadcrumb").style.display = "none";
+
+    if (activeAssignments.length === 0) {
+      document.getElementById("tableExtWrap").innerHTML =
+        "<p class='empty-msg'>[ NO ACTIVE ASSIGNMENTS ]</p>";
+      window._lastExtRows = [];
+      return;
+    }
+
+    const oid = orgId();
+    const allRows = await fetch(`/api/extinguishers?org_id=${oid}`).then(r=>r.json()).catch(()=>[]);
+    window._allExtinguishers = allRows; // keep full cache for QR deep-link
+
+    let rows;
+    if (isThirdInv()) {
+      // 3rd Party: only the specific assigned unit(s)
+      const assignedExtIds = new Set(activeAssignments.map(a => a.extinguisher_id).filter(Boolean));
+      rows = allRows.filter(e => assignedExtIds.has(e.extinguisher_id));
+    } else {
+      // Primary Inspector: all extinguishers in their assigned buildings
+      const assignedBuildingIds = new Set(
+        activeAssignments.map(a => a.building_id).filter(Boolean)
+      );
+      rows = allRows.filter(e => assignedBuildingIds.has(e.building_id));
+    }
+
+    window._lastExtRows = rows;
+    const cols = ["extinguisher_id","building_name","floor_number","room_number",
+                  "location_description","ext_type","ext_status","next_due_date"];
+    renderTable("tableExtWrap", cols, rows, row => openExtDetail(row));
+    return;
+  }
   // On poll refreshes, call render functions directly — never touch drillTo()
   // drillTo() manipulates visibility/breadcrumbs and causes visible flicker
   if (_drillLevel === "extinguishers" && _selectedBuilding) {
@@ -2641,6 +2969,9 @@ async function loadExtinguishers() {
 // building cards for a company), "extinguishers" (table of extinguishers
 // in a building). Breadcrumb nav updates at each level.
 async function drillTo(level, data) {
+  // Client and Inspector roles never use the drill-down — flat table only
+  if (isClient() || isInv() || isThirdInv()) return;
+
   _drillLevel = level;
 
   // Hide all views
@@ -2796,8 +3127,30 @@ async function loadAssignments() {
   const oid = orgId();
   let url = `/api/assignments?org_id=${oid}`;
   if (isInv()||isThirdInv()) url += `&user_id=${currentUser.user_id}`;
-  const allRows=await fetch(url).then(r=>r.json());
+  let allRows = await fetch(url).then(r=>r.json());
   window._allAssignments = allRows;
+
+  // 3rd Party Admin: scope to assignments belonging to their own 3rd Party
+  // Inspectors only — they must not see primary org inspector routes.
+  // We load users first if needed, then filter by role.
+  if (isThirdAdmin()) {
+    // Fetch users if not yet loaded — needed to identify which usernames are 3rd party
+    let teamUsers = window._lastUserRows || [];
+    if (!teamUsers.length) {
+      try {
+        const oid = orgId();
+        teamUsers = await fetch(`/api/users${oid ? "?org_id=" + oid : ""}`).then(r => r.json());
+        window._lastUserRows = teamUsers;
+      } catch(e) { teamUsers = []; }
+    }
+    const thirdPartyUsernames = new Set(
+      teamUsers
+        .filter(u => u.role === "3rd_Party_Inspector")
+        .map(u => u.username)
+    );
+    // Keep only assignments where inspector is one of our 3rd party sub-techs
+    allRows = allRows.filter(r => thirdPartyUsernames.has(r.inspector));
+  }
 
   // Apply status filter
   const filter = document.getElementById("assignStatusFilter");
@@ -2806,13 +3159,26 @@ async function loadAssignments() {
     ? allRows.filter(r => !r.status || !r.status.toLowerCase().includes("complete"))
     : allRows;
 
-  // Update stat box to show filtered count with total
+  // Update stat box using the FILTERED allRows (post-scoping for ThirdAdmin)
   const statAssign = document.getElementById("statAssign");
-  if (statAssign && filterVal === "active" && rows.length !== allRows.length) {
-    statAssign.textContent = `${rows.length} / ${allRows.length}`;
+  if (statAssign) {
+    if (filterVal === "active" && rows.length !== allRows.length) {
+      statAssign.textContent = `${rows.length} / ${allRows.length}`;
+    } else {
+      statAssign.textContent = allRows.length;
+    }
   }
 
-  const cols=(isAdmin()||isThirdAdmin())?["assignment_id","assigned_by","inspector","extinguisher_id","due_date","status"]:["assignment_id","assigned_by","extinguisher_id","due_date","status"];
+  // 3rd Party Inspector: strip assigned_by (hides primary vendor's internal admin names)
+  // and inspector column (they only see their own queue, no names needed)
+  // Column visibility by role — protect primary vendor's internal data
+  const cols = isAdmin()
+    ? ["assignment_id","assigned_by","inspector","extinguisher_id","due_date","status"]
+    : isThirdAdmin()
+    ? ["assignment_id","inspector","extinguisher_id","due_date","status"]  // no assigned_by: hides primary vendor admin names
+    : isThirdInv()
+    ? ["assignment_id","extinguisher_id","due_date","status"]              // blind route: no internal names
+    : ["assignment_id","assigned_by","extinguisher_id","due_date","status"];
   renderTable("tableAssignWrap", cols, rows, row=>{
     selectedAssignId = row.assignment_id;
     window._lastAssignRows = allRows;
@@ -2830,10 +3196,43 @@ async function loadAssignments() {
 // Then calls applyReportFilters() to render with any active filters.
 async function loadReports() {
   const oid = orgId();
-  let url = `/api/reports?org_id=${oid}`;
-  if (isInv()) url += `&user_id=${currentUser.user_id}`;
-  const rows=await fetch(url).then(r=>r.json());
+  let url;
+  if (isClient()) {
+    // Client: only their company's approved reports
+    url = `/api/reports?client_company_id=${currentUser.company_id}`;
+  } else if (isInv() || isThirdInv()) {
+    // Inspector / 3rd Party Inspector: only their own submitted reports
+    url = `/api/reports?org_id=${oid}&user_id=${currentUser.user_id}`;
+  } else if (isThirdAdmin()) {
+    // 3rd Party Admin: only reports submitted by their 3rd party inspectors
+    // We scope client-side after fetch using the same team-user filter as assignments
+    url = `/api/reports?org_id=${oid}`;
+  } else {
+    // Admin: all org reports including Pending_Review
+    url = `/api/reports?org_id=${oid}`;
+  }
+  let rows = await fetch(url).then(r=>r.json());
+
+  // 3rd Party Admin: filter to only reports from their own 3rd party inspectors
+  if (isThirdAdmin()) {
+    let teamUsers = window._lastUserRows || [];
+    if (!teamUsers.length) {
+      try {
+        const oid2 = orgId();
+        teamUsers = await fetch(`/api/users${oid2 ? "?org_id=" + oid2 : ""}`).then(r => r.json());
+        window._lastUserRows = teamUsers;
+      } catch(e) { teamUsers = []; }
+    }
+    const thirdPartyNames = new Set(
+      teamUsers.filter(u => u.role === "3rd_Party_Inspector").map(u => u.username)
+    );
+    rows = rows.filter(r => thirdPartyNames.has(r.inspector));
+  }
+
   window._allReports = rows;
+
+  // Update the pending review badge for admins
+  updatePendingReviewBadge(rows);
 
   const inspGrp = document.getElementById("filterInspectorGroup");
   if (isAdmin()) {
@@ -2867,7 +3266,7 @@ async function loadUsers() {
 }
 
 // ── Table renderer ────────────────────────────────────────────────────────────
-const headerMap={extinguisher_id:"ID",assignment_id:"ID",report_id:"ID",user_id:"ID",address:"Address",building_number:"Building",floor_number:"Floor",room_number:"Room",location_description:"Location",inspection_interval_days:"Interval",next_due_date:"Due Date",due_date:"Due Date",assigned_by:"Assigned By",inspector:"Inspector",status:"Status",inspection_date:"Date",notes:"Notes",username:"Username",role:"Role",photo_path:"Photo"};
+const headerMap={extinguisher_id:"EXT",assignment_id:"ASSIGN",report_id:"RPT",user_id:"ID",address:"Address",building_number:"Building",floor_number:"Floor",room_number:"Room",location_description:"Location",inspection_interval_days:"Interval",next_due_date:"Due Date",due_date:"Due Date",assigned_by:"Assigned By",inspector:"Inspector",status:"Status",inspection_date:"Date",notes:"Notes",username:"Username",role:"Role",photo_path:"Photo",building_name:"Building",company_name:"Company",ext_type:"Type",serial_number:"Serial No.",ext_status:"Status",last_inspection_date:"Last Inspection"};
 
 // Generic table renderer used by all tabs (Extinguishers, Assignments,
 // Reports, Users). Takes a wrapper element ID, column list, row data,
@@ -2961,6 +3360,7 @@ document.getElementById("btnLogout").addEventListener("click",()=>{
     return;
   }
   stopPolling();
+  stopInactivityWatch(); // cancel auto-logout timers on explicit logout
   clearAllBadges();
   _notifications = []; _seenNotifIds = new Set(); _unreadCount = 0;
   updateNotifBadge();
@@ -4030,18 +4430,39 @@ async function openBulkAssignModal() {
 
   // Load companies and inspectors in parallel
   try {
-    const [companies, users] = await Promise.all([
+    const [allCompanies, users, baTeamAssign] = await Promise.all([
       fetch(`/api/companies?org_id=${orgId()}`).then(r => r.json()),
       fetch(`/api/users?org_id=${orgId()}`).then(r => r.json()),
+      isThirdAdmin()
+        ? fetch(`/api/assignments?org_id=${orgId()}`).then(r => r.json())
+        : Promise.resolve([]),
     ]);
-    const inspectors = users.filter(u =>
-      u.role === "Inspector" || u.role === "3rd_Party_Inspector"
-    );
+    // 3rd Party Admin: restrict to their own sub-inspectors only
+    const inspectors = isThirdAdmin()
+      ? users.filter(u => u.role === "3rd_Party_Inspector")
+      : users.filter(u => u.role === "Inspector" || u.role === "3rd_Party_Inspector");
+
+    // 3rd Party Admin: scope companies to only those with existing assignments for their team
+    let companies = allCompanies;
+    if (isThirdAdmin()) {
+      const thirdNames = new Set(
+        users.filter(u => u.role === "3rd_Party_Inspector").map(u => u.username)
+      );
+      const scopedIds = new Set(
+        baTeamAssign
+          .filter(a => thirdNames.has(a.inspector))
+          .map(a => a.company_id)
+          .filter(Boolean)
+      );
+      companies = allCompanies.filter(c => scopedIds.has(c.company_id));
+    }
 
     // Populate Company dropdown
     const compSel = document.getElementById("baCompany");
-    compSel.innerHTML = "<option value=''>— Select company —</option>" +
-      companies.map(c => `<option value="${c.company_id}">${c.name}</option>`).join("");
+    compSel.innerHTML = companies.length
+      ? "<option value=''>— Select company —</option>" +
+        companies.map(c => `<option value="${c.company_id}">${c.name}</option>`).join("")
+      : "<option value=''>No assigned companies</option>";
 
     // Pre-select from drill context
     if (_selectedCompany) {
@@ -4371,20 +4792,49 @@ async function submitBulkAssignments() {
 async function openAssignModal(editRow=null) {
   editingAssignId = editRow ? editRow.assignment_id : null;
 
-  // Load companies and inspectors in parallel
-  const [companies, users] = await Promise.all([
+  // Load companies, users, and (for ThirdAdmin) their team's assignments in parallel
+  const [allCompanies, users, teamAssignments] = await Promise.all([
     fetch(`/api/companies?org_id=${orgId()}`).then(r=>r.json()),
     fetch(`/api/users?org_id=${orgId()}`).then(r=>r.json()),
+    isThirdAdmin()
+      ? fetch(`/api/assignments?org_id=${orgId()}`).then(r=>r.json())
+      : Promise.resolve([]),
   ]);
-  const inspectors = users.filter(u=>u.role==="Inspector"||u.role==="3rd_Party_Inspector");
+
+  // 3rd Party Admin: can only assign to their own 3rd Party Inspectors.
+  // Primary org Inspector accounts must never be visible to subcontractors.
+  const inspectors = isThirdAdmin()
+    ? users.filter(u => u.role === "3rd_Party_Inspector")
+    : users.filter(u => u.role === "Inspector" || u.role === "3rd_Party_Inspector");
+
+  // 3rd Party Admin: scope companies to only those with existing assignments
+  // for their team. They must not see the full client list.
+  let companies = allCompanies;
+  if (isThirdAdmin()) {
+    const thirdPartyNames = new Set(
+      users.filter(u => u.role === "3rd_Party_Inspector").map(u => u.username)
+    );
+    const scopedCompanyIds = new Set(
+      teamAssignments
+        .filter(a => thirdPartyNames.has(a.inspector))
+        .map(a => a.company_id)
+        .filter(Boolean)
+    );
+    companies = allCompanies.filter(c => scopedCompanyIds.has(c.company_id));
+    // If no scoped companies found (assignments may lack company_id), show all
+    // but this is a fallback only — the assignment filter above handles the real case
+    if (companies.length === 0) companies = [];
+  }
 
   // ── Populate Company dropdown ──────────────────────────────────
   const aCompany = document.getElementById("aCompany");
   const aBuilding = document.getElementById("aBuilding");
   const aExt = document.getElementById("aExtinguisher");
 
-  aCompany.innerHTML = '<option value="">— Select company —</option>' +
-    companies.map(c=>`<option value="${c.company_id}">${c.name}</option>`).join("");
+  aCompany.innerHTML = companies.length
+    ? '<option value="">— Select company —</option>' +
+      companies.map(c=>`<option value="${c.company_id}">${c.name}</option>`).join("")
+    : '<option value="">No assigned companies</option>';
   aBuilding.innerHTML = '<option value="">— Select company first —</option>';
   aBuilding.disabled = true;
   aExt.innerHTML = '<option value="">— Select building first —</option>';
@@ -4777,6 +5227,35 @@ document.getElementById("btnSubmitReport").addEventListener("click",async()=>{
 document.getElementById("reportModalCancel").addEventListener("click",()=>document.getElementById("reportModal").classList.add("hidden"));
 document.getElementById("reportModal").addEventListener("click",e=>{ if(e.target===document.getElementById("reportModal")) document.getElementById("reportModal").classList.add("hidden"); });
 
+// Open report modal pre-filled for a specific assignment (called from assignment detail popup)
+async function openReportModalForAssignment(assignmentId, extinguisherId) {
+  const assignments = await fetch("/api/assignments?user_id=" + currentUser.user_id).then(r => r.json());
+  const pending = assignments.filter(a => !String(a.status).toLowerCase().includes("complete"));
+  if (!pending.length) { alert("You have no pending assignments to report on."); return; }
+  const exts = await fetch("/api/extinguishers").then(r => r.json());
+  const extMap = {};
+  exts.forEach(e => extMap[e.extinguisher_id] = (e.building_name || e.address || "") + " · Ext #" + e.extinguisher_id);
+  // Build assignment dropdown
+  document.getElementById("rAssignment").innerHTML = pending.map(a =>
+    `<option value="${a.assignment_id}" data-ext="${a.extinguisher_id}" ${a.assignment_id === assignmentId ? "selected" : ""}>
+      Assignment #${a.assignment_id} — ${extMap[a.extinguisher_id] || "Ext #" + a.extinguisher_id}
+    </option>`
+  ).join("");
+  // Pre-fill defaults
+  document.getElementById("rDate").value        = new Date().toISOString().split("T")[0];
+  document.getElementById("rNotes").value        = "";
+  document.getElementById("rServiceType").value  = "Routine Inspection";
+  document.getElementById("rResult").value       = "";
+  ["chkMounted","chkAccess","chkPressure","chkSeal","chkDamage","chkNozzle","chkLabel","chkWeight"]
+    .forEach(id => document.getElementById(id).checked = false);
+  document.getElementById("rPhoto").value = "";
+  document.getElementById("photoPreview").classList.remove("show");
+  document.getElementById("photoClear").classList.remove("show");
+  document.getElementById("photoUploadArea").classList.remove("has-photo");
+  document.getElementById("reportModalError").textContent = "";
+  document.getElementById("reportModal").classList.remove("hidden");
+}
+
 document.getElementById("reportModalSave").addEventListener("click",async()=>{
   const sel=document.getElementById("rAssignment");
   const assignmentId=parseInt(sel.value);
@@ -5027,6 +5506,399 @@ async function saveProfileInfo() {
   }
 }
 
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ── CLIENT PORTAL FUNCTIONS ───────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function loadClientDashboard() {
+  if (!currentUser.company_id) {
+    document.getElementById("clientSubLabel").textContent = "No company assigned to this account. Contact your administrator.";
+    return;
+  }
+  try {
+    const stats = await fetch(`/api/client/stats?company_id=${currentUser.company_id}`).then(r => r.json());
+    const pct   = stats.compliance_pct || 0;
+
+    document.getElementById("clientPctLabel").textContent = pct + "% Compliant";
+    document.getElementById("clientSubLabel").textContent =
+      `${stats.compliant} of ${stats.total} extinguishers passed last inspection` +
+      (stats.overdue > 0 ? ` · ${stats.overdue} overdue` : "");
+
+    // Draw pie chart
+    drawClientPie(pct);
+
+    // Deficiencies
+    const defList = document.getElementById("clientDeficiencyList");
+    const defItems = document.getElementById("clientDeficiencyItems");
+    if (stats.deficiencies && stats.deficiencies.length > 0) {
+      defItems.innerHTML = stats.deficiencies.map(d =>
+        `<div style="display:flex;gap:0.5rem;align-items:baseline;padding:4px 0;border-bottom:1px solid var(--border);font-size:0.8rem;">
+           <span style="color:var(--red);font-family:'IBM Plex Mono',monospace;">EXT-${d.extinguisher_id}</span>
+           <span style="color:var(--text);">${d.building_name} · Fl ${d.floor || "?"} · ${d.room || ""}</span>
+           <span style="color:var(--muted);margin-left:auto;">${d.last_result}</span>
+         </div>`
+      ).join("");
+      defList.style.display = "";
+    } else {
+      defList.style.display = "none";
+    }
+
+    // Also render extinguishers scoped to client company
+    window._clientStats = stats;
+  } catch(e) { console.error("Client dashboard error", e); }
+}
+
+function drawClientPie(pct) {
+  const canvas = document.getElementById("clientPieChart");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  const cx = 40, cy = 40, r = 34;
+  ctx.clearRect(0, 0, 80, 80);
+  // Background circle
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, 2 * Math.PI);
+  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--bg3") || "#2a2d36";
+  ctx.fill();
+  // Compliant arc
+  const angle = (pct / 100) * 2 * Math.PI - Math.PI / 2;
+  ctx.beginPath(); ctx.moveTo(cx, cy);
+  ctx.arc(cx, cy, r, -Math.PI / 2, angle);
+  ctx.closePath();
+  ctx.fillStyle = pct >= 90 ? "#15803d" : pct >= 70 ? "#d97706" : "#c1121f";
+  ctx.fill();
+  // Inner circle (donut)
+  ctx.beginPath(); ctx.arc(cx, cy, 20, 0, 2 * Math.PI);
+  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--bg2") || "#1e2028";
+  ctx.fill();
+  // Percentage text
+  ctx.fillStyle = "#f3f4f6";
+  ctx.font = "bold 12px IBM Plex Mono, monospace";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(pct + "%", cx, cy);
+}
+
+function downloadClientReport() {
+  // Reuse the bulk NFPA form generator scoped to the client's company
+  if (!currentUser.company_id) return;
+  // Open bulk NFPA modal pre-filtered for their company
+  openBulkNFPAModal();
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ── CONDEMN & REPLACE WORKFLOW ────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+
+let _condemnExtId = null;
+
+function openCondemnModal(extId, extLabel) {
+  _condemnExtId = extId;
+  document.getElementById("condemnExtInfo").textContent =
+    `Unit: EXT-${extId} — ${extLabel || ""}`;
+  document.getElementById("condemnReason").value = "";
+  document.getElementById("condemnOtherText").value = "";
+  document.getElementById("condemnOtherRow").style.display = "none";
+  document.getElementById("condemnError").textContent = "";
+  document.getElementById("condemnModal").classList.remove("hidden");
+}
+
+document.getElementById("condemnReason").addEventListener("change", function() {
+  document.getElementById("condemnOtherRow").style.display =
+    this.value === "Other" ? "" : "none";
+});
+
+document.getElementById("condemnCancel").addEventListener("click", () =>
+  document.getElementById("condemnModal").classList.add("hidden")
+);
+
+document.getElementById("condemnConfirm").addEventListener("click", async () => {
+  const reason = document.getElementById("condemnReason").value;
+  const other  = document.getElementById("condemnOtherText").value.trim();
+  const errEl  = document.getElementById("condemnError");
+  errEl.textContent = "";
+
+  if (!reason)          { errEl.textContent = "Please select a reason."; return; }
+  if (reason === "Other" && !other) { errEl.textContent = "Please describe the reason."; return; }
+
+  const finalReason = reason === "Other" ? other : reason;
+
+  try {
+    const res  = await fetch(`/api/extinguishers/${_condemnExtId}/condemn`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason: finalReason, inspector_id: currentUser.user_id })
+    });
+    const data = await res.json();
+    if (data.success) {
+      document.getElementById("condemnModal").classList.add("hidden");
+      alert(`✓ EXT-${_condemnExtId} condemned and removed from service.
+
+A new replacement record (EXT-${data.new_extinguisher_id}) has been created at the same location. Please enter the new unit's serial number and specifications.`);
+      // Refresh extinguisher view and open edit modal for the new unit
+      await loadExtinguishers();
+      // Open edit modal for the new replacement extinguisher
+      setTimeout(() => {
+        const newExt = (window._lastExtRows || []).find(e => e.extinguisher_id === data.new_extinguisher_id);
+        if (newExt) openExtModal(newExt);
+      }, 500);
+    } else {
+      errEl.textContent = data.error || "Condemnation failed.";
+    }
+  } catch(e) { errEl.textContent = "Could not reach server."; }
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ── VOID REPORT WORKFLOW ──────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+
+let _voidReportId = null;
+
+function openVoidModal(reportId) {
+  _voidReportId = reportId;
+  document.getElementById("voidReasonText").value = "";
+  document.getElementById("voidReportError").textContent = "";
+  document.getElementById("voidReportModal").classList.remove("hidden");
+}
+
+document.getElementById("voidReportCancel").addEventListener("click", () =>
+  document.getElementById("voidReportModal").classList.add("hidden")
+);
+
+document.getElementById("voidReportConfirm").addEventListener("click", async () => {
+  const reason = document.getElementById("voidReasonText").value.trim();
+  const errEl  = document.getElementById("voidReportError");
+  if (!reason) { errEl.textContent = "A void reason is required."; return; }
+
+  try {
+    const res  = await fetch(`/api/reports/${_voidReportId}/void`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason, admin_id: currentUser.user_id })
+    });
+    const data = await res.json();
+    if (data.success) {
+      document.getElementById("voidReportModal").classList.add("hidden");
+      loadReports();
+    } else {
+      errEl.textContent = data.error || "Void failed.";
+    }
+  } catch(e) { errEl.textContent = "Could not reach server."; }
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ── COUNTER-SIGN (APPROVE) 3RD PARTY REPORT ──────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function approveReport(reportId) {
+  if (!confirm("Counter-sign and approve this report? This is a legal attestation that you have reviewed the work performed by the subcontractor.")) return;
+  try {
+    const res  = await fetch(`/api/reports/${reportId}/approve`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ admin_id: currentUser.user_id })
+    });
+    const data = await res.json();
+    if (data.success) {
+      loadReports();
+      loadStats();
+    } else {
+      alert("Approval failed: " + (data.error || "Unknown error"));
+    }
+  } catch(e) { alert("Could not reach server."); }
+}
+
+// Update pending review badge whenever reports load
+function updatePendingReviewBadge(reports) {
+  if (!isAdmin()) return;
+  const pending = (reports || []).filter(r => r.approval_status === "Pending_Review");
+  const wrap  = document.getElementById("pendingReviewWrap");
+  const count = document.getElementById("pendingReviewCount");
+  if (pending.length > 0) {
+    count.textContent = pending.length;
+    wrap.style.display = "flex";
+  } else {
+    wrap.style.display = "none";
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ── AHJ AUDITOR LINK ──────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+
+let _lastAhjLink = "";
+
+async function openAHJModal() {
+  document.getElementById("ahjError").textContent = "";
+  document.getElementById("ahjLinkWrap").style.display = "none";
+  document.getElementById("ahjLabel").value = "";
+  document.getElementById("ahjHours").value = "24";
+  document.getElementById("ahjModal").classList.remove("hidden");
+
+  // Populate building dropdown
+  const sel = document.getElementById("ahjBuilding");
+  sel.innerHTML = "<option value=''>— select building —</option>";
+  try {
+    const oid = orgId();
+    const companies = await fetch(`/api/companies?org_id=${oid}`).then(r => r.json());
+    for (const co of companies) {
+      const buildings = await fetch(`/api/buildings?company_id=${co.company_id}`).then(r => r.json()).catch(()=>[]);
+      buildings.forEach(b => {
+        const opt = document.createElement("option");
+        opt.value = b.building_id;
+        opt.textContent = `${co.name} — ${b.name}`;
+        sel.appendChild(opt);
+      });
+    }
+  } catch(e) { console.error("AHJ modal load error", e); }
+
+  // Load existing tokens
+  loadAhjTokenList();
+}
+
+async function loadAhjTokenList() {
+  const wrap = document.getElementById("ahjTokenList");
+  try {
+    const tokens = await fetch(`/api/auditor/tokens?org_id=${orgId()}`).then(r => r.json());
+    if (!tokens.length) { wrap.innerHTML = ""; return; }
+    const now = new Date();
+    wrap.innerHTML = `<div style="font-family:'IBM Plex Mono',monospace;font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.5rem;">Existing Links</div>` +
+      tokens.map(t => {
+        const expired = new Date(t.expires_at + " UTC") < now;
+        return `<div style="display:flex;align-items:center;gap:0.5rem;padding:6px 0;border-bottom:1px solid var(--border);font-size:0.75rem;">
+          <span style="flex:1;color:${expired?"var(--muted)":"var(--text)"};">${t.label} — ${t.building_name || "Building"}</span>
+          <span style="color:${expired?"var(--red)":"var(--green,#15803d)"};">${expired?"Expired":"Active"}</span>
+          <button onclick="revokeAhjToken(${t.token_id})" style="border:none;background:none;color:var(--red);cursor:pointer;font-size:0.75rem;padding:2px 6px;">Revoke</button>
+        </div>`;
+      }).join("");
+  } catch(e) { wrap.innerHTML = ""; }
+}
+
+async function revokeAhjToken(tokenId) {
+  if (!confirm("Revoke this auditor link? It will immediately stop working.")) return;
+  await fetch(`/api/auditor/tokens/${tokenId}`, { method: "DELETE" });
+  loadAhjTokenList();
+}
+
+function copyAhjLink() {
+  if (_lastAhjLink) {
+    navigator.clipboard.writeText(_lastAhjLink).then(() => alert("Link copied to clipboard!"));
+  }
+}
+
+document.getElementById("ahjCancel").addEventListener("click", () =>
+  document.getElementById("ahjModal").classList.add("hidden")
+);
+
+document.getElementById("ahjGenerate").addEventListener("click", async () => {
+  const buildingId = document.getElementById("ahjBuilding").value;
+  const label      = document.getElementById("ahjLabel").value.trim() || "AHJ Auditor";
+  const hours      = document.getElementById("ahjHours").value;
+  const errEl      = document.getElementById("ahjError");
+  errEl.textContent = "";
+
+  if (!buildingId) { errEl.textContent = "Please select a building."; return; }
+
+  try {
+    const res  = await fetch("/api/auditor/tokens", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        org_id: orgId(), building_id: buildingId,
+        admin_id: currentUser.user_id, label, hours: parseInt(hours)
+      })
+    });
+    const data = await res.json();
+    if (data.success) {
+      _lastAhjLink = `${window.location.origin}/auditor/${data.token}`;
+      document.getElementById("ahjLinkText").textContent = _lastAhjLink;
+      document.getElementById("ahjExpiry").textContent = `Expires: ${data.expires_at} UTC`;
+      document.getElementById("ahjLinkWrap").style.display = "";
+      loadAhjTokenList();
+    } else {
+      errEl.textContent = data.error || "Token generation failed.";
+    }
+  } catch(e) { errEl.textContent = "Could not reach server."; }
+});
+
+// Wire AHJ button (only shown for Admin in buildTabs)
+document.getElementById("btnAHJLink").addEventListener("click", openAHJModal);
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ── AUTO-LOGOUT ON INACTIVITY ─────────────────────────────────────────────────
+// Warns the user at WARN_SECS before logout, then forces logout at TIMEOUT_SECS.
+// Any user activity (mouse, keyboard, scroll, touch) resets the timer.
+// Only active when a user is logged in (currentUser is set).
+// ══════════════════════════════════════════════════════════════════════════════
+const INACTIVITY_TIMEOUT_SECS = 15 * 60; // 15 minutes — auto-logout
+const INACTIVITY_WARN_SECS    =  2 * 60; // warn 2 minutes before logout (at 13 min)
+
+let _inactivityTimer    = null;
+let _inactivityWarning  = null;
+let _countdownInterval  = null;
+let _secondsUntilLogout = INACTIVITY_WARN_SECS;
+
+function resetInactivityTimer() {
+  // Only run if a user is actually logged in
+  if (!currentUser) return;
+
+  // Clear existing timers
+  clearTimeout(_inactivityTimer);
+  clearTimeout(_inactivityWarning);
+  clearInterval(_countdownInterval);
+
+  // Hide warning banner
+  const banner = document.getElementById("inactivityWarningBanner");
+  if (banner) banner.style.display = "none";
+
+  // Set warning timer — fires 2 minutes before logout
+  _inactivityWarning = setTimeout(() => {
+    if (!currentUser) return;
+    _secondsUntilLogout = INACTIVITY_WARN_SECS;
+    if (banner) {
+      banner.style.display = "flex";
+      document.getElementById("inactivityCountdown").textContent = _secondsUntilLogout;
+    }
+    // Countdown every second
+    _countdownInterval = setInterval(() => {
+      _secondsUntilLogout--;
+      const el = document.getElementById("inactivityCountdown");
+      if (el) el.textContent = _secondsUntilLogout;
+      if (_secondsUntilLogout <= 0) {
+        clearInterval(_countdownInterval);
+      }
+    }, 1000);
+  }, (INACTIVITY_TIMEOUT_SECS - INACTIVITY_WARN_SECS) * 1000);
+
+  // Set logout timer — fires after full timeout
+  _inactivityTimer = setTimeout(() => {
+    if (!currentUser) return;
+    clearInterval(_countdownInterval);
+    if (banner) banner.style.display = "none";
+    // Show brief message then trigger full logout
+    alert("You have been logged out due to inactivity.");
+    document.getElementById("btnLogout").click();
+  }, INACTIVITY_TIMEOUT_SECS * 1000);
+}
+
+function startInactivityWatch() {
+  // Listen for any user activity
+  ["mousemove","mousedown","keydown","scroll","touchstart","click"].forEach(evt =>
+    document.addEventListener(evt, resetInactivityTimer, { passive: true })
+  );
+  resetInactivityTimer(); // start the initial timer
+}
+
+function stopInactivityWatch() {
+  clearTimeout(_inactivityTimer);
+  clearTimeout(_inactivityWarning);
+  clearInterval(_countdownInterval);
+  ["mousemove","mousedown","keydown","scroll","touchstart","click"].forEach(evt =>
+    document.removeEventListener(evt, resetInactivityTimer)
+  );
+  const banner = document.getElementById("inactivityWarningBanner");
+  if (banner) banner.style.display = "none";
+}
+
 // Sidebar toggle for mobile
 document.getElementById("sidebarToggle").addEventListener("click", () => {
   const sidebar = document.getElementById("sidebar");
@@ -5071,6 +5943,12 @@ function toggleSettingsMenu() {
     sub.classList.add("hidden");
     document.getElementById("sidebarGeneralSub").classList.add("hidden");
   }
+}
+
+// Close settings submenu — called before any modal opens to prevent bleed-through
+function closeSettingsSubmenu() {
+  document.getElementById("sidebarSettingsSub")?.classList.add("hidden");
+  document.getElementById("sidebarGeneralSub")?.classList.add("hidden");
 }
 
 function toggleGeneralMenu() {
@@ -5149,8 +6027,31 @@ async function loadUserPreferences() {
 // ── Role change: show cert number only for inspector roles ──────────────────
 function onURoleChange() {
   const role = document.getElementById("uRole").value;
-  const isInspectorRole = role === "Inspector" || role === "3rd_Party_Inspector";
-  document.getElementById("uCertRow").style.display = isInspectorRole ? "" : "none";
+  const isInspectorRole  = role === "Inspector" || role === "3rd_Party_Inspector";
+  const isThirdPartyRole = role === "3rd_Party_Admin" || role === "3rd_Party_Inspector";
+  const isClientRole     = role === "Client";
+
+  document.getElementById("uCertRow").style.display           = isInspectorRole  ? "" : "none";
+  document.getElementById("uSubcontractorRow").style.display  = isThirdPartyRole ? "" : "none";
+  document.getElementById("uClientCompanyRow").style.display  = isClientRole     ? "" : "none";
+
+  // Populate company dropdown for Client role
+  if (isClientRole) { populateClientCompanyDropdown(); }
+}
+
+async function populateClientCompanyDropdown() {
+  const sel = document.getElementById("uClientCompanyId");
+  if (sel.children.length > 1) return; // already loaded
+  try {
+    const oid = orgId();
+    const companies = await fetch(`/api/companies${oid ? "?org_id=" + oid : ""}`).then(r => r.json());
+    companies.forEach(c => {
+      const opt = document.createElement("option");
+      opt.value = c.company_id;
+      opt.textContent = c.name;
+      sel.appendChild(opt);
+    });
+  } catch(e) { console.error("Company load error", e); }
 }
 
 // ── Helper: clear all user modal fields ──────────────────────────────────────
@@ -5199,7 +6100,8 @@ document.getElementById("btnEditUser").addEventListener("click", () => {
   document.getElementById("uMiddleName").value  = user.middle_name || "";
   document.getElementById("uEmail").value       = user.email       || "";
   document.getElementById("uPhone").value       = user.phone       || "";
-  document.getElementById("uCertNumber").value  = user.cert_number || "";
+  document.getElementById("uCertNumber").value        = user.cert_number || "";
+  document.getElementById("uSubcontractorName").value = user.subcontractor_company_name || "";
   document.getElementById("userModalError").textContent = "";
   // Password optional for edit
   document.getElementById("uPasswordRow").style.display  = "";
@@ -5272,7 +6174,8 @@ document.getElementById("userModalSave").addEventListener("click", async () => {
       if (password.length < 6)  { errEl.textContent = "Password must be at least 6 characters."; return; }
     }
 
-    const body = { username, role, ...piiFields };
+    const body = { username, role, ...piiFields,
+      subcontractor_company_name: document.getElementById("uSubcontractorName")?.value.trim() || "" };
     if (password) body.password = await sha256(password);
 
     const res = await fetch("/api/users/" + editingUserId, {
@@ -5294,10 +6197,13 @@ document.getElementById("userModalSave").addEventListener("click", async () => {
     if (password.length < 6)  { errEl.textContent = "Password must be at least 6 characters."; return; }
 
     const hashed = await sha256(password);
+    const clientCompanyId = document.getElementById("uClientCompanyId")?.value || null;
     const res = await fetch("/api/users", {
       method: "POST",
       headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({ username, password: hashed, role, org_id: orgId(), ...piiFields })
+      body: JSON.stringify({ username, password: hashed, role, org_id: orgId(), ...piiFields,
+        company_id: clientCompanyId || undefined,
+        subcontractor_company_name: document.getElementById("uSubcontractorName")?.value.trim() || "" })
     });
     if (res.ok) {
       document.getElementById("userModal").classList.add("hidden");
@@ -5442,6 +6348,14 @@ function badgeTab(keyword, count) {
 // Fetch notifications from server and update badge
 async function fetchNotifications() {
   if (!currentUser) return;
+  // 3rd Party and Client roles do not receive org-wide operational notifications.
+  if (isThirdAdmin() || isThirdInv() || isClient()) {
+    _notifications = [];
+    document.getElementById("sidebarNotifBadge")?.classList.remove("show");
+    const feed = document.getElementById("notifFeed");
+    if (feed) feed.innerHTML = "<div style='padding:1rem;color:var(--muted);font-size:0.82rem;text-align:center;'>No notifications.</div>";
+    return;
+  }
   try {
     const res = await fetch("/api/notifications?user_id=" + currentUser.user_id + "&role=" + encodeURIComponent(currentUser.role) + "&org_id=" + (orgId()||""));
     if (!res.ok) return;
@@ -5535,6 +6449,7 @@ function selectBuildingCard(el, data) {
 
 // ── Extinguisher detail popup ─────────────────────────────────────────────────
 function openExtDetail(row) {
+  closeSettingsSubmenu(); // prevent sidebar bleed-through on modal open
   // Header
   document.getElementById("detailExtId").textContent = `EXT-${row.extinguisher_id}`;
   document.getElementById("detailExtTitle").textContent =
@@ -5760,7 +6675,18 @@ function openAssignDetail(row) {
   document.getElementById("detailAssignTitle").innerHTML =
     `<span class="ext-detail-value ${statusCls}" style="font-size:0.9rem;">${statusText}</span>`;
 
-  const fields = [
+  // 3rd Party Inspector sees only what they need to physically do the job.
+  // Primary vendor internal names (Assigned By, Inspector) are hidden.
+  const fields = isThirdInv() ? [
+    { label: "Building",     value: row.building_name || "—",                               full: false },
+    { label: "Floor",        value: row.floor_number  != null ? `Floor ${row.floor_number}` : "—", full: false },
+    { label: "Room",         value: row.room_number   || "—",                               full: false },
+    { label: "Location",     value: row.location_description || "—",                        full: true  },
+    { label: "Extinguisher", value: `#${row.extinguisher_id}`,                              full: false },
+    { label: "Due Date",     value: row.due_date       || "—",                               full: false },
+    { label: "Status",       value: statusText,                                              full: false, cls: statusCls },
+    { label: "Notes",        value: row.notes && row.notes.trim() ? row.notes : "No notes", full: true  },
+  ] : [
     { label: "Company",      value: row.company_name  || "—",                               full: false },
     { label: "Building",     value: row.building_name || "—",                               full: false },
     { label: "Floor",        value: row.floor_number  != null ? `Floor ${row.floor_number}` : "—", full: false },
@@ -5790,6 +6716,15 @@ function openAssignDetail(row) {
         ✎ Edit
       </button>
     `;
+  } else if ((isInv() || isThirdInv()) && row.status === "Pending Inspection") {
+    footer.innerHTML = `
+      <button class="btn-crud" style="font-size:0.72rem;padding:6px 14px;min-height:34px;background:var(--bg3);border-color:var(--border);color:var(--muted);"
+        onclick="document.getElementById('assignDetailModal').classList.add('hidden');">Close</button>
+      <button class="btn-save" style="font-size:0.72rem;padding:6px 18px;min-height:34px;"
+        onclick="document.getElementById('assignDetailModal').classList.add('hidden'); openReportModalForAssignment(${aid}, ${row.extinguisher_id});">
+        📋 Submit Report
+      </button>
+    `;
   } else {
     footer.innerHTML = `
       <button class="btn-crud" style="font-size:0.72rem;padding:6px 14px;min-height:34px;background:var(--bg3);border-color:var(--border);color:var(--muted);"
@@ -5812,6 +6747,7 @@ document.getElementById("priorityQueueModal").addEventListener("click", e => {
 
 // ── Report detail popup ───────────────────────────────────────────────────────
 function openReportDetail(row) {
+  closeSettingsSubmenu(); // prevent sidebar bleed-through on modal open
   document.getElementById("detailReportId").textContent = `RPT-${row.report_id}`;
   document.getElementById("detailReportTitle").textContent =
     row.inspection_date ? `Inspected ${row.inspection_date}` : "Inspection Report";
@@ -6075,11 +7011,79 @@ function applyReportFilters() {
   if (newHash === _lastReportHash) return;
   _lastReportHash = newHash;
 
-  const cols = isAdmin()
-    ? ["report_id","extinguisher_id","inspector","inspection_date","notes","photo_path"]
-    : ["report_id","extinguisher_id","inspection_date","notes","photo_path"];
-  renderTable("tableReportsWrap", cols, filtered, row=>{ openReportDetail(row); });
-  renderCards("cardReportsWrap",  filtered, "report", row=>{ openReportDetail(row); });
+  // Build report rows with approval status badge + counter-sign action for admin
+  const tableWrap = document.getElementById("tableReportsWrap");
+  if (!filtered.length) {
+    tableWrap.innerHTML = `<p class="empty-msg">[ NO REPORTS TO DISPLAY ]</p>`;
+    document.getElementById("cardReportsWrap").innerHTML = "";
+    return;
+  }
+
+  // Custom report table with approval status column
+  let html = `<table class="data-table"><thead><tr>
+    <th>ID</th><th>EXT</th>
+    ${isAdmin() ? "<th>Inspector</th>" : ""}
+    <th>Date</th><th>Service Type</th><th>Result</th>
+    ${isAdmin() ? "<th>Status</th>" : ""}
+    <th>Photo</th>
+    ${isAdmin() ? "<th>Action</th>" : ""}
+  </tr></thead><tbody>`;
+
+  filtered.forEach((row, idx) => {
+    const isPending = row.approval_status === "Pending_Review";
+    const isVoid    = row.approval_status === "Void";
+    const rowStyle  = isPending ? 'style="background:rgba(217,119,6,0.08);"'
+                    : isVoid    ? 'style="background:rgba(193,18,31,0.06);opacity:0.7;"' : '';
+
+    const approvalBadge = isPending
+      ? `<span style="display:inline-block;padding:2px 7px;border-radius:4px;font-size:0.65rem;font-family:'IBM Plex Mono',monospace;background:#FEF3C7;color:#92400E;border:1px solid #D97706;">⏳ PENDING REVIEW</span>`
+      : isVoid
+      ? `<span style="display:inline-block;padding:2px 7px;border-radius:4px;font-size:0.65rem;font-family:'IBM Plex Mono',monospace;background:#FEE2E2;color:#9B1C1C;border:1px solid #C1121F;">✗ VOID</span>`
+      : `<span style="display:inline-block;padding:2px 7px;border-radius:4px;font-size:0.65rem;font-family:'IBM Plex Mono',monospace;background:#DCFCE7;color:#15803D;border:1px solid #16A34A;">✓ APPROVED</span>`;
+
+    const actionCell = isPending
+      ? `<td><button onclick="event.stopPropagation();approveReport(${row.report_id})" style="font-size:0.72rem;padding:3px 8px;background:var(--orange);color:#fff;border:none;border-radius:4px;cursor:pointer;">Counter-Sign</button>
+         <button onclick="event.stopPropagation();openVoidModal(${row.report_id})" style="font-size:0.72rem;padding:3px 8px;background:var(--red);color:#fff;border:none;border-radius:4px;cursor:pointer;margin-left:4px;">Void</button></td>`
+      : !isVoid
+      ? `<td><button onclick="event.stopPropagation();openVoidModal(${row.report_id})" style="font-size:0.72rem;padding:3px 8px;background:var(--bg3);color:var(--muted);border:1px solid var(--border);border-radius:4px;cursor:pointer;">Void</button></td>`
+      : `<td><span style="color:var(--muted);font-size:0.7rem;">${row.void_reason || ""}</span></td>`;
+
+    const photo = row.photo_path
+      ? `<img class="report-thumb" src="/uploads/${row.photo_path}" alt="photo" onclick="openPhotoViewer('/uploads/${row.photo_path}');event.stopPropagation();" />`
+      : `<span style="color:var(--muted);font-size:0.7rem;">—</span>`;
+
+    const result = row.inspection_result
+      ? `<span style="color:${row.inspection_result==='Pass'?'var(--green)':row.inspection_result==='Fail'?'var(--red)':'var(--muted)'};">${row.inspection_result}</span>`
+      : "—";
+
+    const subName = row.inspector_subcontractor
+      ? `<br><span style="font-size:0.65rem;color:var(--muted);">${row.inspector_subcontractor}</span>` : "";
+    const certNum = row.inspector_cert
+      ? `<br><span style="font-size:0.65rem;color:var(--muted);font-family:'IBM Plex Mono',monospace;">${row.inspector_cert}</span>` : "";
+
+    html += `<tr data-id="${row.report_id}" data-idx="${idx}" ${rowStyle} style="cursor:pointer;">
+      <td>RPT-${row.report_id}</td>
+      <td>EXT-${row.extinguisher_id}</td>
+      ${isAdmin() ? `<td>${row.inspector||"—"}${subName}${certNum}</td>` : ""}
+      <td>${(row.inspection_date||"").split("T")[0]||"—"}</td>
+      <td style="font-size:0.8rem;">${row.service_type||"—"}</td>
+      <td>${result}</td>
+      ${isAdmin() ? `<td>${approvalBadge}</td>` : ""}
+      <td>${photo}</td>
+      ${isAdmin() ? actionCell : ""}
+    </tr>`;
+  });
+  html += "</tbody></table>";
+  tableWrap.innerHTML = html;
+  tableWrap.querySelectorAll("tr[data-id]").forEach(tr => {
+    tr.addEventListener("click", () => {
+      tableWrap.querySelectorAll("tr").forEach(r => r.classList.remove("selected"));
+      tr.classList.add("selected");
+      const idx = parseInt(tr.dataset.idx);
+      if (filtered[idx]) openReportDetail(filtered[idx]);
+    });
+  });
+  renderCards("cardReportsWrap", filtered, "report", row => { openReportDetail(row); });
 }
 
 // Wire up filter inputs — apply on any change
@@ -6695,35 +7699,42 @@ function generateNFPAForm(report) {
       </div>
     </div>
 
-    <!-- SECTION 6: INSPECTOR CERTIFICATION -->
+    <!-- SECTION 6: INSPECTOR CERTIFICATION (NFPA 10 §7.2.2) -->
     <div class="section">
       <div class="section-title">Section 6 — Inspector Certification</div>
-      <div class="sig-grid">
-        <div class="sig-field">
-          <div class="field-label">Inspector Legal Name</div>
-          <div class="field-value">${currentUser.full_name || report.inspector || "—"}</div>
-        </div>
-        <div class="sig-field">
-          <div class="field-label">Report ID</div>
-          <div class="field-value">RPT-${report.report_id}</div>
-        </div>
-        <div class="sig-field">
-          <div class="field-label">Username / ID</div>
-          <div class="field-value">${report.inspector || "—"}</div>
-        </div>
-        <div class="sig-field">
-          <div class="field-label">State License / Cert No.</div>
-          <div class="field-value">${currentUser.cert_number || "—"}</div>
-        </div>
-        <div class="sig-field">
-          <div class="field-label">Inspector Signature</div>
-          <div class="sig-line"></div>
-        </div>
-        <div class="sig-field">
-          <div class="field-label">Date Signed</div>
-          <div class="sig-line"></div>
-        </div>
+
+      ${currentUser.subcontractor_company_name ? `
+      <!-- Work performed by subcontractor — show sub company first, then primary vendor -->
+      <div style="margin-bottom:0.75rem;padding:0.5rem 0.75rem;background:#fef9c3;border:1px solid #ca8a04;border-radius:4px;font-size:0.72rem;color:#78350f;">
+        ⚠ Work performed under subcontract arrangement. Primary vendor counter-signature required for legal validity.
       </div>
+      <div style="font-weight:700;font-size:0.78rem;margin-bottom:0.5rem;color:#374151;">Performing Inspector (Subcontractor)</div>
+      <div class="sig-grid">
+        <div class="sig-field"><div class="field-label">Inspector Legal Name</div><div class="field-value">${currentUser.full_name || report.inspector || "—"}</div></div>
+        <div class="sig-field"><div class="field-label">State License / Cert No.</div><div class="field-value">${currentUser.cert_number || "—"}</div></div>
+        <div class="sig-field" style="grid-column:1/-1"><div class="field-label">Subcontracting Company</div><div class="field-value">${currentUser.subcontractor_company_name}</div></div>
+        <div class="sig-field"><div class="field-label">Inspector Signature</div><div class="sig-line"></div></div>
+        <div class="sig-field"><div class="field-label">Date Signed</div><div class="sig-line"></div></div>
+      </div>
+      <div style="margin-top:1rem;padding-top:0.75rem;border-top:2px solid #374151;">
+        <div style="font-weight:700;font-size:0.78rem;margin-bottom:0.5rem;color:#374151;">Primary Vendor Certification &amp; Counter-Signature</div>
+        <div class="sig-grid">
+          <div class="sig-field"><div class="field-label">Inspection Company</div><div class="field-value">${orgName}</div></div>
+          <div class="sig-field"><div class="field-label">Reviewed By</div><div class="field-value">${report.reviewed_by_name || "—"}</div></div>
+          <div class="sig-field"><div class="field-label">Review Date</div><div class="field-value">${report.reviewed_at ? report.reviewed_at.split("T")[0] : ""}</div></div>
+          <div class="sig-field"><div class="field-label">Authorized Signature</div><div class="sig-line"></div></div>
+          <div class="sig-field"><div class="field-label">Title / License No.</div><div class="sig-line"></div></div>
+          <div class="sig-field"><div class="field-label">Date</div><div class="sig-line"></div></div>
+        </div>
+      </div>` : `
+      <!-- Standard inspection — primary vendor inspector -->
+      <div class="sig-grid">
+        <div class="sig-field"><div class="field-label">Inspector Legal Name</div><div class="field-value">${currentUser.full_name || report.inspector || "—"}</div></div>
+        <div class="sig-field"><div class="field-label">State License / Cert No.</div><div class="field-value">${currentUser.cert_number || "—"}</div></div>
+        <div class="sig-field" style="grid-column:1/-1"><div class="field-label">Inspection Company (Primary Vendor)</div><div class="field-value">${orgName}</div></div>
+        <div class="sig-field"><div class="field-label">Inspector Signature</div><div class="sig-line"></div></div>
+        <div class="sig-field"><div class="field-label">Date Signed</div><div class="sig-line"></div></div>
+      </div>`}
     </div>
 
     <div class="nfpa-ref">
@@ -7241,14 +8252,35 @@ async function generateBulkNFPA() {
 
       <div class="section">
         <div class="section-title">Section 6 — Inspector Certification</div>
+        ${r.inspector_subcontractor ? `
+        <div style="margin-bottom:0.75rem;padding:0.4rem 0.6rem;background:#fef9c3;border:1px solid #ca8a04;border-radius:4px;font-size:0.7rem;color:#78350f;">
+          ⚠ Subcontractor work — primary vendor counter-signature required for legal validity.
+        </div>
+        <div style="font-weight:700;font-size:0.75rem;margin-bottom:0.4rem;">Performing Inspector (Subcontractor)</div>
         <div class="sig-grid">
-          <div class="sig-field"><div class="field-label">Inspector Legal Name</div><div class="field-value">${currentUser.full_name || r.inspector || "—"}</div></div>
-          <div class="sig-field"><div class="field-label">Report ID</div><div class="field-value">RPT-${r.report_id}</div></div>
-          <div class="sig-field"><div class="field-label">Username / ID</div><div class="field-value">${r.inspector || "—"}</div></div>
-          <div class="sig-field"><div class="field-label">State License / Cert No.</div><div class="field-value">${currentUser.cert_number || "—"}</div></div>
+          <div class="sig-field"><div class="field-label">Inspector Legal Name</div><div class="field-value">${(r.inspector_first_name ? r.inspector_first_name + ' ' + r.inspector_last_name : r.inspector) || "—"}</div></div>
+          <div class="sig-field"><div class="field-label">State License / Cert No.</div><div class="field-value">${r.inspector_cert || "—"}</div></div>
+          <div class="sig-field" style="grid-column:1/-1"><div class="field-label">Subcontracting Company</div><div class="field-value">${r.inspector_subcontractor}</div></div>
           <div class="sig-field"><div class="field-label">Inspector Signature</div><div class="sig-line"></div></div>
           <div class="sig-field"><div class="field-label">Date Signed</div><div class="sig-line"></div></div>
         </div>
+        <div style="margin-top:0.75rem;padding-top:0.6rem;border-top:2px solid #374151;">
+          <div style="font-weight:700;font-size:0.75rem;margin-bottom:0.4rem;">Primary Vendor Counter-Signature</div>
+          <div class="sig-grid">
+            <div class="sig-field"><div class="field-label">Inspection Company</div><div class="field-value">${currentUser.org_name || "—"}</div></div>
+            <div class="sig-field"><div class="field-label">Reviewed By</div><div class="field-value">${r.reviewed_by_name || "—"}</div></div>
+            <div class="sig-field"><div class="field-label">Review Date</div><div class="field-value">${r.reviewed_at ? r.reviewed_at.split("T")[0] : ""}</div></div>
+            <div class="sig-field"><div class="field-label">Authorized Signature</div><div class="sig-line"></div></div>
+            <div class="sig-field"><div class="field-label">Date</div><div class="sig-line"></div></div>
+          </div>
+        </div>` : `
+        <div class="sig-grid">
+          <div class="sig-field"><div class="field-label">Inspector Legal Name</div><div class="field-value">${currentUser.full_name || r.inspector || "—"}</div></div>
+          <div class="sig-field"><div class="field-label">State License / Cert No.</div><div class="field-value">${currentUser.cert_number || "—"}</div></div>
+          <div class="sig-field" style="grid-column:1/-1"><div class="field-label">Inspection Company (Primary Vendor)</div><div class="field-value">${currentUser.org_name || "—"}</div></div>
+          <div class="sig-field"><div class="field-label">Inspector Signature</div><div class="sig-line"></div></div>
+          <div class="sig-field"><div class="field-label">Date Signed</div><div class="sig-line"></div></div>
+        </div>`}
       </div>
 
       <div class="nfpa-ref">
@@ -7326,9 +8358,17 @@ async function checkDueDateAlerts() {
   const oid = orgId();
   if (!oid) return;
 
+  // Due date alerts are only relevant for primary org roles.
+  // 3rd Party roles must not see primary org scheduling data.
+  // Client sees no operational scheduling at all.
+  if (isThirdAdmin() || isThirdInv() || isClient()) {
+    document.getElementById("dueDateAlertBanner").style.display = "none";
+    return;
+  }
+
   try {
     let url = `/api/assignments?org_id=${oid}`;
-    if (isInv() || isThirdInv()) url += `&user_id=${currentUser.user_id}`;
+    if (isInv()) url += `&user_id=${currentUser.user_id}`;
     const assignments = await fetch(url).then(r => r.json());
 
     const today = new Date();
@@ -8399,6 +9439,41 @@ async function navigateToExtinguisher(extId) {
   // Make sure we're showing the dashboard
   showView("dashboard");
 
+  // Role-based QR scan enforcement:
+  //
+  // Primary Inspector: can scan any extinguisher in their ASSIGNED BUILDINGS.
+  // Real-world: they walk the full building, they may find units not on their
+  // original route sheet (new installations, units missed in previous visits).
+  //
+  // 3rd Party Inspector: strictly unit-level — only their specific assigned unit.
+  // Real-world: subcontractor was hired for one job, sees nothing else.
+  if (isInv() || isThirdInv()) {
+    const assignments = window._lastAssignRows || [];
+    const activeAssignments = assignments.filter(
+      a => !String(a.status || "").toLowerCase().includes("complete")
+    );
+
+    if (isThirdInv()) {
+      // 3rd Party: must match a specific assigned extinguisher ID
+      const isAssigned = activeAssignments.some(a => a.extinguisher_id === extId);
+      if (!isAssigned) {
+        alert(`EXT-${extId} is not in your current assignments.\nYou can only access extinguishers assigned to you.`);
+        return;
+      }
+    } else {
+      // Primary Inspector: must be in an assigned building
+      const assignedBuildingIds = new Set(
+        activeAssignments.map(a => a.building_id).filter(Boolean)
+      );
+      // Also check in-memory ext cache to get the building_id for this ext
+      const ext = (window._allExtinguishers || []).find(e => e.extinguisher_id === extId);
+      if (ext && assignedBuildingIds.size > 0 && !assignedBuildingIds.has(ext.building_id)) {
+        alert(`EXT-${extId} is not in one of your assigned buildings.`);
+        return;
+      }
+    }
+  }
+
   // 1. Try the in-memory cache first
   const cached = (window._allExtinguishers || []).find(e => e.extinguisher_id === extId);
   if (cached) {
@@ -8406,7 +9481,7 @@ async function navigateToExtinguisher(extId) {
     return;
   }
 
-  // 2. Fetch directly from the API — always works regardless of drill level
+  // 2. Fetch directly from the API
   try {
     const row = await fetch(`/api/extinguishers/${extId}`).then(r => r.json());
     if (row && row.extinguisher_id) {
