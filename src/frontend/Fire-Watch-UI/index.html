@@ -3045,9 +3045,9 @@ async function loadStats() {
 // Called on login, refresh, and every 5-second auto-poll cycle.
 function loadAllData() {
   if (isAdmin())           { loadExtinguishers(); loadAssignments(); loadReports(); loadUsers(); }
-  else if (isInv())        { loadExtinguishers(); loadAssignments(); loadReports(); }
+  else if (isInv())        { loadAssignments().then(() => loadExtinguishers()); loadReports(); }
   else if (isThirdAdmin()) { loadAssignments(); loadReports(); loadUsers(); }
-  else if (isThirdInv())   { loadAssignments(); loadReports(); }
+  else if (isThirdInv())   { loadAssignments().then(() => loadExtinguishers()); loadReports(); }
   else if (isClient())     { loadClientDashboard(); loadExtinguishers(); loadReports(); }
 }
 
@@ -3075,12 +3075,18 @@ async function loadExtinguishers() {
   // Real-world: subcontractor is hired for a specific job (e.g. hydro test on EXT-4).
   // They have no business seeing any other equipment in the building.
   if (isInv() || isThirdInv()) {
-    // Fetch assignments directly if not yet cached — loadExtinguishers and
-    // loadAssignments run in parallel so _lastAssignRows may not be ready yet
+    // Assignments are guaranteed loaded before this runs (loadAllData sequences them).
+    // Fall back to a direct fetch only as a safety net for manual refreshes.
     let assignments = window._lastAssignRows || [];
     if (!assignments.length) {
       try {
         const oid = orgId();
+        if (!oid || !currentUser?.user_id) {
+          document.getElementById("tableExtWrap").innerHTML =
+            "<p class='empty-msg'>[ NO ACTIVE ASSIGNMENTS ]</p>";
+          window._lastExtRows = [];
+          return;
+        }
         assignments = await fetch(
           `/api/assignments?org_id=${oid}&user_id=${currentUser.user_id}`
         ).then(r => r.json());
