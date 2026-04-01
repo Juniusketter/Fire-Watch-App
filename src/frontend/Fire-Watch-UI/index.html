@@ -393,7 +393,8 @@
       <!-- Tab toggle -->
       <div class="auth-tabs">
         <button class="auth-tab active" id="tabSignIn"   onclick="switchAuthTab('signin')">Sign In</button>
-        <button class="auth-tab"        id="tabRegister" onclick="switchAuthTab('register')">Register Organization</button>
+        <button class="auth-tab"        id="tabSignUp"   onclick="switchAuthTab('signup')">Sign Up</button>
+        <button class="auth-tab"        id="tabRegister" onclick="switchAuthTab('register')">Register Org</button>
         <button class="auth-tab"        id="tabPlatform" onclick="switchAuthTab('platform')" style="font-size:0.65rem;color:var(--muted);">⚙ Platform</button>
       </div>
 
@@ -409,6 +410,77 @@
         </div>
         <button class="btn-login" id="loginBtn">Login</button>
         <p id="loginMsg"></p>
+      </div>
+
+      <!-- ── SIGN UP PANEL (user self-registration) ── -->
+      <div class="auth-panel" id="panelSignUp">
+        <div class="org-badge" style="background:rgba(232,93,4,0.12);color:var(--orange);border-color:var(--orange);">New Account</div>
+        <p style="font-size:0.75rem;color:var(--muted);margin:0 0 1rem;line-height:1.5;">
+          Create your account. Your registration will be reviewed by your organization's administrator before you can log in.
+        </p>
+
+        <div style="font-size:0.65rem;font-weight:700;letter-spacing:0.1em;color:var(--muted);text-transform:uppercase;margin-bottom:0.5rem;">Personal Information</div>
+        <div class="field-row">
+          <div class="field">
+            <label>First Name *</label>
+            <input type="text" id="suFirstName" placeholder="e.g. James" />
+          </div>
+          <div class="field">
+            <label>Last Name *</label>
+            <input type="text" id="suLastName" placeholder="e.g. Smith" />
+          </div>
+        </div>
+        <div class="field">
+          <label>Email Address *</label>
+          <input type="email" id="suEmail" placeholder="e.g. jsmith@company.com" />
+        </div>
+        <div class="field">
+          <label>Mobile Phone <span style="font-weight:400;color:var(--muted);">(optional)</span></label>
+          <input type="tel" id="suPhone" placeholder="e.g. (619) 555-0100" />
+        </div>
+
+        <div style="font-size:0.65rem;font-weight:700;letter-spacing:0.1em;color:var(--muted);text-transform:uppercase;margin:1rem 0 0.5rem;">Account Credentials</div>
+        <div class="field">
+          <label>Username *</label>
+          <input type="text" id="suUsername" autocomplete="off" placeholder="Choose a username" />
+        </div>
+        <div class="field">
+          <label>Password *</label>
+          <input type="password" id="suPassword" autocomplete="new-password" placeholder="At least 6 characters" />
+        </div>
+        <div class="field">
+          <label>Confirm Password *</label>
+          <input type="password" id="suConfirmPassword" placeholder="Re-enter password" />
+        </div>
+
+        <div style="font-size:0.65rem;font-weight:700;letter-spacing:0.1em;color:var(--muted);text-transform:uppercase;margin:1rem 0 0.5rem;">Role & Organization</div>
+        <div class="field">
+          <label>I am applying as *</label>
+          <select id="suRole">
+            <option value="">— Select your role —</option>
+            <option value="Inspector">Inspector (Primary Technician)</option>
+            <option value="3rd_Party_Inspector">3rd Party Inspector (Subcontractor Technician)</option>
+            <option value="3rd_Party_Admin">3rd Party Admin (Subcontractor Supervisor)</option>
+            <option value="Client">Client (Building / Facility Manager)</option>
+          </select>
+        </div>
+        <div class="field" id="suCertRow">
+          <label>State License / Cert No. <span style="font-weight:400;color:var(--muted);">(if applicable)</span></label>
+          <input type="text" id="suCertNumber" placeholder="e.g. FE-123456" />
+        </div>
+        <div class="field" id="suSubRow" style="display:none;">
+          <label>Subcontracting Company Name *</label>
+          <input type="text" id="suSubCompany" placeholder="e.g. Bob's Hydro Testing LLC" />
+        </div>
+        <div class="field">
+          <label>Organization ID *
+            <span style="font-weight:400;color:var(--muted);font-size:0.75rem;"> — provided by your organization's administrator</span>
+          </label>
+          <input type="number" id="suOrgId" placeholder="e.g. 1" />
+        </div>
+
+        <button class="btn-login" id="signUpBtn" style="margin-top:0.5rem;">Create Account</button>
+        <p id="signUpMsg" style="margin-top:0.85rem;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;min-height:1.2rem;color:var(--muted2);"></p>
       </div>
 
       <!-- ── REGISTER ORGANIZATION PANEL ── -->
@@ -1095,6 +1167,21 @@
         <button class="btn-crud btn-edit" id="btnEditUser">✎ Edit User</button>
         <button class="btn-crud btn-delete" id="btnDeleteUser">✕ Delete User</button>
       </div>
+
+      <!-- Pending Approval Queue — shown when there are accounts awaiting review -->
+      <div id="pendingApprovalSection" style="display:none;margin-bottom:1.5rem;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:0.65rem;letter-spacing:0.12em;
+                    text-transform:uppercase;color:var(--orange);margin-bottom:0.75rem;
+                    display:flex;align-items:center;gap:0.5rem;">
+          <span>⏳ Pending Account Approvals</span>
+          <span id="pendingApprovalCount" style="background:var(--orange);color:#000;
+                border-radius:10px;padding:1px 7px;font-size:0.6rem;">0</span>
+        </div>
+        <div id="pendingApprovalList" style="display:flex;flex-direction:column;gap:0.5rem;"></div>
+      </div>
+
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:0.65rem;letter-spacing:0.12em;
+                  text-transform:uppercase;color:var(--muted);margin-bottom:0.5rem;">Active Users</div>
       <div class="table-scroll-wrap" id="tableUsersWrap"></div>
       <div class="card-list" id="cardUsersWrap"></div>
     </div>
@@ -2474,12 +2561,95 @@ let editingAssignId  = null;
 // ── Auth tab switcher ──────────────────────────────────────────────────────────
 function switchAuthTab(tab) {
   document.getElementById("tabSignIn").classList.toggle("active",   tab==="signin");
+  document.getElementById("tabSignUp").classList.toggle("active",   tab==="signup");
   document.getElementById("tabRegister").classList.toggle("active", tab==="register");
   document.getElementById("tabPlatform").classList.toggle("active", tab==="platform");
   document.getElementById("panelSignIn").classList.toggle("active",   tab==="signin");
+  document.getElementById("panelSignUp").classList.toggle("active",   tab==="signup");
   document.getElementById("panelRegister").classList.toggle("active", tab==="register");
   document.getElementById("panelPlatform").classList.toggle("active", tab==="platform");
 }
+
+// Sign Up form logic ─────────────────────────────────────────────────────────
+
+// Show/hide subcontractor field based on role selection
+document.addEventListener("DOMContentLoaded", () => {
+  const suRole = document.getElementById("suRole");
+  if (suRole) {
+    suRole.addEventListener("change", () => {
+      const is3rd = suRole.value.startsWith("3rd_Party");
+      document.getElementById("suSubRow").style.display = is3rd ? "" : "none";
+    });
+  }
+});
+
+document.getElementById("signUpBtn").addEventListener("click", async () => {
+  const msg      = document.getElementById("signUpMsg");
+  const btn      = document.getElementById("signUpBtn");
+  const firstName = document.getElementById("suFirstName").value.trim();
+  const lastName  = document.getElementById("suLastName").value.trim();
+  const email     = document.getElementById("suEmail").value.trim();
+  const phone     = document.getElementById("suPhone").value.trim();
+  const username  = document.getElementById("suUsername").value.trim();
+  const password  = document.getElementById("suPassword").value;
+  const confirm   = document.getElementById("suConfirmPassword").value;
+  const role      = document.getElementById("suRole").value;
+  const orgId     = document.getElementById("suOrgId").value.trim();
+  const certNum   = document.getElementById("suCertNumber").value.trim();
+  const subCo     = document.getElementById("suSubCompany").value.trim();
+
+  // Client-side validation
+  if (!firstName || !lastName) { msg.style.color="var(--red)"; msg.textContent="First and last name are required."; return; }
+  if (!email || !email.includes("@")) { msg.style.color="var(--red)"; msg.textContent="Valid email address is required."; return; }
+  if (!username) { msg.style.color="var(--red)"; msg.textContent="Username is required."; return; }
+  if (password.length < 6) { msg.style.color="var(--red)"; msg.textContent="Password must be at least 6 characters."; return; }
+  if (password !== confirm) { msg.style.color="var(--red)"; msg.textContent="Passwords do not match."; return; }
+  if (!role) { msg.style.color="var(--red)"; msg.textContent="Please select your role."; return; }
+  if (!orgId) { msg.style.color="var(--red)"; msg.textContent="Organization ID is required."; return; }
+  if (role.startsWith("3rd_Party") && !subCo) { msg.style.color="var(--red)"; msg.textContent="Subcontracting company name is required for 3rd Party roles."; return; }
+
+  // Hash password before sending
+  const hashBuf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(password));
+  const hashHex = Array.from(new Uint8Array(hashBuf)).map(b=>b.toString(16).padStart(2,"0")).join("");
+
+  btn.disabled = true;
+  btn.textContent = "Creating account...";
+  msg.style.color = "var(--muted2)";
+  msg.textContent = "";
+
+  try {
+    const res = await fetch("/api/signup", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        first_name: firstName, last_name: lastName, email, phone,
+        username, password: hashHex, role,
+        org_id: parseInt(orgId),
+        cert_number: certNum,
+        subcontractor_company_name: subCo,
+      })
+    });
+    const data = await res.json();
+    if (data.success) {
+      msg.style.color = "var(--green,#16a34a)";
+      msg.textContent = data.message;
+      // Clear form
+      ["suFirstName","suLastName","suEmail","suPhone","suUsername",
+       "suPassword","suConfirmPassword","suCertNumber","suSubCompany","suOrgId"]
+        .forEach(id => { const el=document.getElementById(id); if(el) el.value=""; });
+      document.getElementById("suRole").value = "";
+    } else {
+      msg.style.color = "var(--red)";
+      msg.textContent = data.error || "Registration failed.";
+    }
+  } catch(e) {
+    msg.style.color = "var(--red)";
+    msg.textContent = "Network error. Please try again.";
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Create Account";
+  }
+});
 
 // Helper: get org_id from currentUser (always pass to API calls)
 const orgId = () => currentUser?.org_id || null;
@@ -2648,7 +2818,11 @@ function showDashboard() {
   // Show org name in topbar
   const orgPill = document.getElementById("orgNamePill");
   if (currentUser.org_name) {
-    orgPill.textContent = "🏢 " + currentUser.org_name;
+    // Show Org ID next to name for Admin — they need it to share with new users
+    const orgIdSuffix = (isAdmin() && currentUser.org_id)
+      ? ` <span style="font-size:0.6rem;opacity:0.7;font-family:'IBM Plex Mono',monospace;"> · ID: ${currentUser.org_id}</span>`
+      : "";
+    orgPill.innerHTML = "🏢 " + currentUser.org_name + orgIdSuffix;
     orgPill.classList.add("show");
   } else {
     orgPill.classList.remove("show");
@@ -2825,6 +2999,13 @@ async function loadStats() {
       document.getElementById("statAssign").textContent=data.assignments;
       document.getElementById("statReports").textContent=data.reports;
       document.getElementById("statUsers").textContent=data.users;
+      // Show pending approval count on Users stat if any accounts await review
+      try {
+        const pending = await fetch(`/api/users/pending?org_id=${oid}`).then(r=>r.json());
+        if (pending.length > 0) {
+          document.getElementById("statUsers").textContent = `${data.users} +${pending.length}⏳`;
+        }
+      } catch(e) {}
     } else if (isInv()) {
       const [a,r] = await Promise.all([
         fetch(`/api/assignments?user_id=${currentUser.user_id}&org_id=${oid}`).then(r=>r.json()),
@@ -3254,15 +3435,120 @@ window._lastUserRows = [];
 
 async function loadUsers() {
   const oid = orgId();
-  let rows=await fetch(`/api/users${oid?`?org_id=${oid}`:""}`).then(r=>r.json());
-  if (isThirdAdmin()) rows=rows.filter(u=>u.role==="3rd_Party_Inspector");
-  window._lastUserRows = rows;
-  renderTable("tableUsersWrap",["user_id","username","role"],rows, row => {
+  let rows = await fetch(`/api/users${oid ? `?org_id=${oid}` : ""}`).then(r => r.json());
+  if (isThirdAdmin()) rows = rows.filter(u => u.role === "3rd_Party_Inspector");
+  // Only show active accounts in the main users table.
+  // NULL/empty account_status = legacy user created before approval system (treat as active).
+  // Explicitly exclude pending, denied, suspended.
+  const nonActiveStatuses = new Set(["pending", "denied", "suspended"]);
+  const activeRows = rows.filter(u => !nonActiveStatuses.has(u.account_status));
+  window._lastUserRows = activeRows;
+  renderTable("tableUsersWrap", ["user_id","username","role"], activeRows, row => {
     selectedUserId = row.user_id;
   });
-  renderCards("cardUsersWrap",rows,"user", row => {
+  renderCards("cardUsersWrap", activeRows, "user", row => {
     selectedUserId = row.user_id;
   });
+
+  // Load pending approval queue for Admin
+  if (isAdmin()) await loadPendingApprovals();
+}
+
+// Load and render the pending account approval queue
+async function loadPendingApprovals() {
+  const oid = orgId();
+  if (!oid) return;
+  try {
+    const pending = await fetch(`/api/users/pending?org_id=${oid}`).then(r => r.json());
+    const section = document.getElementById("pendingApprovalSection");
+    const list    = document.getElementById("pendingApprovalList");
+    const badge   = document.getElementById("pendingApprovalCount");
+
+    if (!pending.length) {
+      section.style.display = "none";
+      return;
+    }
+
+    section.style.display = "";
+    badge.textContent = pending.length;
+
+    list.innerHTML = pending.map(u => {
+      const statusColor = u.account_status === "pending" ? "var(--orange)"
+                        : u.account_status === "denied"  ? "var(--red)"
+                        : "var(--purple)";
+      const statusLabel = u.account_status === "pending"   ? "⏳ Pending Review"
+                        : u.account_status === "denied"    ? "✗ Denied"
+                        : u.account_status === "suspended" ? "⊘ Suspended"
+                        : u.account_status;
+      const applied = u.applied_at ? u.applied_at.split("T")[0] : "—";
+      const fullName = [u.first_name, u.last_name].filter(Boolean).join(" ") || u.username;
+
+      return `
+        <div style="background:var(--bg2);border:1px solid var(--border);border-left:3px solid ${statusColor};
+                    border-radius:6px;padding:0.75rem 1rem;display:flex;align-items:flex-start;gap:1rem;flex-wrap:wrap;">
+          <div style="flex:1;min-width:200px;">
+            <div style="font-weight:700;font-size:0.85rem;color:var(--text);">${fullName}</div>
+            <div style="font-size:0.72rem;color:var(--muted);font-family:'IBM Plex Mono',monospace;margin-top:2px;">
+              @${u.username} · ${u.role.replace(/_/g," ")} · Applied ${applied}
+            </div>
+            ${u.email ? `<div style="font-size:0.72rem;color:var(--muted);margin-top:2px;">📧 ${u.email}</div>` : ""}
+            ${u.denial_reason ? `<div style="font-size:0.72rem;color:var(--red);margin-top:4px;">Reason: ${u.denial_reason}</div>` : ""}
+          </div>
+          <div style="display:flex;align-items:center;gap:0.5rem;flex-shrink:0;">
+            <span style="font-size:0.65rem;font-family:'IBM Plex Mono',monospace;
+                         color:${statusColor};border:1px solid ${statusColor};
+                         border-radius:4px;padding:2px 8px;">${statusLabel}</span>
+            ${u.account_status === "pending" || u.account_status === "denied" ? `
+              <button class="btn-save" style="font-size:0.7rem;padding:4px 12px;min-height:28px;"
+                onclick="handleAccountAction(${u.user_id},'approve','')">
+                ✓ Approve
+              </button>
+              <button class="btn-crud btn-delete" style="font-size:0.7rem;padding:4px 12px;min-height:28px;"
+                onclick="promptAccountAction(${u.user_id},'deny')">
+                ✗ Deny
+              </button>` : ""}
+            ${u.account_status === "active" || u.account_status === "suspended" ? `
+              <button class="btn-crud" style="font-size:0.7rem;padding:4px 12px;min-height:28px;
+                background:var(--bg3);border-color:var(--purple);color:var(--purple);"
+                onclick="handleAccountAction(${u.user_id}, u.account_status==='suspended'?'reactivate':'suspend','')">
+                ${u.account_status === "suspended" ? "↩ Reactivate" : "⊘ Suspend"}
+              </button>` : ""}
+          </div>
+        </div>`;
+    }).join("");
+  } catch(e) {
+    console.error("Failed to load pending approvals:", e);
+  }
+}
+
+async function handleAccountAction(userId, action, reason) {
+  const oid = orgId();
+  try {
+    const res = await fetch(`/api/users/${userId}/status`, {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ action, reason, org_id: oid })
+    });
+    const data = await res.json();
+    if (data.success) {
+      await loadUsers(); // refresh both tables
+      await loadStats();
+    } else {
+      alert(data.error || "Action failed.");
+    }
+  } catch(e) {
+    alert("Network error. Please try again.");
+  }
+}
+
+function promptAccountAction(userId, action) {
+  const reason = prompt(
+    action === "deny"
+      ? "Optional: Enter a reason for denial (shown to the user if they re-apply):"
+      : "Optional: Enter a reason for suspension:"
+  );
+  if (reason === null) return; // user cancelled
+  handleAccountAction(userId, action, reason || "");
 }
 
 // ── Table renderer ────────────────────────────────────────────────────────────
@@ -6065,6 +6351,19 @@ function clearUserModal() {
 }
 
 // ── Add User button ──────────────────────────────────────────────────────────
+// Suspend / reactivate directly from the active users table
+document.addEventListener("click", e => {
+  const btn = e.target.closest("[data-suspend-user]");
+  if (!btn) return;
+  const userId = parseInt(btn.dataset.suspendUser);
+  const action = btn.dataset.action;
+  if (action === "suspend") {
+    promptAccountAction(userId, "suspend");
+  } else {
+    handleAccountAction(userId, "reactivate", "");
+  }
+});
+
 document.getElementById("btnAddUser").addEventListener("click", () => {
   editingUserId = null;
   document.getElementById("userModalTitle").textContent = "Add New User";

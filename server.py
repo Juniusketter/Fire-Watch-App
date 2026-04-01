@@ -192,6 +192,16 @@ def run_migrations():
         if "subcontractor_company_name" not in user_cols:
             conn.execute("ALTER TABLE Users ADD COLUMN subcontractor_company_name TEXT DEFAULT ''")
             print("  [Migration] Added Users.subcontractor_company_name (3rd party PDF legal name)")
+        # Account approval system — Sprint 5 security hardening
+        if "account_status" not in user_cols:
+            conn.execute("ALTER TABLE Users ADD COLUMN account_status TEXT DEFAULT 'active'")
+            print("  [Migration] Added Users.account_status (pending/active/suspended/denied)")
+        if "denial_reason" not in user_cols:
+            conn.execute("ALTER TABLE Users ADD COLUMN denial_reason TEXT DEFAULT ''")
+            print("  [Migration] Added Users.denial_reason")
+        if "applied_at" not in user_cols:
+            conn.execute("ALTER TABLE Users ADD COLUMN applied_at TEXT DEFAULT ''")
+            print("  [Migration] Added Users.applied_at (signup timestamp)")
 
         # ── Assignments ────────────────────────────────────────────────────
         assign_cols = [r[1] for r in conn.execute("PRAGMA table_info(Assignments)").fetchall()]
@@ -517,6 +527,84 @@ def register_org():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route("/api/signup", methods=["POST"])
+def signup():
+    """Self-registration for new users.
+    Creates account with status=pending_approval for Admin review.
+    The user sets their own password — Admin never handles it.
+    Requires a valid org_id so the account is tied to the correct organization."""
+    data = request.get_json()
+    required = ["username", "password", "role", "org_id", "first_name", "last_name", "email"]
+    for field in required:
+        if not data.get(field, "").strip() if isinstance(data.get(field), str) else not data.get(field):
+            return jsonify({"success": False, "error": f"Missing required field: {field}"}), 400
+
+    username   = data["username"].strip()
+    password   = data["password"]   # Already SHA-256 hashed by client
+    role       = data["role"].strip()
+    org_id     = data["org_id"]
+    first_name = data["first_name"].strip()
+    last_name  = data["last_name"].strip()
+    middle_name = data.get("middle_name", "").strip()
+    email      = data["email"].strip()
+    phone      = data.get("phone", "").strip()
+    cert_number = data.get("cert_number", "").strip()
+    subcontractor_company_name = data.get("subcontractor_company_name", "").strip()
+
+    # Validate role — Admin and Platform Admin cannot self-register
+    allowed_roles = ["Inspector", "3rd_Party_Inspector", "3rd_Party_Admin", "Client"]
+    if role not in allowed_roles:
+        return jsonify({"success": False, "error": "Invalid role. Admins are created by the organization."}), 400
+
+    with get_db() as conn:
+        # Verify org exists
+        org = conn.execute(
+            "SELECT org_id, name FROM Organizations WHERE org_id=?", (org_id,)
+        ).fetchone()
+        if not org:
+            return jsonify({"success": False, "error": "Organization ID not found. Please check your Organization ID and try again."}), 404
+
+        # Check username not already taken
+        existing = conn.execute(
+            "SELECT user_id FROM Users WHERE username=?", (username,)
+        ).fetchone()
+        if existing:
+            return jsonify({"success": False, "error": "Username already taken. Please choose a different username."}), 409
+
+        # Check email not already registered in this org
+        existing_email = conn.execute(
+            "SELECT user_id FROM Users WHERE email=? AND org_id=?", (email, org_id)
+        ).fetchone()
+        if existing_email:
+            return jsonify({"success": False, "error": "An account with this email already exists in this organization."}), 409
+
+        import datetime
+        applied_at = datetime.datetime.utcnow().isoformat()
+
+        conn.execute("""
+            INSERT INTO Users
+              (username, password_hash, role, org_id,
+               first_name, last_name, middle_name, email, phone,
+               cert_number, subcontractor_company_name,
+               account_status, applied_at)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+        """, (
+            username, password, role, org_id,
+            first_name, last_name, middle_name, email, phone,
+            cert_number, subcontractor_company_name,
+            "pending", applied_at
+        ))
+        conn.commit()
+
+        platform_log(username, "user_signup", org["name"],
+            f"role={role}, status=pending, email={email}")
+
+    return jsonify({
+        "success": True,
+        "message": f"Account created successfully. Your request has been sent to the {org['name']} administrator for approval. You will be able to log in once approved."
+    }), 201
+
+
 @app.route("/api/login", methods=["POST"])
 def login():
     """Authenticate a user by comparing SHA-256 hash of password.
@@ -533,13 +621,31 @@ def login():
         row = conn.execute(
             """SELECT user_id, username, role, org_id, company_id,
                       first_name, last_name, middle_name, email, phone, cert_number,
-                      subcontractor_company_name
+                      subcontractor_company_name, account_status
                FROM Users
                WHERE username = ? AND password_hash = ?""",
             (username, password)
         ).fetchone()
 
     if row:
+        # Block login based on individual account status BEFORE checking org status
+        acct_status = row["account_status"] or "active"
+        if acct_status == "pending":
+            return jsonify({
+                "success": False,
+                "error": "Your account is pending approval by your organization administrator. You will be notified once approved."
+            }), 403
+        if acct_status == "suspended":
+            return jsonify({
+                "success": False,
+                "error": "Your account has been suspended. Contact your administrator."
+            }), 403
+        if acct_status == "denied":
+            return jsonify({
+                "success": False,
+                "error": "Your account registration was not approved. You may re-apply or contact your administrator."
+            }), 403
+
         # Build the legal full name for NFPA forms
         full_name_parts = [row["first_name"], row["middle_name"], row["last_name"]]
         full_name = " ".join(p for p in full_name_parts if p).strip() or row["username"]
@@ -590,6 +696,68 @@ def login():
 
 
 # ── COMPANIES ──────────────────────────────────────────────────────────────────
+@app.route("/api/users/<int:user_id>/status", methods=["POST"])
+def update_user_status(user_id):
+    """Admin: approve, deny, or suspend a user account.
+    - approve: sets account_status='active', user can now log in
+    - deny:    sets account_status='denied', user can re-apply (re-registers)
+    - suspend: sets account_status='suspended', user sees specific message on login
+    Requires caller to be Admin role (validated via org_id scope)."""
+    data    = request.get_json()
+    action  = (data.get("action") or "").lower()   # approve / deny / suspend / reactivate
+    reason  = data.get("reason", "").strip()
+    org_id  = data.get("org_id")
+
+    if action not in ("approve", "deny", "suspend", "reactivate"):
+        return jsonify({"success": False, "error": "Invalid action"}), 400
+
+    status_map = {
+        "approve":    "active",
+        "deny":       "denied",
+        "suspend":    "suspended",
+        "reactivate": "active",
+    }
+    new_status = status_map[action]
+
+    with get_db() as conn:
+        # Scope to org — Admin cannot affect users in other orgs
+        row = conn.execute(
+            "SELECT user_id, username, org_id FROM Users WHERE user_id=? AND org_id=?",
+            (user_id, org_id)
+        ).fetchone()
+        if not row:
+            return jsonify({"success": False, "error": "User not found"}), 404
+
+        conn.execute(
+            "UPDATE Users SET account_status=?, denial_reason=? WHERE user_id=?",
+            (new_status, reason, user_id)
+        )
+        conn.commit()
+        platform_log("admin", f"user_{action}", str(org_id),
+            f"user_id={user_id}, username={row['username']}, new_status={new_status}")
+
+    return jsonify({"success": True, "status": new_status})
+
+
+@app.route("/api/users/pending", methods=["GET"])
+def get_pending_users():
+    """Admin: get all users with account_status='pending' for this org.
+    Used to populate the approval queue in the Admin dashboard."""
+    org_id = request.args.get("org_id")
+    if not org_id:
+        return jsonify([])
+    with get_db() as conn:
+        rows = conn.execute("""
+            SELECT user_id, username, role, first_name, last_name, email,
+                   phone, cert_number, subcontractor_company_name,
+                   account_status, denial_reason, applied_at
+            FROM Users
+            WHERE org_id=? AND account_status IN ('pending','denied','suspended')
+            ORDER BY applied_at DESC
+        """, (org_id,)).fetchall()
+    return jsonify([dict(r) for r in rows])
+
+
 @app.route("/api/companies", methods=["GET"])
 def get_companies():
     """List all companies for an organization, with building and extinguisher counts.
@@ -1138,7 +1306,7 @@ def create_report():
 @app.route("/api/users", methods=["GET"])
 def get_users():
     """List all users in an organization.
-    Returns user_id, username, role, and PII fields added in Sprint 5.
+    Returns user_id, username, role, PII fields, and account_status.
     Passwords and password_hash are never returned.
     Filtered by org_id for multi-tenant isolation."""
     org_id = request.args.get("org_id")
@@ -1147,14 +1315,14 @@ def get_users():
             rows = conn.execute(
                 """SELECT user_id, username, role,
                           first_name, last_name, middle_name,
-                          email, phone, cert_number
+                          email, phone, cert_number, account_status
                    FROM Users WHERE org_id=?""", (org_id,)
             ).fetchall()
         else:
             rows = conn.execute(
                 """SELECT user_id, username, role,
                           first_name, last_name, middle_name,
-                          email, phone, cert_number
+                          email, phone, cert_number, account_status
                    FROM Users"""
             ).fetchall()
     return jsonify([dict(r) for r in rows])
