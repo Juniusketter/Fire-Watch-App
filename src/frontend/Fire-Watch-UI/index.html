@@ -3070,6 +3070,7 @@ async function loadExtinguishers() {
     const cols = ["extinguisher_id","building_name","floor_number","room_number",
                   "ext_type","serial_number","ext_status","next_due_date","last_inspection_date"];
     renderTable("tableExtWrap", cols, rows, row => openExtDetail(row));
+    renderCards("cardExtWrap", rows, "extinguisher", row => openExtDetail(row));
     return;
   }
 
@@ -3156,6 +3157,7 @@ async function loadExtinguishers() {
     const cols = ["extinguisher_id","building_name","floor_number","room_number",
                   "location_description","ext_type","ext_status","next_due_date"];
     renderTable("tableExtWrap", cols, rows, row => openExtDetail(row));
+    renderCards("cardExtWrap", rows, "extinguisher", row => openExtDetail(row));
     return;
   }
   // On poll refreshes, call render functions directly — never touch drillTo()
