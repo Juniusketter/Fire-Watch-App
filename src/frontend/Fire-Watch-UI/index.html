@@ -3075,12 +3075,12 @@ async function loadExtinguishers() {
   // Real-world: subcontractor is hired for a specific job (e.g. hydro test on EXT-4).
   // They have no business seeing any other equipment in the building.
   if (isInv() || isThirdInv()) {
-    // Assignments are guaranteed loaded before this runs (loadAllData sequences them).
-    // Fall back to a direct fetch only as a safety net for manual refreshes.
     let assignments = window._lastAssignRows || [];
+    console.log("[FW DEBUG] loadExtinguishers called. _lastAssignRows length:", assignments.length);
     if (!assignments.length) {
       try {
         const oid = orgId();
+        console.log("[FW DEBUG] Self-fetching assignments. orgId:", oid, "user_id:", currentUser?.user_id);
         if (!oid || !currentUser?.user_id) {
           document.getElementById("tableExtWrap").innerHTML =
             "<p class='empty-msg'>[ NO ACTIVE ASSIGNMENTS ]</p>";
@@ -3091,11 +3091,17 @@ async function loadExtinguishers() {
           `/api/assignments?org_id=${oid}&user_id=${currentUser.user_id}`
         ).then(r => r.json());
         window._lastAssignRows = assignments;
-      } catch(e) { assignments = []; }
+        console.log("[FW DEBUG] Self-fetched assignments:", assignments.length, "rows");
+      } catch(e) {
+        console.error("[FW DEBUG] Assignment fetch failed:", e);
+        assignments = [];
+      }
     }
     const activeAssignments = assignments.filter(
       a => !String(a.status || "").toLowerCase().includes("complete")
     );
+    console.log("[FW DEBUG] Active assignments:", activeAssignments.length,
+      "building_ids:", activeAssignments.map(a => a.building_id));
 
     document.getElementById("drillCompanyView").classList.add("hidden");
     document.getElementById("drillBuildingView").classList.add("hidden");
@@ -3111,21 +3117,22 @@ async function loadExtinguishers() {
 
     const oid = orgId();
     const allRows = await fetch(`/api/extinguishers?org_id=${oid}`).then(r=>r.json()).catch(()=>[]);
-    window._allExtinguishers = allRows; // keep full cache for QR deep-link
+    console.log("[FW DEBUG] Extinguishers fetched:", allRows.length,
+      "sample building_ids:", allRows.slice(0,3).map(e => e.building_id));
+    window._allExtinguishers = allRows;
 
     let rows;
     if (isThirdInv()) {
-      // 3rd Party: only the specific assigned unit(s)
-      // Coerce to Number to prevent string vs integer type mismatch
       const assignedExtIds = new Set(activeAssignments.map(a => Number(a.extinguisher_id)).filter(Boolean));
       rows = allRows.filter(e => assignedExtIds.has(Number(e.extinguisher_id)));
+      console.log("[FW DEBUG] 3rdInv filter: assignedExtIds:", [...assignedExtIds], "result:", rows.length);
     } else {
-      // Primary Inspector: all extinguishers in their assigned buildings
-      // Coerce to Number to prevent string vs integer type mismatch from SQLite JSON
       const assignedBuildingIds = new Set(
         activeAssignments.map(a => Number(a.building_id)).filter(Boolean)
       );
       rows = allRows.filter(e => assignedBuildingIds.has(Number(e.building_id)));
+      console.log("[FW DEBUG] Inv filter: assignedBuildingIds:", [...assignedBuildingIds],
+        "filtered rows:", rows.length);
     }
 
     window._lastExtRows = rows;
