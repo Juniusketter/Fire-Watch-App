@@ -2964,7 +2964,9 @@ function buildTabs() {
     document.getElementById("drillBreadcrumb").style.display  = "none";
     document.getElementById("drillCompanyView").classList.add("hidden");
     document.getElementById("drillBuildingView").classList.add("hidden");
-    document.getElementById("drillExtView").classList.remove("hidden");
+    const extViewBuild = document.getElementById("drillExtView");
+    extViewBuild.classList.remove("hidden");
+    extViewBuild.style.display = "block";
     // Set drill state to "client" so drillTo() and loadExtinguishers() are no-ops
     _drillLevel = "client";
   }
@@ -3044,14 +3046,17 @@ async function loadStats() {
 // Admin loads everything; Inspector loads only their assignments and reports.
 // Called on login, refresh, and every 5-second auto-poll cycle.
 function loadAllData() {
+  console.log("[FW DEBUG] loadAllData - role:", currentUser?.role, "isInv:", isInv());
   if (isAdmin())           { loadExtinguishers(); loadAssignments(); loadReports(); loadUsers(); }
-  else if (isInv())        { loadAssignments().then(() => loadExtinguishers()); loadReports(); }
+  else if (isInv())        { loadAssignments().then(() => { console.log("[FW DEBUG] assignments done → loading extinguishers"); loadExtinguishers(); }); loadReports(); }
   else if (isThirdAdmin()) { loadAssignments(); loadReports(); loadUsers(); }
   else if (isThirdInv())   { loadAssignments().then(() => loadExtinguishers()); loadReports(); }
   else if (isClient())     { loadClientDashboard(); loadExtinguishers(); loadReports(); }
 }
 
 async function loadExtinguishers() {
+  console.log("[FW DEBUG] loadExtinguishers START - role:", currentUser?.role,
+    "isInv:", isInv(), "isClient:", isClient(), "orgId:", orgId());
   // Client role: flat table scoped to their company — no drill-down
   if (isClient()) {
     if (!currentUser.company_id) return;
@@ -3059,7 +3064,9 @@ async function loadExtinguishers() {
     window._lastExtRows = rows;
     document.getElementById("drillCompanyView").classList.add("hidden");
     document.getElementById("drillBuildingView").classList.add("hidden");
-    document.getElementById("drillExtView").classList.remove("hidden");
+    const extViewClient = document.getElementById("drillExtView");
+    extViewClient.classList.remove("hidden");
+    extViewClient.style.display = "block"; // force Safari repaint
     const cols = ["extinguisher_id","building_name","floor_number","room_number",
                   "ext_type","serial_number","ext_status","next_due_date","last_inspection_date"];
     renderTable("tableExtWrap", cols, rows, row => openExtDetail(row));
@@ -3105,7 +3112,9 @@ async function loadExtinguishers() {
 
     document.getElementById("drillCompanyView").classList.add("hidden");
     document.getElementById("drillBuildingView").classList.add("hidden");
-    document.getElementById("drillExtView").classList.remove("hidden");
+    const extView = document.getElementById("drillExtView");
+    extView.classList.remove("hidden");
+    extView.style.display = "block"; // force Safari repaint
     document.getElementById("drillBreadcrumb").style.display = "none";
 
     if (activeAssignments.length === 0) {
@@ -3594,6 +3603,15 @@ const headerMap={extinguisher_id:"EXT",assignment_id:"ASSIGN",report_id:"RPT",us
 function renderTable(wrapperId,cols,rows,onRowClick) {
   const wrap=document.getElementById(wrapperId);
   if (!rows.length) { wrap.innerHTML=`<p class="empty-msg">[ NO DATA TO DISPLAY ]</p>`; return; }
+  // Ensure parent is visible before rendering (fixes Safari display:none !important caching)
+  let parent = wrap.parentElement;
+  while (parent && parent !== document.body) {
+    if (parent.classList.contains("hidden")) {
+      parent.classList.remove("hidden");
+      parent.style.display = "block";
+    }
+    parent = parent.parentElement;
+  }
   let html=`<table class="data-table"><thead><tr>`;
   cols.forEach(c=>html+=`<th>${headerMap[c]||c}</th>`);
   html+=`</tr></thead><tbody>`;
