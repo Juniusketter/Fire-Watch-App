@@ -1164,8 +1164,9 @@
     <div class="panel" id="panelUsers">
       <div class="table-toolbar hidden" id="userToolbar">
         <button class="btn-crud btn-add" id="btnAddUser">＋ Add User</button>
-        <button class="btn-crud btn-edit" id="btnEditUser">✎ Edit User</button>
-        <button class="btn-crud btn-delete" id="btnDeleteUser">✕ Delete User</button>
+        <!-- Edit/Delete moved to row-click → modal (btnEditUser/btnDeleteUser kept hidden for JS compat) -->
+        <button class="btn-crud btn-edit" id="btnEditUser" style="display:none;"></button>
+        <button class="btn-crud btn-delete" id="btnDeleteUser" style="display:none;"></button>
       </div>
 
       <!-- Pending Approval Queue — shown when there are accounts awaiting review -->
@@ -2537,7 +2538,8 @@
     </div>
 
     <div class="modal-error" id="userModalError"></div>
-    <div class="modal-actions">
+    <div class="modal-actions" style="display:flex;gap:0.5rem;justify-content:flex-end;">
+      <button class="btn-crud btn-delete" id="userModalDelete" style="display:none;margin-right:auto;font-size:0.78rem;">✕ Delete User</button>
       <button class="btn-cancel" id="userModalCancel">Cancel</button>
       <button class="btn-save" id="userModalSave">Create User</button>
     </div>
@@ -2945,13 +2947,22 @@ function buildTabs() {
     document.getElementById("btnGeneratePdfReport").style.display = "none";
     document.getElementById("exportDropdown").style.display   = "none";
   } else if (isClient()) {
-    // Client / Facility Manager — read-only compliance portal
+    // Client / Facility Manager — read-only compliance portal with drill-down
     tabs = [
       {id:"panelExtinguishers", label:"My Equipment"},
       {id:"panelReports",       label:"Inspection Reports"},
     ];
-    // Hide all write-capable toolbars — Client is strictly read-only
-    ["extToolbar","assignToolbar","reportToolbar","userToolbar"].forEach(id =>
+    // Show the ext toolbar but hide ALL write buttons — Client is view-only
+    document.getElementById("extToolbar").classList.remove("hidden");
+    ["btnAddCompany","btnEditCompany","btnDeleteCompany",
+     "btnAddBuilding","btnEditBuilding","btnDeleteBuilding",
+     "btnDelete","btnAddDropTrigger","btnBulkAdd","btnCsvImport",
+     "btnEdit","btnAdd"].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = "none";
+    });
+    // Hide assign/report/user toolbars
+    ["assignToolbar","reportToolbar","userToolbar"].forEach(id =>
       document.getElementById(id).classList.add("hidden")
     );
     // Show only relevant stats
@@ -2960,15 +2971,9 @@ function buildTabs() {
     document.getElementById("statLabelReports").textContent = "Inspections";
     // Show compliance dashboard banner
     document.getElementById("clientComplianceBanner").style.display="";
-    // Hide the entire drill breadcrumb and all drill views — Client gets a flat list
-    document.getElementById("drillBreadcrumb").style.display  = "none";
-    document.getElementById("drillCompanyView").classList.add("hidden");
-    document.getElementById("drillBuildingView").classList.add("hidden");
-    const extViewBuild = document.getElementById("drillExtView");
-    extViewBuild.classList.remove("hidden");
-    extViewBuild.style.display = "block";
-    // Set drill state to "client" so drillTo() and loadExtinguishers() are no-ops
-    _drillLevel = "client";
+    // Allow drill-down — Client uses normal company→building→ext hierarchy
+    // scoped to their company_id. drillTo() is now unblocked for Client.
+    _drillLevel = "companies";
   }
 
   tabs.forEach((t,i) => {
@@ -3059,18 +3064,18 @@ async function loadExtinguishers() {
     "isInv:", isInv(), "isClient:", isClient(), "orgId:", orgId());
   // Client role: flat table scoped to their company — no drill-down
   if (isClient()) {
-    if (!currentUser.company_id) return;
-    const rows = await fetch(`/api/extinguishers?client_company_id=${currentUser.company_id}`).then(r=>r.json()).catch(()=>[]);
-    window._lastExtRows = rows;
-    document.getElementById("drillCompanyView").classList.add("hidden");
-    document.getElementById("drillBuildingView").classList.add("hidden");
-    const extViewClient = document.getElementById("drillExtView");
-    extViewClient.classList.remove("hidden");
-    extViewClient.style.display = "block"; // force Safari repaint
-    const cols = ["extinguisher_id","building_name","floor_number","room_number",
-                  "ext_type","serial_number","ext_status","next_due_date","last_inspection_date"];
-    renderTable("tableExtWrap", cols, rows, row => openExtDetail(row));
-    renderCards("cardExtWrap", rows, "extinguisher", row => openExtDetail(row));
+    // Client gets full company→building→ext drill-down scoped to their company_id.
+    // On first load, start at the company level (shows their one company card).
+    if (_drillLevel === "extinguishers" && _selectedBuilding) {
+      await renderExtinguisherTable(_selectedBuilding.building_id);
+    } else if (_drillLevel === "buildings" && _selectedCompany) {
+      await renderBuildingGrid(_selectedCompany.company_id);
+    } else {
+      _drillLevel      = "companies";
+      _selectedCompany = null;
+      _selectedBuilding = null;
+      await drillTo("companies");
+    }
     return;
   }
 
@@ -3184,8 +3189,9 @@ async function loadExtinguishers() {
 // building cards for a company), "extinguishers" (table of extinguishers
 // in a building). Breadcrumb nav updates at each level.
 async function drillTo(level, data) {
-  // Client and Inspector roles never use the drill-down — flat table only
-  if (isClient() || isInv() || isThirdInv()) return;
+  // Inspector and 3rd Party Inspector never use the full drill-down — flat table only
+  // Client IS allowed to drill down (scoped to their company only)
+  if (isInv() || isThirdInv()) return;
 
   _drillLevel = level;
 
@@ -3252,7 +3258,11 @@ async function renderCompanyGrid() {
   // Only show loading spinner on first paint (grid is empty)
   if (!grid.children.length) grid.innerHTML = `<div class="drill-empty">Loading companies…</div>`;
   try {
-    const companies = await fetch(`/api/companies?org_id=${orgId()}`).then(r=>r.json());
+    // Client: scope to their own company only
+    const companyUrl = isClient() && currentUser.company_id
+      ? `/api/companies?org_id=${orgId()}&company_id=${currentUser.company_id}`
+      : `/api/companies?org_id=${orgId()}`;
+    const companies = await fetch(companyUrl).then(r=>r.json());
 
     // Build new HTML
     const newHtml = companies.length
@@ -3486,11 +3496,13 @@ async function loadUsers() {
   const nonActiveStatuses = new Set(["pending", "denied", "suspended"]);
   const activeRows = rows.filter(u => !nonActiveStatuses.has(u.account_status));
   window._lastUserRows = activeRows;
-  renderTable("tableUsersWrap", ["user_id","username","role"], activeRows, row => {
+  renderTable("tableUsersWrap", ["user_id","username","role","company_name"], activeRows, row => {
     selectedUserId = row.user_id;
+    document.getElementById("btnEditUser").click(); // open edit modal on row click
   });
   renderCards("cardUsersWrap", activeRows, "user", row => {
     selectedUserId = row.user_id;
+    document.getElementById("btnEditUser").click();
   });
 
   // Load pending approval queue for Admin
@@ -6420,6 +6432,7 @@ document.getElementById("btnAddUser").addEventListener("click", () => {
   editingUserId = null;
   document.getElementById("userModalTitle").textContent = "Add New User";
   document.getElementById("userModalSave").textContent  = "Create User";
+  document.getElementById("userModalDelete").style.display = "none";
   clearUserModal();
   document.getElementById("uUsername").disabled        = false;
   document.getElementById("uRole").value               = "Inspector";
@@ -6439,6 +6452,9 @@ document.getElementById("btnEditUser").addEventListener("click", () => {
   editingUserId = selectedUserId;
   document.getElementById("userModalTitle").textContent = "Edit User";
   document.getElementById("userModalSave").textContent  = "Save Changes";
+  // Show Delete button in edit mode — but not for own account
+  const delBtn = document.getElementById("userModalDelete");
+  delBtn.style.display = (selectedUserId === currentUser.user_id) ? "none" : "";
   // Credentials
   document.getElementById("uUsername").value    = user.username;
   document.getElementById("uUsername").disabled = false;
@@ -6467,21 +6483,27 @@ document.getElementById("btnDeleteUser").addEventListener("click", async () => {
   if (!selectedUserId) { alert("Select a user first."); return; }
   const user = (window._lastUserRows || []).find(u => u.user_id === selectedUserId);
   if (!user) return;
-
-  // Don't allow deleting yourself
-  if (selectedUserId === currentUser.user_id) {
-    alert("You cannot delete your own account.");
-    return;
-  }
-
+  if (selectedUserId === currentUser.user_id) { alert("You cannot delete your own account."); return; }
   if (!confirm(`Delete user "${user.username}" (${user.role})?\n\nTheir assignments will be unassigned. Reports will be kept for audit trail.`)) return;
-
   const res = await fetch("/api/users/" + selectedUserId, { method: "DELETE" });
+  if (res.ok) { selectedUserId = null; loadUsers(); loadStats(); }
+  else { alert("Delete failed: " + (await res.json()).error); }
+});
+
+// Modal Delete button — same logic, also closes the modal
+document.getElementById("userModalDelete").addEventListener("click", async () => {
+  if (!editingUserId) return;
+  const user = (window._lastUserRows || []).find(u => u.user_id === editingUserId);
+  if (!user) return;
+  if (editingUserId === currentUser.user_id) { alert("You cannot delete your own account."); return; }
+  if (!confirm(`Delete user "${user.username}" (${user.role})?\n\nTheir assignments will be unassigned. Reports will be kept for audit trail.`)) return;
+  const res = await fetch("/api/users/" + editingUserId, { method: "DELETE" });
   if (res.ok) {
-    selectedUserId = null;
+    document.getElementById("userModal").classList.add("hidden");
+    editingUserId = null; selectedUserId = null;
     loadUsers(); loadStats();
   } else {
-    alert("Delete failed: " + (await res.json()).error);
+    document.getElementById("userModalError").textContent = "Delete failed: " + (await res.json()).error;
   }
 });
 
@@ -6525,8 +6547,10 @@ document.getElementById("userModalSave").addEventListener("click", async () => {
       if (password.length < 6)  { errEl.textContent = "Password must be at least 6 characters."; return; }
     }
 
+    const clientCompanyIdEdit = document.getElementById("uClientCompanyId")?.value || null;
     const body = { username, role, ...piiFields,
-      subcontractor_company_name: document.getElementById("uSubcontractorName")?.value.trim() || "" };
+      subcontractor_company_name: document.getElementById("uSubcontractorName")?.value.trim() || "",
+      company_id: clientCompanyIdEdit ? parseInt(clientCompanyIdEdit) : null };
     if (password) body.password = await sha256(password);
 
     const res = await fetch("/api/users/" + editingUserId, {
@@ -6962,7 +6986,21 @@ function openExtDetail(row) {
         🔲 QR Code
       </button>
     `;
-  } else if ((isInv() || isThirdInv()) && !window._platformReadOnly) {
+  } else if (isClient()) {
+    // Client: view-only — QR Code and NFPA form only, no write access
+    footer.innerHTML = `
+      <button class="btn-crud" style="font-size:0.72rem;padding:6px 14px;min-height:34px;background:var(--bg3);border-color:var(--teal);color:var(--teal);"
+        onclick="openQRModal(${row.extinguisher_id}, '${(row.location_description || row.building_name || 'Ext #' + row.extinguisher_id).replace(/'/g,'')  }')">
+        🔲 QR Code
+      </button>
+      <button class="btn-crud btn-edit" style="font-size:0.72rem;padding:6px 14px;min-height:34px;background:var(--purple,#7C3AED);border-color:var(--purple,#7C3AED);"
+        onclick="document.getElementById('extDetailModal').classList.add('hidden'); generateNFPAForm({report_id:0, extinguisher_id:${row.extinguisher_id}, inspector:'${currentUser.username}', inspection_date:'', notes:''});">
+        📄 NFPA Form
+      </button>
+      <button class="btn-crud" style="font-size:0.72rem;padding:6px 14px;min-height:34px;background:var(--bg3);border-color:var(--border);color:var(--muted);"
+        onclick="document.getElementById('extDetailModal').classList.add('hidden');">Close</button>
+    `;
+    } else if ((isInv() || isThirdInv()) && !window._platformReadOnly) {
     // Inspectors: Edit extinguisher details + Submit Report for this extinguisher
     footer.innerHTML = `
       <button class="btn-crud btn-edit" style="font-size:0.72rem;padding:6px 14px;min-height:34px;"
