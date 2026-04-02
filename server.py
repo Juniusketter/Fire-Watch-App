@@ -762,20 +762,34 @@ def get_pending_users():
 def get_companies():
     """List all companies for an organization, with building and extinguisher counts.
     Used by the drill-down hierarchy (Company → Building → Extinguisher).
-    Requires org_id query parameter for multi-tenant isolation."""
-    org_id = request.args.get("org_id")
+    Supports optional company_id filter for Client role scoping."""
+    org_id     = request.args.get("org_id")
+    company_id = request.args.get("company_id")  # Client: scope to their company only
     with get_db() as conn:
-        rows = conn.execute("""
-            SELECT c.company_id, c.name, c.address, c.city, c.state, c.phone, c.contact_name,
-                   COUNT(DISTINCT b.building_id) AS building_count,
-                   COUNT(DISTINCT e.extinguisher_id) AS extinguisher_count
-            FROM Companies c
-            LEFT JOIN Buildings b ON b.company_id = c.company_id
-            LEFT JOIN Extinguishers e ON e.building_id = b.building_id
-            WHERE c.org_id = ?
-            GROUP BY c.company_id
-            ORDER BY c.name
-        """, (org_id,)).fetchall()
+        if company_id:
+            rows = conn.execute("""
+                SELECT c.company_id, c.name, c.address, c.city, c.state, c.phone, c.contact_name,
+                       COUNT(DISTINCT b.building_id) AS building_count,
+                       COUNT(DISTINCT e.extinguisher_id) AS extinguisher_count
+                FROM Companies c
+                LEFT JOIN Buildings b ON b.company_id = c.company_id
+                LEFT JOIN Extinguishers e ON e.building_id = b.building_id
+                WHERE c.org_id = ? AND c.company_id = ?
+                GROUP BY c.company_id
+                ORDER BY c.name
+            """, (org_id, company_id)).fetchall()
+        else:
+            rows = conn.execute("""
+                SELECT c.company_id, c.name, c.address, c.city, c.state, c.phone, c.contact_name,
+                       COUNT(DISTINCT b.building_id) AS building_count,
+                       COUNT(DISTINCT e.extinguisher_id) AS extinguisher_count
+                FROM Companies c
+                LEFT JOIN Buildings b ON b.company_id = c.company_id
+                LEFT JOIN Extinguishers e ON e.building_id = b.building_id
+                WHERE c.org_id = ?
+                GROUP BY c.company_id
+                ORDER BY c.name
+            """, (org_id,)).fetchall()
     return jsonify([dict(r) for r in rows])
 
 @app.route("/api/companies", methods=["POST"])
@@ -1306,24 +1320,28 @@ def create_report():
 @app.route("/api/users", methods=["GET"])
 def get_users():
     """List all users in an organization.
-    Returns user_id, username, role, PII fields, and account_status.
-    Passwords and password_hash are never returned.
-    Filtered by org_id for multi-tenant isolation."""
+    Returns user_id, username, role, PII fields, account_status, and company_name for Clients.
+    Passwords and password_hash are never returned."""
     org_id = request.args.get("org_id")
     with get_db() as conn:
         if org_id:
             rows = conn.execute(
-                """SELECT user_id, username, role,
-                          first_name, last_name, middle_name,
-                          email, phone, cert_number, account_status
-                   FROM Users WHERE org_id=?""", (org_id,)
+                """SELECT u.user_id, u.username, u.role,
+                          u.first_name, u.last_name, u.middle_name,
+                          u.email, u.phone, u.cert_number, u.account_status,
+                          u.company_id, c.name AS company_name
+                   FROM Users u
+                   LEFT JOIN Companies c ON c.company_id = u.company_id
+                   WHERE u.org_id=?""", (org_id,)
             ).fetchall()
         else:
             rows = conn.execute(
-                """SELECT user_id, username, role,
-                          first_name, last_name, middle_name,
-                          email, phone, cert_number, account_status
-                   FROM Users"""
+                """SELECT u.user_id, u.username, u.role,
+                          u.first_name, u.last_name, u.middle_name,
+                          u.email, u.phone, u.cert_number, u.account_status,
+                          u.company_id, c.name AS company_name
+                   FROM Users u
+                   LEFT JOIN Companies c ON c.company_id = u.company_id"""
             ).fetchall()
     return jsonify([dict(r) for r in rows])
 
