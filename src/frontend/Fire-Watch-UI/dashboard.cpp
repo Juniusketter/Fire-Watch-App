@@ -5,6 +5,7 @@
 #include "assigndialog.h"
 #include "reportdialog.h"
 #include "adduserdialog.h"
+#include "edituserdialog.h"
 #include "exportdialog.h"
 
 #include <QHeaderView>
@@ -22,13 +23,15 @@
 //  Constructor
 // ─────────────────────────────────────────────────────────────────────────────
 Dashboard::Dashboard(int userId, const QString &username,
-                     const QString &role, QSqlDatabase db,
+                     const QString &role, int orgId,
+                     QSqlDatabase db,
                      QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::Dashboard)
     , m_userId(userId)
     , m_username(username)
     , m_role(role)
+    , m_orgId(orgId)
     , m_db(db)
 {
     ui->setupUi(this);
@@ -288,9 +291,12 @@ void Dashboard::onAddExtinguisher()
     QSqlQuery q(m_db);
     q.prepare(
         "INSERT INTO Extinguishers "
-        "(address, building_number, floor_number, room_number, "
-        " location_description, inspection_interval_days, next_due_date) "
-        "VALUES (:addr, :bldg, :floor, :room, :loc, :interval, :due)"
+        "(address, building_number, floor_number, room_number, location_description, "
+        " inspection_interval_days, next_due_date, org_id, "
+        " ext_type, ext_size_lbs, serial_number, manufacturer, model, "
+        " manufacture_date, last_annual_date, last_6year_date, last_hydro_date, ext_status) "
+        "VALUES (:addr, :bldg, :floor, :room, :loc, :interval, :due, :orgId, "
+        "        :type, :size, :serial, :mfg, :model, :mfgdate, :annual, :sixyr, :hydro, :status)"
     );
     q.bindValue(":addr",     dlg.address());
     q.bindValue(":bldg",     dlg.buildingNumber());
@@ -299,6 +305,17 @@ void Dashboard::onAddExtinguisher()
     q.bindValue(":loc",      dlg.locationDescription());
     q.bindValue(":interval", dlg.inspectionInterval());
     q.bindValue(":due",      dlg.nextDueDate());
+    q.bindValue(":orgId",    m_orgId);
+    q.bindValue(":type",     dlg.extType().isEmpty()      ? QVariant(QVariant::String) : dlg.extType());
+    q.bindValue(":size",     dlg.extSize() == 0.0        ? QVariant(QVariant::Double) : dlg.extSize());
+    q.bindValue(":serial",   dlg.serialNumber().isEmpty() ? QVariant(QVariant::String) : dlg.serialNumber());
+    q.bindValue(":mfg",      dlg.manufacturer().isEmpty() ? QVariant(QVariant::String) : dlg.manufacturer());
+    q.bindValue(":model",    dlg.model().isEmpty()        ? QVariant(QVariant::String) : dlg.model());
+    q.bindValue(":mfgdate",  dlg.manufactureDate().isEmpty() ? QVariant(QVariant::String) : dlg.manufactureDate());
+    q.bindValue(":annual",   dlg.lastAnnualDate().isEmpty()  ? QVariant(QVariant::String) : dlg.lastAnnualDate());
+    q.bindValue(":sixyr",    dlg.last6YearDate().isEmpty()   ? QVariant(QVariant::String) : dlg.last6YearDate());
+    q.bindValue(":hydro",    dlg.lastHydroDate().isEmpty()   ? QVariant(QVariant::String) : dlg.lastHydroDate());
+    q.bindValue(":status",   dlg.extStatus());
 
     if (q.exec()) {
         QMessageBox::information(this, "Success", "Extinguisher added successfully.");
@@ -329,6 +346,7 @@ void Dashboard::onEditExtinguisher()
     if (!fetch.next()) return;
 
     ExtDialog dlg("Save Changes", this);
+    // Location
     dlg.setAddress(fetch.value("address").toString());
     dlg.setBuildingNumber(fetch.value("building_number").toString());
     dlg.setFloorNumber(fetch.value("floor_number").toInt());
@@ -336,6 +354,17 @@ void Dashboard::onEditExtinguisher()
     dlg.setLocationDescription(fetch.value("location_description").toString());
     dlg.setInspectionInterval(fetch.value("inspection_interval_days").toInt());
     dlg.setNextDueDate(fetch.value("next_due_date").toString());
+    // NFPA
+    dlg.setExtType(fetch.value("ext_type").toString());
+    dlg.setExtSize(fetch.value("ext_size_lbs").toDouble());
+    dlg.setSerialNumber(fetch.value("serial_number").toString());
+    dlg.setManufacturer(fetch.value("manufacturer").toString());
+    dlg.setModel(fetch.value("model").toString());
+    dlg.setManufactureDate(fetch.value("manufacture_date").toString());
+    dlg.setLastAnnualDate(fetch.value("last_annual_date").toString());
+    dlg.setLast6YearDate(fetch.value("last_6year_date").toString());
+    dlg.setLastHydroDate(fetch.value("last_hydro_date").toString());
+    dlg.setExtStatus(fetch.value("ext_status").toString());
 
     if (dlg.exec() != QDialog::Accepted) return;
 
@@ -344,7 +373,11 @@ void Dashboard::onEditExtinguisher()
         "UPDATE Extinguishers SET "
         "address = :addr, building_number = :bldg, floor_number = :floor, "
         "room_number = :room, location_description = :loc, "
-        "inspection_interval_days = :interval, next_due_date = :due "
+        "inspection_interval_days = :interval, next_due_date = :due, "
+        "ext_type = :type, ext_size_lbs = :size, serial_number = :serial, "
+        "manufacturer = :mfg, model = :model, manufacture_date = :mfgdate, "
+        "last_annual_date = :annual, last_6year_date = :sixyr, "
+        "last_hydro_date = :hydro, ext_status = :status "
         "WHERE extinguisher_id = :id"
     );
     q.bindValue(":addr",     dlg.address());
@@ -354,6 +387,16 @@ void Dashboard::onEditExtinguisher()
     q.bindValue(":loc",      dlg.locationDescription());
     q.bindValue(":interval", dlg.inspectionInterval());
     q.bindValue(":due",      dlg.nextDueDate());
+    q.bindValue(":type",     dlg.extType().isEmpty()      ? QVariant(QVariant::String) : dlg.extType());
+    q.bindValue(":size",     dlg.extSize() == 0.0        ? QVariant(QVariant::Double) : dlg.extSize());
+    q.bindValue(":serial",   dlg.serialNumber().isEmpty() ? QVariant(QVariant::String) : dlg.serialNumber());
+    q.bindValue(":mfg",      dlg.manufacturer().isEmpty() ? QVariant(QVariant::String) : dlg.manufacturer());
+    q.bindValue(":model",    dlg.model().isEmpty()        ? QVariant(QVariant::String) : dlg.model());
+    q.bindValue(":mfgdate",  dlg.manufactureDate().isEmpty() ? QVariant(QVariant::String) : dlg.manufactureDate());
+    q.bindValue(":annual",   dlg.lastAnnualDate().isEmpty()  ? QVariant(QVariant::String) : dlg.lastAnnualDate());
+    q.bindValue(":sixyr",    dlg.last6YearDate().isEmpty()   ? QVariant(QVariant::String) : dlg.last6YearDate());
+    q.bindValue(":hydro",    dlg.lastHydroDate().isEmpty()   ? QVariant(QVariant::String) : dlg.lastHydroDate());
+    q.bindValue(":status",   dlg.extStatus());
     q.bindValue(":id",       extId);
 
     if (q.exec()) {
@@ -427,10 +470,12 @@ void Dashboard::onGenerateAssignment()
 {
     AssignDialog dlg(this);
 
-    // Populate extinguishers dropdown
+    // Populate extinguishers dropdown (scoped to this org)
     QSqlQuery extQ(m_db);
-    extQ.exec("SELECT extinguisher_id, address, building_number, floor_number "
-              "FROM Extinguishers ORDER BY extinguisher_id");
+    extQ.prepare("SELECT extinguisher_id, address, building_number, floor_number "
+                 "FROM Extinguishers WHERE org_id = :orgId ORDER BY extinguisher_id");
+    extQ.bindValue(":orgId", m_orgId);
+    extQ.exec();
     QList<QPair<int,QString>> extList;
     while (extQ.next()) {
         QString label = QString("#%1 — %2, %3 Fl.%4")
@@ -442,11 +487,13 @@ void Dashboard::onGenerateAssignment()
     }
     dlg.setExtinguishers(extList);
 
-    // Populate inspectors dropdown (Inspector + 3rd_Party_Inspector roles)
+    // Populate inspectors dropdown (scoped to this org)
     QSqlQuery invQ(m_db);
-    invQ.exec("SELECT user_id, username, role FROM Users "
-              "WHERE role IN ('Inspector','3rd_Party_Inspector') "
-              "ORDER BY username");
+    invQ.prepare("SELECT user_id, username, role FROM Users "
+                 "WHERE role IN ('Inspector','3rd_Party_Inspector') AND org_id = :orgId "
+                 "ORDER BY username");
+    invQ.bindValue(":orgId", m_orgId);
+    invQ.exec();
     QList<QPair<int,QString>> invList;
     while (invQ.next()) {
         QString label = invQ.value("username").toString()
@@ -460,13 +507,14 @@ void Dashboard::onGenerateAssignment()
     // Write assignment to DB
     QSqlQuery q(m_db);
     q.prepare(
-        "INSERT INTO Assignments (admin_id, inspector_id, extinguisher_id, due_date, status) "
-        "VALUES (:admin, :inspector, :ext, :due, 'Pending Inspection')"
+        "INSERT INTO Assignments (admin_id, inspector_id, extinguisher_id, due_date, status, org_id) "
+        "VALUES (:admin, :inspector, :ext, :due, 'Pending Inspection', :orgId)"
     );
-    q.bindValue(":admin",    m_userId);
+    q.bindValue(":admin",     m_userId);
     q.bindValue(":inspector", dlg.inspectorId());
     q.bindValue(":ext",       dlg.extinguisherId());
     q.bindValue(":due",       dlg.dueDate());
+    q.bindValue(":orgId",     m_orgId);
 
     if (q.exec()) {
         QMessageBox::information(this, "Assignment Generated",
@@ -520,9 +568,11 @@ void Dashboard::onGenerateReport()
     }
     dlg.setAssignments(assignList);
 
-    // Populate extinguishers dropdown
+    // Populate extinguishers dropdown (scoped to this org)
     QSqlQuery extQ(m_db);
-    extQ.exec("SELECT extinguisher_id, address, building_number FROM Extinguishers");
+    extQ.prepare("SELECT extinguisher_id, address, building_number FROM Extinguishers WHERE org_id = :orgId");
+    extQ.bindValue(":orgId", m_orgId);
+    extQ.exec();
     QList<QPair<int,QString>> extList;
     while (extQ.next()) {
         QString label = QString("#%1 — %2, %3")
@@ -593,29 +643,30 @@ void Dashboard::updateStats()
         QSqlQuery q(m_db);
         q.prepare(sql);
         if (sql.contains(":userId")) q.bindValue(":userId", m_userId);
+        if (sql.contains(":orgId"))  q.bindValue(":orgId",  m_orgId);
         q.exec();
         return q.next() ? q.value(0).toInt() : 0;
     };
 
     if (isAdmin()) {
-        ui->statExtinguishers->setText(QString::number(count("SELECT COUNT(*) FROM Extinguishers")));
-        ui->statAssignments->setText(QString::number(count("SELECT COUNT(*) FROM Assignments")));
-        ui->statReports->setText(QString::number(count("SELECT COUNT(*) FROM Reports")));
-        ui->statUsers->setText(QString::number(count("SELECT COUNT(*) FROM Users")));
+        ui->statExtinguishers->setText(QString::number(count("SELECT COUNT(*) FROM Extinguishers WHERE org_id = :orgId")));
+        ui->statAssignments->setText(QString::number(count("SELECT COUNT(*) FROM Assignments WHERE org_id = :orgId")));
+        ui->statReports->setText(QString::number(count("SELECT COUNT(*) FROM Reports WHERE org_id = :orgId")));
+        ui->statUsers->setText(QString::number(count("SELECT COUNT(*) FROM Users WHERE org_id = :orgId")));
     }
     else if (isInv()) {
         ui->frameExt->setVisible(false);
         ui->frameUsers->setVisible(false);
-        ui->statAssignments->setText(QString::number(count("SELECT COUNT(*) FROM Assignments WHERE inspector_id = :userId")));
-        ui->statReports->setText(QString::number(count("SELECT COUNT(*) FROM Reports WHERE inspector_id = :userId")));
+        ui->statAssignments->setText(QString::number(count("SELECT COUNT(*) FROM Assignments WHERE inspector_id = :userId AND org_id = :orgId")));
+        ui->statReports->setText(QString::number(count("SELECT COUNT(*) FROM Reports WHERE inspector_id = :userId AND org_id = :orgId")));
         ui->lblAssign->setText("My Assignments");
         ui->lblReports->setText("My Reports");
     }
     else if (isThirdPAdmin()) {
         ui->frameExt->setVisible(false);
         ui->frameReports->setVisible(false);
-        ui->statAssignments->setText(QString::number(count("SELECT COUNT(*) FROM Assignments")));
-        ui->statUsers->setText(QString::number(count("SELECT COUNT(*) FROM Users WHERE role = '3rd_Party_Inspector'")));
+        ui->statAssignments->setText(QString::number(count("SELECT COUNT(*) FROM Assignments WHERE org_id = :orgId")));
+        ui->statUsers->setText(QString::number(count("SELECT COUNT(*) FROM Users WHERE role = '3rd_Party_Inspector' AND org_id = :orgId")));
         ui->lblAssign->setText("Assignments");
         ui->lblUsers->setText("Team Members");
     }
@@ -623,7 +674,7 @@ void Dashboard::updateStats()
         ui->frameExt->setVisible(false);
         ui->frameReports->setVisible(false);
         ui->frameUsers->setVisible(false);
-        ui->statAssignments->setText(QString::number(count("SELECT COUNT(*) FROM Assignments WHERE inspector_id = :userId")));
+        ui->statAssignments->setText(QString::number(count("SELECT COUNT(*) FROM Assignments WHERE inspector_id = :userId AND org_id = :orgId")));
         ui->lblAssign->setText("My Assignments");
     }
 }
@@ -634,9 +685,14 @@ void Dashboard::updateStats()
 void Dashboard::loadExtinguishers()
 {
     QSqlQuery q(m_db);
-    q.exec("SELECT extinguisher_id, address, building_number, floor_number, "
-           "room_number, location_description, inspection_interval_days, "
-           "next_due_date FROM Extinguishers");
+    q.prepare(
+        "SELECT extinguisher_id, ext_type AS type, ext_size_lbs AS size_lbs, "
+        "serial_number, manufacturer, building_number, floor_number, room_number, "
+        "ext_status AS status, next_due_date, last_annual_date "
+        "FROM Extinguishers WHERE org_id = :orgId ORDER BY extinguisher_id"
+    );
+    q.bindValue(":orgId", m_orgId);
+    q.exec();
     fillTable(ui->tableExtinguishers, q);
     if (ui->tableExtinguishers->rowCount() == 0)
         showEmptyMessage(ui->tableExtinguishers, "No extinguishers yet. Click '＋ Add Extinguisher' to get started.");
@@ -646,18 +702,22 @@ void Dashboard::loadAssignments()
 {
     QSqlQuery q(m_db);
     if (isAdmin() || isThirdPAdmin()) {
-        q.exec("SELECT a.assignment_id, u_admin.username AS assigned_by, "
-               "u_insp.username AS inspector, a.extinguisher_id, a.status, a.due_date "
-               "FROM Assignments a "
-               "LEFT JOIN Users u_admin ON a.admin_id = u_admin.user_id "
-               "LEFT JOIN Users u_insp  ON a.inspector_id = u_insp.user_id");
+        q.prepare("SELECT a.assignment_id, u_admin.username AS assigned_by, "
+                  "u_insp.username AS inspector, a.extinguisher_id, a.status, a.due_date "
+                  "FROM Assignments a "
+                  "LEFT JOIN Users u_admin ON a.admin_id = u_admin.user_id "
+                  "LEFT JOIN Users u_insp  ON a.inspector_id = u_insp.user_id "
+                  "WHERE a.org_id = :orgId");
+        q.bindValue(":orgId", m_orgId);
+        q.exec();
     } else {
         q.prepare("SELECT a.assignment_id, u_admin.username AS assigned_by, "
                   "a.extinguisher_id, a.status, a.due_date "
                   "FROM Assignments a "
                   "LEFT JOIN Users u_admin ON a.admin_id = u_admin.user_id "
-                  "WHERE a.inspector_id = :userId");
+                  "WHERE a.inspector_id = :userId AND a.org_id = :orgId");
         q.bindValue(":userId", m_userId);
+        q.bindValue(":orgId",  m_orgId);
         q.exec();
     }
     fillTable(ui->tableAssignments, q);
@@ -673,7 +733,7 @@ void Dashboard::loadAssignments()
 //  checkDueDateAlerts()
 //
 //  Iterates over every pending assignment currently displayed in the table
-//  and calls checkDueDateAlert() for any that are due within 7 days or overdue.
+//  Collects all assignments due within 7 days or overdue, shows one summary dialog.
 //  Called automatically at the end of loadAssignments() so alerts fire on
 //  login and on every manual Refresh.
 // -----------------------------------------------------------------------------
@@ -684,31 +744,42 @@ void Dashboard::checkDueDateAlerts()
 
     // Fetch all pending assignments that have a due date set
     if (isAdmin() || isThirdPAdmin()) {
-        q.exec("SELECT assignment_id, status, due_date FROM Assignments "
-               "WHERE status != 'Inspection Complete' AND due_date IS NOT NULL AND due_date != ''");
+        q.prepare("SELECT assignment_id, status, due_date FROM Assignments "
+                  "WHERE org_id = :orgId "
+                  "AND status != 'Inspection Complete' "
+                  "AND due_date IS NOT NULL AND due_date != ''");
+        q.bindValue(":orgId", m_orgId);
+        q.exec();
     } else {
         q.prepare("SELECT assignment_id, status, due_date FROM Assignments "
-                  "WHERE inspector_id = :userId "
+                  "WHERE inspector_id = :userId AND org_id = :orgId "
                   "AND status != 'Inspection Complete' "
                   "AND due_date IS NOT NULL AND due_date != ''");
         q.bindValue(":userId", m_userId);
+        q.bindValue(":orgId",  m_orgId);
         q.exec();
     }
 
+    QList<DueDateItem> alerts;
     while (q.next()) {
-        int     assignmentId = q.value("assignment_id").toInt();
-        QString status       = q.value("status").toString();
-        QString dueDateStr   = q.value("due_date").toString();
+        QString dueDateStr = q.value("due_date").toString();
+        QDate   dueDate    = QDate::fromString(dueDateStr, Qt::ISODate);
+        if (!dueDate.isValid()) continue;
 
-        QDate dueDate = QDate::fromString(dueDateStr, Qt::ISODate);
-        if (!dueDate.isValid()) continue;  // skip rows with unparseable dates
-
-        int daysTillDue = today.daysTo(dueDate);  // negative if overdue
-
-        // Only alert if within 7 days or overdue
+        int daysTillDue = today.daysTo(dueDate);  // negative = overdue
         if (daysTillDue <= 7) {
-            checkDueDateAlert(assignmentId, status, daysTillDue);
+            DueDateItem item;
+            item.assignmentId = q.value("assignment_id").toInt();
+            item.status       = q.value("status").toString();
+            item.daysTillDue  = daysTillDue;
+            alerts.append(item);
         }
+    }
+
+    // Show one consolidated dialog if there is anything to report
+    if (!alerts.isEmpty()) {
+        DueDateSummaryDialog dlg(alerts, this);
+        dlg.exec();
     }
 }
 
@@ -716,13 +787,18 @@ void Dashboard::loadReports()
 {
     QSqlQuery q(m_db);
     if (isAdmin()) {
-        q.exec("SELECT r.report_id, r.extinguisher_id, u.username AS inspector, "
-               "r.inspection_date, r.notes FROM Reports r "
-               "LEFT JOIN Users u ON r.inspector_id = u.user_id");
+        q.prepare("SELECT r.report_id, r.extinguisher_id, u.username AS inspector, "
+                  "r.inspection_date, r.inspection_result, r.notes FROM Reports r "
+                  "LEFT JOIN Users u ON r.inspector_id = u.user_id "
+                  "WHERE r.org_id = :orgId ORDER BY r.inspection_date DESC");
+        q.bindValue(":orgId", m_orgId);
+        q.exec();
     } else {
-        q.prepare("SELECT report_id, extinguisher_id, inspection_date, notes "
-                  "FROM Reports WHERE inspector_id = :userId");
+        q.prepare("SELECT report_id, extinguisher_id, inspection_date, inspection_result, notes "
+                  "FROM Reports WHERE inspector_id = :userId AND org_id = :orgId "
+                  "ORDER BY inspection_date DESC");
         q.bindValue(":userId", m_userId);
+        q.bindValue(":orgId",  m_orgId);
         q.exec();
     }
     fillTable(ui->tableReports, q);
@@ -734,10 +810,17 @@ void Dashboard::loadReports()
 void Dashboard::loadUsers()
 {
     QSqlQuery q(m_db);
-    if (isAdmin())
-        q.exec("SELECT user_id, username, role FROM Users");
-    else if (isThirdPAdmin())
-        q.exec("SELECT user_id, username, role FROM Users WHERE role = '3rd_Party_Inspector'");
+    if (isAdmin()) {
+        q.prepare("SELECT user_id, username, role, first_name, last_name, email FROM Users "
+                  "WHERE org_id = :orgId ORDER BY username");
+        q.bindValue(":orgId", m_orgId);
+        q.exec();
+    } else if (isThirdPAdmin()) {
+        q.prepare("SELECT user_id, username, role, first_name, last_name FROM Users "
+                  "WHERE role = '3rd_Party_Inspector' AND org_id = :orgId ORDER BY username");
+        q.bindValue(":orgId", m_orgId);
+        q.exec();
+    }
     fillTable(ui->tableUsers, q);
     if (ui->tableUsers->rowCount() == 0)
         showEmptyMessage(ui->tableUsers, isAdmin() ? "No users found." : "No team members found.");
@@ -753,13 +836,24 @@ void Dashboard::setupUserToolbar()
     hbox->setContentsMargins(0, 4, 0, 4);
     hbox->setSpacing(8);
 
-    QPushButton *btnAddUser = new QPushButton("＋ Add User", bar);
-    btnAddUser->setStyleSheet(
-        "QPushButton { border-radius: 4px; padding: 5px 14px; font-weight: bold;"
-        " background: #15803d; color: white; }"
-        "QPushButton:hover { opacity: 0.85; }");
+    QString baseStyle =
+        "QPushButton { border-radius: 4px; padding: 5px 14px; font-weight: bold; }"
+        "QPushButton:hover { opacity: 0.85; }";
+
+    QPushButton *btnAddUser    = new QPushButton("＋ Add User",    bar);
+    QPushButton *btnEditUser   = new QPushButton("✎ Edit Selected", bar);
+    QPushButton *btnDeleteUser = new QPushButton("✕ Delete Selected", bar);
+
+    btnAddUser->setStyleSheet(baseStyle +
+        "QPushButton { background: #15803d; color: white; }");
+    btnEditUser->setStyleSheet(baseStyle +
+        "QPushButton { background: #1f3864; color: white; }");
+    btnDeleteUser->setStyleSheet(baseStyle +
+        "QPushButton { background: #8b2222; color: white; }");
 
     hbox->addWidget(btnAddUser);
+    hbox->addWidget(btnEditUser);
+    hbox->addWidget(btnDeleteUser);
     hbox->addStretch();
 
     for (int i = 0; i < ui->tabWidget->count(); ++i) {
@@ -772,7 +866,9 @@ void Dashboard::setupUserToolbar()
         }
     }
 
-    connect(btnAddUser, &QPushButton::clicked, this, &Dashboard::onAddUser);
+    connect(btnAddUser,    &QPushButton::clicked, this, &Dashboard::onAddUser);
+    connect(btnEditUser,   &QPushButton::clicked, this, &Dashboard::onEditUser);
+    connect(btnDeleteUser, &QPushButton::clicked, this, &Dashboard::onDeleteUser);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -827,6 +923,137 @@ void Dashboard::onAddUser()
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+//  Helper — get user_id from selected row in the Users table, -1 if none
+// ─────────────────────────────────────────────────────────────────────────────
+int Dashboard::selectedUserId() const
+{
+    int row = ui->tableUsers->currentRow();
+    if (row < 0) return -1;
+    QTableWidgetItem *item = ui->tableUsers->item(row, 0);
+    if (!item) return -1;
+    bool ok;
+    int id = item->text().toInt(&ok);
+    return ok ? id : -1;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Edit User — Admin can change role, name, email, phone, and reset password
+//  Sprint 4 Qt Sync — Junius Ketter
+// ─────────────────────────────────────────────────────────────────────────────
+void Dashboard::onEditUser()
+{
+    int userId = selectedUserId();
+    if (userId < 0) {
+        QMessageBox::warning(this, "No Selection", "Please select a user row to edit.");
+        return;
+    }
+
+    QSqlQuery fetch(m_db);
+    fetch.prepare("SELECT username, role, first_name, last_name, email, phone "
+                  "FROM Users WHERE user_id = :id");
+    fetch.bindValue(":id", userId);
+    fetch.exec();
+    if (!fetch.next()) return;
+
+    EditUserDialog dlg(this);
+    dlg.setDisplayUsername(fetch.value("username").toString());
+    dlg.setRole(fetch.value("role").toString());
+    dlg.setFirstName(fetch.value("first_name").toString());
+    dlg.setLastName(fetch.value("last_name").toString());
+    dlg.setEmail(fetch.value("email").toString());
+    dlg.setPhone(fetch.value("phone").toString());
+
+    if (dlg.exec() != QDialog::Accepted) return;
+
+    QSqlQuery q(m_db);
+    q.prepare(
+        "UPDATE Users SET role = :role, first_name = :fn, last_name = :ln, "
+        "email = :email, phone = :phone "
+        "WHERE user_id = :id"
+    );
+    q.bindValue(":role",  dlg.role());
+    q.bindValue(":fn",    dlg.firstName().isEmpty() ? QVariant(QVariant::String) : dlg.firstName());
+    q.bindValue(":ln",    dlg.lastName().isEmpty()  ? QVariant(QVariant::String) : dlg.lastName());
+    q.bindValue(":email", dlg.email().isEmpty()     ? QVariant(QVariant::String) : dlg.email());
+    q.bindValue(":phone", dlg.phone().isEmpty()     ? QVariant(QVariant::String) : dlg.phone());
+    q.bindValue(":id",    userId);
+
+    if (!q.exec()) {
+        QMessageBox::critical(this, "Database Error",
+            "Failed to update user:\n" + q.lastError().text());
+        return;
+    }
+
+    // Optionally reset password
+    if (dlg.resetPassword()) {
+        QString hashed = QString(
+            QCryptographicHash::hash(
+                dlg.newPassword().toUtf8(),
+                QCryptographicHash::Sha256
+            ).toHex()
+        );
+        QSqlQuery pwQ(m_db);
+        pwQ.prepare("UPDATE Users SET password_hash = :pw WHERE user_id = :id");
+        pwQ.bindValue(":pw", hashed);
+        pwQ.bindValue(":id", userId);
+        pwQ.exec();
+    }
+
+    QMessageBox::information(this, "User Updated", "User updated successfully.");
+    loadUsers();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Delete User — Admin can remove any user except themselves
+//  Sprint 4 Qt Sync — Junius Ketter
+// ─────────────────────────────────────────────────────────────────────────────
+void Dashboard::onDeleteUser()
+{
+    int userId = selectedUserId();
+    if (userId < 0) {
+        QMessageBox::warning(this, "No Selection", "Please select a user row to delete.");
+        return;
+    }
+    if (userId == m_userId) {
+        QMessageBox::warning(this, "Cannot Delete Self",
+            "You cannot delete your own account while logged in.");
+        return;
+    }
+
+    QSqlQuery fetch(m_db);
+    fetch.prepare("SELECT username, role FROM Users WHERE user_id = :id");
+    fetch.bindValue(":id", userId);
+    fetch.exec();
+    if (!fetch.next()) return;
+
+    QString username = fetch.value("username").toString();
+    QString role     = fetch.value("role").toString();
+
+    auto reply = QMessageBox::warning(this, "Confirm Delete",
+        QString("Are you sure you want to delete user:\n\n%1  [%2]\n\n"
+                "This cannot be undone.")
+            .arg(username).arg(role),
+        QMessageBox::Yes | QMessageBox::Cancel);
+
+    if (reply != QMessageBox::Yes) return;
+
+    QSqlQuery q(m_db);
+    q.prepare("DELETE FROM Users WHERE user_id = :id");
+    q.bindValue(":id", userId);
+
+    if (q.exec()) {
+        QMessageBox::information(this, "Deleted",
+            QString("User '%1' deleted successfully.").arg(username));
+        loadUsers();
+        updateStats();
+    } else {
+        QMessageBox::critical(this, "Database Error",
+            "Failed to delete user:\n" + q.lastError().text());
+    }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 void Dashboard::fillTable(QTableWidget *table, QSqlQuery &query)
 {

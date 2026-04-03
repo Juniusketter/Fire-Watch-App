@@ -30,6 +30,8 @@ qt_add_executable(Fire-Watch-UI
     reportdialog.h
     exportdialog.h
     adduserdialog.h
+    edituserdialog.h
+    DueDateAlert.h
     ${BACKEND_SOURCES}
 )
 
