@@ -10712,6 +10712,45 @@ function _getCurrentFloor() {
     localStorage.removeItem("fw_session"); // corrupt data — clear it
   }
 })();
+
+/*
+  translation dictionary
+  english(en) and spanish(es) only, we can add more if we want/have time
+  each text element will need:
+    a unique data-key attribute added
+    the text will need to be: 
+      included in the dictionary 
+      translated
+*/
+const translations = {
+  en: {
+    //english text with data-key name
+    //ex:
+    greeting: "Welcome"
+  },
+  es: {
+    //spanish text with data-key name
+    //ex:
+    greeting: "Bienvenido"
+  }
+};
+
+/* 
+  changeLanguage()
+    Will swap the language between the provided languaged in the translations dictionary 
+    Will effect every html element with a data-key attribute 
+    
+  Parameters:
+    lang - en for english and es for espanol
+*/ 
+function changeLanguage(lang) {
+  document.querySelectorAll('[data-key]').forEach(element => {
+    const key = element.getAttribute('data-key');
+    element.innerText = translations[lang][key];
+  });
+  document.documentElement.lang = lang;
+}
+  
 </script>
 </body>
 </html>
