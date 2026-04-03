@@ -1,6 +1,5 @@
 """
 FireWatch Backend Server
-========================
 Flask REST API server for the FireWatch NFPA 10 fire extinguisher
 compliance tracking platform.
 
@@ -2607,3 +2606,15 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     debug = os.environ.get("RENDER") is None  # debug only when running locally
     app.run(debug=debug, host="0.0.0.0", port=port)
+from fastapi import FastAPI
+app=FastAPI()
+@app.get('/status')
+def status(): return {'online':True}
+@app.post('/auth/login')
+def login(user:str,password:str): return {'token':'SERVER_TOKEN_ABC123'}
+@app.get('/inspector/tasks')
+def tasks(): return {'tasks':['Inspect Zone A','Inspect Zone B']}
+@app.post('/inspector/log')
+def log(entry:dict): return {'success':True,'received':entry}
+@app.get('/token/refresh')
+def refresh(): return {'token':'SERVER_REFRESHED_TOKEN_999'}
