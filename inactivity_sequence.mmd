@@ -1,0 +1,16 @@
+sequenceDiagram
+    participant IM as InactivityMonitor
+    participant SM as SessionManager
+
+    loop every 10 seconds
+        IM->>SM: isLoggedIn()
+        alt logged in
+            IM->>SM: isInactivityExpired()
+            IM->>SM: isTokenExpired()
+            alt expired
+                IM->>SM: logout()
+            else valid
+                IM->>SM: renewTokenIfAllowed()
+            end
+        end
+    end

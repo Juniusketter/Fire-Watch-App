@@ -1,0 +1,16 @@
+@startuml
+class SessionService {
+  +login()
+  +logout()
+  +isLoggedIn() : bool
+  +checkTokenValidity() : bool
+  +checkInactivity() : bool
+  +renewToken()
+}
+
+class InactivityMonitor {
+  +start()
+}
+
+InactivityMonitor --> SessionService : monitors
+@enduml
