@@ -1,16 +1,3 @@
-// Admin.h - Full implementation backend for edit/delete users
-#pragma once
-#include <string>
-#include <sqlite3.h>
-class Admin{
-public:
- std::string userId;
- std::string companyId;
- Admin(std::string u,std::string c):userId(u),companyId(c){}
- bool editUser(sqlite3*db,const std::string&uid,const std::string&email,const std::string&name,const std::string&role,std::string*err);
- bool deleteUser(sqlite3*db,const std::string&uid,std::string*err);
- void audit(sqlite3*db,const std::string&entity,const std::string&id,const std::string&action);
-};
 #ifndef ADMIN_H
 #define ADMIN_H
 
@@ -22,14 +9,15 @@ public:
 
 using namespace std;
 
-// Admin class - extends User class
-// Created by Lillian 
-// Updated Sprint 2: Replaced cin/cout console I/O in generateAssignment()
-// and changeDB() with parameter-based methods.
-// UI input is handled by AssignDialog + ExtDialog in the Qt dashboard
-// and by the web UI modals (index.html). DB writes are handled by the
-// calling layer (dashboard.cpp / server.py), not this class.
-
+/*
+  Admin class - extends User class
+  Created by Lillian 
+  Updated Sprint 2: Replaced cin/cout console I/O in generateAssignment()
+  and changeDB() with parameter-based methods.
+  UI input is handled by AssignDialog + ExtDialog in the Qt dashboard
+  and by the web UI modals (index.html). DB writes are handled by the
+  calling layer (dashboard.cpp / server.py), not this class.
+*/
 class Admin : public User {
     private:
         string adminID;
