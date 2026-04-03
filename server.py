@@ -2058,7 +2058,12 @@ def approve_report(report_id):
 def void_report(report_id):
     """Void a report — marks it permanently invalid with a reason.
     Industry standard: reports cannot be deleted, only voided.
-    The voided record remains in the audit trail."""
+    The voided record remains in the audit trail.
+
+    After voiding:
+    1. The linked assignment reverts to 'Pending Inspection'
+    2. The extinguisher's last_report_id rolls back to its previous valid report
+    3. Returns ext and assignment data so the UI can prompt for reassignment."""
     d = request.get_json() or {}
     reason   = (d.get("reason") or "").strip()
     admin_id = d.get("admin_id")
@@ -2066,6 +2071,31 @@ def void_report(report_id):
         return jsonify({"error": "A void reason is required"}), 400
     try:
         with get_db() as conn:
+            # Get the report being voided — need ext_id and assignment link
+            report = conn.execute(
+                """SELECT r.report_id, r.extinguisher_id, r.inspector_id,
+                          a.assignment_id, a.inspector_id AS assign_inspector_id,
+                          e.building_id, e.floor_number, e.room_number,
+                          e.location_description,
+                          b.name AS building_name, c.name AS company_name
+                   FROM Reports r
+                   LEFT JOIN Assignments a ON a.extinguisher_id = r.extinguisher_id
+                       AND a.inspector_id = r.inspector_id
+                       AND a.status = 'Inspection Complete'
+                   LEFT JOIN Extinguishers e ON e.extinguisher_id = r.extinguisher_id
+                   LEFT JOIN Buildings b ON b.building_id = e.building_id
+                   LEFT JOIN Companies c ON c.company_id = b.company_id
+                   WHERE r.report_id = ?
+                   ORDER BY a.assignment_id DESC LIMIT 1""",
+                (report_id,)
+            ).fetchone()
+
+            if not report:
+                return jsonify({"error": "Report not found"}), 404
+
+            ext_id = report["extinguisher_id"]
+
+            # 1. Void the report
             conn.execute(
                 """UPDATE Reports SET
                    approval_status='Void',
@@ -2075,8 +2105,47 @@ def void_report(report_id):
                    WHERE report_id=?""",
                 (reason, admin_id, report_id)
             )
-        platform_log("admin", "report_voided", str(report_id), f"Reason: {reason}")
-        return jsonify({"success": True})
+
+            # 2. Revert linked assignment back to Pending Inspection
+            assignment_id = report["assignment_id"]
+            if assignment_id:
+                conn.execute(
+                    """UPDATE Assignments SET status='Pending Inspection'
+                       WHERE assignment_id=?""",
+                    (assignment_id,)
+                )
+
+            # 3. Roll back extinguisher's last_report_id to previous valid report
+            prev_report = conn.execute(
+                """SELECT report_id FROM Reports
+                   WHERE extinguisher_id=? AND report_id != ?
+                   AND (approval_status IS NULL OR approval_status != 'Void')
+                   ORDER BY inspection_date DESC LIMIT 1""",
+                (ext_id, report_id)
+            ).fetchone()
+            conn.execute(
+                "UPDATE Extinguishers SET last_report_id=? WHERE extinguisher_id=?",
+                (prev_report["report_id"] if prev_report else None, ext_id)
+            )
+
+            conn.commit()
+
+        platform_log("admin", "report_voided", str(report_id),
+                     f"Reason: {reason} | EXT-{ext_id} reverted to pending")
+
+        return jsonify({
+            "success": True,
+            "extinguisher_id": ext_id,
+            "assignment_id":   assignment_id,
+            "ext_info": {
+                "extinguisher_id":     ext_id,
+                "building_name":       report["building_name"],
+                "company_name":        report["company_name"],
+                "floor_number":        report["floor_number"],
+                "room_number":         report["room_number"],
+                "location_description":report["location_description"],
+            }
+        })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
