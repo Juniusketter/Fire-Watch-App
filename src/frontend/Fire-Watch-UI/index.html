@@ -126,6 +126,32 @@
     .btn-login{width:100%;padding:0.85rem;background:var(--orange);border:none;border-radius:4px;color:white;font-family:'IBM Plex Mono',monospace;font-size:0.85rem;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;cursor:pointer;margin-top:0.5rem;transition:background 0.2s,transform 0.1s;min-height:48px;}
     .btn-login:hover{background:var(--orange2);}
     .btn-login:active{transform:scale(0.99);background:var(--orange2);}
+
+    /* ── Platform Announcement Banners ─────────────────────────────────────── */
+    #announcementBanner { display:flex; flex-direction:column; gap:0; }
+    .ann-banner {
+      display:flex; align-items:flex-start; gap:0.75rem;
+      padding:0.7rem 1.2rem;
+      font-family:'IBM Plex Mono',monospace; font-size:0.78rem;
+      border-bottom:1px solid rgba(0,0,0,0.15);
+      animation: annSlideDown 0.25s ease;
+    }
+    @keyframes annSlideDown { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
+    .ann-banner.priority-info     { background:#1e3a5f; color:#93c5fd; }
+    .ann-banner.priority-warning  { background:#422006; color:#fcd34d; }
+    .ann-banner.priority-critical { background:#450a0a; color:#fca5a5; }
+    .ann-banner-icon  { font-size:1rem; flex-shrink:0; margin-top:0.05rem; }
+    .ann-banner-body  { flex:1; line-height:1.5; }
+    .ann-banner-title { font-weight:700; margin-right:0.5rem; }
+    .ann-banner-text  { opacity:0.85; }
+    .ann-banner-expires { opacity:0.55; font-size:0.7rem; margin-left:0.5rem; }
+    .ann-dismiss {
+      background:none; border:none; cursor:pointer; opacity:0.5;
+      font-size:1.1rem; padding:0 0.25rem; margin-left:0.5rem; flex-shrink:0;
+      color:inherit; line-height:1; transition:opacity 0.15s;
+    }
+    .ann-dismiss:hover { opacity:1; }
+
     #loginMsg{margin-top:0.85rem;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;min-height:1.2rem;color:var(--muted2);}
     /* Login / Register tab toggle */
     .auth-tabs{display:flex;gap:0;margin-bottom:2rem;border-bottom:1px solid var(--border);}
@@ -589,6 +615,9 @@
         <button class="sidebar-item" id="pSidebarAudit" onclick="switchPlatformView('audit')">
           <span class="si-icon">📋</span> Activity Log
         </button>
+        <button class="sidebar-item" id="pSidebarAnnouncements" onclick="switchPlatformView('announcements')">
+          <span class="si-icon">📣</span> Announcements
+        </button>
         <button class="sidebar-item" id="pSidebarSettings" onclick="togglePlatformSettingsMenu()">
           <span class="si-icon">⚙️</span> Settings
         </button>
@@ -596,6 +625,9 @@
         <div id="pSidebarSettingsSub" class="hidden" style="padding-left:1.2rem;">
           <button class="sidebar-item sidebar-sub" onclick="showPlatformSettingsPage('theme')" id="pSidebarTheme" style="font-size:0.78rem;padding:6px 12px;">
             <span class="si-icon">🎨</span> Theme
+          </button>
+          <button class="sidebar-item sidebar-sub" onclick="showPlatformSettingsPage('platform')" id="pSidebarPlatformSettings" style="font-size:0.78rem;padding:6px 12px;">
+            <span class="si-icon">⚙️</span> Platform
           </button>
           <button class="sidebar-item sidebar-sub" onclick="togglePlatformGeneralMenu()" id="pSidebarGeneral" style="font-size:0.78rem;padding:6px 12px;">
             <span class="si-icon">📋</span> General ›
@@ -648,6 +680,11 @@
       <!-- PLATFORM AUDIT LOG VIEW -->
       <div id="platformViewAudit" style="display:none;">
         <div id="platformAuditLog" style="overflow-x:auto;"></div>
+      </div>
+
+      <!-- PLATFORM ANNOUNCEMENTS VIEW -->
+      <div id="platformViewAnnouncements" style="display:none;">
+        <div id="platformAnnouncementsPanel"></div>
       </div>
 
       <!-- PLATFORM SETTINGS VIEW — with sub-pages -->
@@ -784,6 +821,33 @@
           </div>
         </div>
 
+        <!-- PLATFORM SETTINGS: PLATFORM PAGE (org approval + NFPA intervals) -->
+        <div class="platform-settings-page hidden" id="pSettingsPagePlatform">
+          <div class="settings-section">
+            <div class="settings-section-title">Organization Management</div>
+            <div class="settings-row" style="display:flex;align-items:center;justify-content:space-between;">
+              <div>
+                <div class="settings-label" style="font-weight:700;">Require Approval for New Organizations</div>
+                <div class="settings-desc">When ON, new orgs start as "pending." When OFF, auto-approved.</div>
+              </div>
+              <div id="platformApprovalToggleSettings"></div>
+            </div>
+          </div>
+          <div class="settings-section" style="margin-top:1.2rem;">
+            <div class="settings-section-title">NFPA 10 Inspection Intervals</div>
+            <div class="settings-desc" style="margin-bottom:1rem;font-size:0.75rem;">
+              Default intervals (in days) used platform-wide for overdue calculations. Changes take effect immediately.
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1rem;" id="nfpaIntervalFields">
+              <!-- populated by loadPlatformSettingsView() -->
+            </div>
+            <div style="margin-top:0.8rem;">
+              <button onclick="saveNfpaIntervals()" style="padding:8px 20px;background:var(--orange);border:none;border-radius:6px;color:#fff;cursor:pointer;font-weight:700;font-size:0.82rem;">Save Intervals</button>
+              <span id="nfpaSaveMsg" style="margin-left:0.8rem;font-size:0.78rem;color:var(--teal);display:none;">Saved!</span>
+            </div>
+          </div>
+        </div>
+
         <!-- PLATFORM SETTINGS: TECH STACK PAGE -->
         <div class="platform-settings-page hidden" id="pSettingsPageTechstack">
           <div class="settings-section">
@@ -854,6 +918,9 @@
     <button class="btn-bar btn-refresh" id="btnRefresh" title="Refresh">↻</button>
     <button class="btn-bar btn-logout" id="btnLogout">Logout</button>
   </div>
+
+  <!-- Platform-wide announcement banners — populated on login -->
+  <div id="announcementBanner"></div>
 
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
@@ -1000,7 +1067,7 @@
             </button>
             <div id="qrDropMenuCompany" class="hidden" style="position:absolute;top:100%;left:0;margin-top:4px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;min-width:200px;z-index:200;box-shadow:0 8px 24px rgba(0,0,0,0.5);overflow:hidden;">
               <button class="qr-sheet-option" onclick="printQRSheet('company');toggleQRDropdown('qrDropMenuCompany')">🏢 This Company</button>
-              <button class="qr-sheet-option" onclick="printQRSheet('org');toggleQRDropdown('qrDropMenuCompany')" style="border-top:1px solid var(--border);">🌐 Entire Organization</button>
+              <button id="qrOrgOptCompany" class="qr-sheet-option" onclick="printQRSheet('org');toggleQRDropdown('qrDropMenuCompany')" style="border-top:1px solid var(--border);">🌐 Entire Organization</button>
             </div>
           </div>
         </div>
@@ -1017,7 +1084,7 @@
             </button>
             <div id="qrDropMenuBuilding" class="hidden" style="position:absolute;top:100%;left:0;margin-top:4px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;min-width:200px;z-index:200;box-shadow:0 8px 24px rgba(0,0,0,0.5);overflow:hidden;">
               <button class="qr-sheet-option" onclick="printQRSheet('company');toggleQRDropdown('qrDropMenuBuilding')">🏢 This Company</button>
-              <button class="qr-sheet-option" onclick="printQRSheet('org');toggleQRDropdown('qrDropMenuBuilding')" style="border-top:1px solid var(--border);">🌐 Entire Organization</button>
+              <button id="qrOrgOptBuilding" class="qr-sheet-option" onclick="printQRSheet('org');toggleQRDropdown('qrDropMenuBuilding')" style="border-top:1px solid var(--border);">🌐 Entire Organization</button>
             </div>
           </div>
         </div>
@@ -1053,7 +1120,7 @@
               <button class="qr-sheet-option" onclick="printQRSheet('floor');toggleQRDropdown('qrDropMenuExt')">🏢 This Floor</button>
               <button class="qr-sheet-option" onclick="printQRSheet('building');toggleQRDropdown('qrDropMenuExt')" style="border-top:1px solid var(--border);">🏗 This Building</button>
               <button class="qr-sheet-option" onclick="printQRSheet('company');toggleQRDropdown('qrDropMenuExt')" style="border-top:1px solid var(--border);">🏢 This Company</button>
-              <button class="qr-sheet-option" onclick="printQRSheet('org');toggleQRDropdown('qrDropMenuExt')" style="border-top:1px solid var(--border);">🌐 Entire Organization</button>
+              <button id="qrOrgOptExt" class="qr-sheet-option" onclick="printQRSheet('org');toggleQRDropdown('qrDropMenuExt')" style="border-top:1px solid var(--border);">🌐 Entire Organization</button>
             </div>
           </div>
         </div>
@@ -2732,6 +2799,44 @@ async function doLogin() {
   } catch { msg.style.color="#c1121f"; msg.textContent="Cannot reach server."; }
 }
 
+// ── Platform Announcement Banners ─────────────────────────────────────────────
+// Called once on login. Fetches active, non-expired announcements from the
+// platform and renders a dismissible banner strip at the top of the app.
+async function showAnnouncementBanners() {
+  const container = document.getElementById("announcementBanner");
+  if (!container) return;
+  container.innerHTML = "";
+  try {
+    const announcements = await fetch("/api/announcements").then(r => r.json());
+    if (!Array.isArray(announcements) || !announcements.length) return;
+
+    const icons = { info:"ℹ️", warning:"⚠️", critical:"🚨" };
+
+    announcements.forEach(a => {
+      const priority = (a.priority || "info").toLowerCase();
+      const icon     = icons[priority] || icons.info;
+      const expires  = a.expires_at
+        ? ` · Expires ${new Date(a.expires_at).toLocaleDateString()}`
+        : "";
+
+      const banner = document.createElement("div");
+      banner.className = `ann-banner priority-${priority}`;
+      banner.innerHTML = `
+        <span class="ann-banner-icon">${icon}</span>
+        <span class="ann-banner-body">
+          <span class="ann-banner-title">${a.title}</span>
+          <span class="ann-banner-text">${a.body}</span>
+          <span class="ann-banner-expires">${expires}</span>
+        </span>
+        <button class="ann-dismiss" title="Dismiss" onclick="this.closest('.ann-banner').remove()">✕</button>
+      `;
+      container.appendChild(banner);
+    });
+  } catch (e) {
+    console.warn("[FW] Could not load announcements:", e);
+  }
+}
+
 // ── Register Organization ──────────────────────────────────────────────────────
 document.getElementById("registerBtn").addEventListener("click", doRegister);
 ["regPassword","regConfirm","regUsername","regOrgName"].forEach(id => {
@@ -2834,6 +2939,7 @@ function showDashboard() {
   captureBaseline();
   startPolling();
   fetchNotifications();
+  showAnnouncementBanners();
   // Check for overdue/due-soon assignments on login
   setTimeout(() => checkDueDateAlerts(), 1500);
   // Check for QR deep-link (?ext=ID) — slight delay so the app page is visible first
@@ -2961,6 +3067,11 @@ function buildTabs() {
       const el = document.getElementById(id);
       if (el) el.style.display = "none";
     });
+    // Client is scoped to their company — hide "Entire Organization" QR print option
+    ["qrOrgOptCompany","qrOrgOptBuilding","qrOrgOptExt"].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = "none";
+    });
     // Hide assign/report/user toolbars
     ["assignToolbar","reportToolbar","userToolbar"].forEach(id =>
       document.getElementById(id).classList.add("hidden")
@@ -3052,11 +3163,22 @@ async function loadStats() {
 // Called on login, refresh, and every 5-second auto-poll cycle.
 function loadAllData() {
   console.log("[FW DEBUG] loadAllData - role:", currentUser?.role, "isInv:", isInv());
-  if (isAdmin())           { loadExtinguishers(); loadAssignments(); loadReports(); loadUsers(); }
-  else if (isInv())        { loadAssignments().then(() => { console.log("[FW DEBUG] assignments done → loading extinguishers"); loadExtinguishers(); }); loadReports(); }
-  else if (isThirdAdmin()) { loadAssignments(); loadReports(); loadUsers(); }
-  else if (isThirdInv())   { loadAssignments().then(() => loadExtinguishers()); loadReports(); }
-  else if (isClient())     { loadClientDashboard(); loadExtinguishers(); loadReports(); }
+  if (isAdmin()) {
+    if (!window._currentView || window._currentView === 'dashboard') { loadExtinguishers(); loadAssignments(); loadReports(); loadUsers(); }
+  }
+  else if (isInv()) {
+    if (!window._currentView || window._currentView === 'dashboard') { loadAssignments().then(() => { console.log("[FW DEBUG] assignments done → loading extinguishers"); loadExtinguishers(); }); loadReports(); }
+  }
+  else if (isThirdAdmin()) {
+    if (!window._currentView || window._currentView === 'dashboard') { loadAssignments(); loadReports(); loadUsers(); }
+  }
+  else if (isThirdInv()) {
+    if (!window._currentView || window._currentView === 'dashboard') { loadAssignments().then(() => loadExtinguishers()); loadReports(); }
+  }
+  else if (isClient()) {
+    loadClientDashboard();
+    if (!window._currentView || window._currentView === 'dashboard') { loadExtinguishers(); loadReports(); }
+  }
 }
 
 async function loadExtinguishers() {
@@ -3070,7 +3192,10 @@ async function loadExtinguishers() {
       await renderExtinguisherTable(_selectedBuilding.building_id);
     } else if (_drillLevel === "buildings" && _selectedCompany) {
       await renderBuildingGrid(_selectedCompany.company_id);
+    } else if (_drillLevel === "companies") {
+      await renderCompanyGrid();
     } else {
+      // First login — full drill init
       _drillLevel      = "companies";
       _selectedCompany = null;
       _selectedBuilding = null;
@@ -3217,7 +3342,7 @@ async function drillTo(level, data) {
     _selectedBuilding = null;
     await renderCompanyGrid();
     document.getElementById("drillCompanyView").classList.remove("hidden");
-    if (isAdmin()) document.getElementById("drillToolbarCompany").classList.remove("hidden");
+    if (isAdmin() || isClient()) document.getElementById("drillToolbarCompany").classList.remove("hidden");
 
   } else if (level === "buildings") {
     if (data) _selectedCompany = data;
@@ -3229,7 +3354,7 @@ async function drillTo(level, data) {
     _selectedBuilding = null;
     await renderBuildingGrid(_selectedCompany.company_id);
     document.getElementById("drillBuildingView").classList.remove("hidden");
-    if (isAdmin()) document.getElementById("drillToolbarBuilding").classList.remove("hidden");
+    if (isAdmin() || isClient()) document.getElementById("drillToolbarBuilding").classList.remove("hidden");
 
   } else if (level === "extinguishers") {
     if (data) _selectedBuilding = data;
@@ -3243,7 +3368,7 @@ async function drillTo(level, data) {
     crumbB.classList.remove("active");
     await renderExtinguisherTable(_selectedBuilding.building_id);
     document.getElementById("drillExtView").classList.remove("hidden");
-    if (isAdmin()) document.getElementById("drillToolbarExt").classList.remove("hidden");
+    if (isAdmin() || isClient()) document.getElementById("drillToolbarExt").classList.remove("hidden");
   }
 }
 
@@ -5718,6 +5843,7 @@ function showView(view) {
     renderNotifications();
     markAllRead();
   }
+  window._currentView = view;
   closeSidebar();
 }
 
@@ -9015,7 +9141,8 @@ let _platformAuth = false;
 // Settings: approval toggle + platform info
 function switchPlatformView(view) {
   // Hide all platform views
-  ["platformViewDashboard", "platformViewOrgs", "platformViewOrgDetail", "platformViewAudit", "platformViewSettings"].forEach(id => {
+  ["platformViewDashboard","platformViewOrgs","platformViewOrgDetail",
+   "platformViewAudit","platformViewAnnouncements","platformViewSettings"].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = "none";
   });
@@ -9030,6 +9157,9 @@ function switchPlatformView(view) {
   } else if (view === "audit") {
     document.getElementById("platformViewAudit").style.display = "";
     loadPlatformAuditLog();
+  } else if (view === "announcements") {
+    document.getElementById("platformViewAnnouncements").style.display = "";
+    loadPlatformAnnouncements();
   } else if (view === "settings") {
     document.getElementById("platformViewSettings").style.display = "";
     loadPlatformSettingsView();
@@ -9038,11 +9168,14 @@ function switchPlatformView(view) {
   }
 
   // Update sidebar active state
-  ["pSidebarDashboard", "pSidebarOrgs", "pSidebarAudit", "pSidebarSettings"].forEach(id => {
+  ["pSidebarDashboard","pSidebarOrgs","pSidebarAudit","pSidebarAnnouncements","pSidebarSettings"].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.classList.remove("active");
   });
-  const activeMap = { dashboard: "pSidebarDashboard", orgs: "pSidebarOrgs", audit: "pSidebarAudit", settings: "pSidebarSettings", orgdetail: "pSidebarOrgs" };
+  const activeMap = {
+    dashboard:"pSidebarDashboard", orgs:"pSidebarOrgs", audit:"pSidebarAudit",
+    announcements:"pSidebarAnnouncements", settings:"pSidebarSettings", orgdetail:"pSidebarOrgs"
+  };
   const activeBtn = document.getElementById(activeMap[view]);
   if (activeBtn) activeBtn.classList.add("active");
 
@@ -9074,19 +9207,25 @@ function showPlatformSettingsPage(page) {
   // Hide all platform settings pages
   document.querySelectorAll(".platform-settings-page").forEach(p => p.classList.add("hidden"));
   // Show selected
-  const pageMap = { theme: "pSettingsPageTheme", about: "pSettingsPageAbout", team: "pSettingsPageTeam", techstack: "pSettingsPageTechstack" };
+  const pageMap = {
+    theme: "pSettingsPageTheme", platform: "pSettingsPagePlatform",
+    about: "pSettingsPageAbout", team: "pSettingsPageTeam", techstack: "pSettingsPageTechstack"
+  };
   const target = document.getElementById(pageMap[page]);
   if (target) target.classList.remove("hidden");
   // Highlight active sub-item
-  ["pSidebarTheme","pSidebarAbout","pSidebarTeam","pSidebarTechstack"].forEach(id => {
+  ["pSidebarTheme","pSidebarPlatformSettings","pSidebarAbout","pSidebarTeam","pSidebarTechstack"].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.classList.remove("active");
   });
-  const btnMap = { theme: "pSidebarTheme", about: "pSidebarAbout", team: "pSidebarTeam", techstack: "pSidebarTechstack" };
+  const btnMap = {
+    theme:"pSidebarTheme", platform:"pSidebarPlatformSettings",
+    about:"pSidebarAbout", team:"pSidebarTeam", techstack:"pSidebarTechstack"
+  };
   const activeBtn = document.getElementById(btnMap[page]);
   if (activeBtn) activeBtn.classList.add("active");
-  // Load approval toggle if on theme page
-  if (page === "theme") loadPlatformSettingsView();
+  // Always load settings data when showing theme or platform pages
+  if (page === "theme" || page === "platform") loadPlatformSettingsView();
   // Close mobile sidebar
   document.getElementById("platformSidebar").classList.remove("open");
   document.getElementById("platformSidebarOverlay").style.display = "none";
@@ -9095,16 +9234,54 @@ function showPlatformSettingsPage(page) {
 async function loadPlatformSettingsView() {
   const settingsRes = await fetch("/api/platform/settings").then(r => r.json());
   const requireApproval = settingsRes.require_approval !== false;
-  const container = document.getElementById("platformApprovalToggleSettings");
-  if (container) {
+
+  // Approval toggle — appears on both Theme page (legacy) and Platform page
+  document.querySelectorAll("#platformApprovalToggleSettings").forEach(container => {
     container.innerHTML = `
-      <label style="position:relative;display:inline-block;width:48px;height:26px;cursor:pointer;">
+      <label style="position:relative;display:inline-block;width:52px;height:28px;cursor:pointer;">
         <input type="checkbox" ${requireApproval ? "checked" : ""} onchange="toggleApprovalRequirement(this.checked)"
           style="opacity:0;width:0;height:0;" />
-        <span style="position:absolute;inset:0;background:${requireApproval ? "var(--teal)" : "var(--muted)"};border-radius:13px;transition:0.2s;"></span>
-        <span style="position:absolute;top:3px;left:${requireApproval ? "25px" : "3px"};width:20px;height:20px;background:#fff;border-radius:50%;transition:0.2s;"></span>
+        <span style="position:absolute;inset:0;background:${requireApproval ? "var(--teal)" : "var(--border)"};border-radius:28px;transition:0.3s;" class="approvalSliderBg"></span>
+        <span style="position:absolute;top:3px;left:${requireApproval ? "26px" : "3px"};width:22px;height:22px;background:#fff;border-radius:50%;transition:0.3s;" class="approvalSliderDot"></span>
       </label>`;
+  });
+
+  // NFPA interval fields
+  const nfpaContainer = document.getElementById("nfpaIntervalFields");
+  if (nfpaContainer) {
+    const intervals = [
+      { key:"nfpa_annual_interval_days", label:"Annual Inspection", hint:"NFPA 10 §7.3 — typically 365 days" },
+      { key:"nfpa_6year_interval_days",  label:"6-Year Internal Exam", hint:"NFPA 10 §7.4 — typically 2190 days" },
+      { key:"nfpa_hydro_interval_days",  label:"Hydrostatic Test", hint:"NFPA 10 §8.3 — typically 3650 days" },
+    ];
+    nfpaContainer.innerHTML = intervals.map(({ key, label, hint }) => `
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:0.8rem 1rem;">
+        <div style="font-weight:600;font-size:0.82rem;color:var(--text);margin-bottom:0.2rem;">${label}</div>
+        <div style="font-size:0.68rem;color:var(--muted);margin-bottom:0.5rem;">${hint}</div>
+        <div style="display:flex;align-items:center;gap:0.5rem;">
+          <input type="number" id="nfpa_${key}" value="${settingsRes[key] || ""}"
+            min="1" max="9999"
+            style="width:80px;padding:5px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:0.82rem;">
+          <span style="font-size:0.72rem;color:var(--muted);">days</span>
+        </div>
+      </div>`).join("");
   }
+}
+
+async function saveNfpaIntervals() {
+  const keys = ["nfpa_annual_interval_days","nfpa_6year_interval_days","nfpa_hydro_interval_days"];
+  const payload = {};
+  for (const key of keys) {
+    const el = document.getElementById(`nfpa_${key}`);
+    if (el && el.value) payload[key] = parseInt(el.value, 10);
+  }
+  const res = await fetch("/api/platform/settings", {
+    method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload)
+  });
+  if (res.ok) {
+    const msg = document.getElementById("nfpaSaveMsg");
+    if (msg) { msg.style.display = "inline"; setTimeout(() => { msg.style.display = "none"; }, 2500); }
+  } else { alert("Error saving NFPA intervals."); }
 }
 
 // Legacy function — keep for backward compatibility with existing code
@@ -9145,7 +9322,14 @@ document.getElementById("platformLogoutBtn")?.addEventListener("click", () => {
 // ── Load Platform Dashboard (Orgs tab) ───────────────────────────────────────
 // ── Platform Dashboard Overview — bird's eye view with per-org cards ─────────
 async function loadPlatformDashboardOverview() {
-  const orgs = await fetch("/api/platform/organizations").then(r => r.json());
+  const [orgs, complianceData] = await Promise.all([
+    fetch("/api/platform/organizations").then(r => r.json()),
+    fetch("/api/platform/compliance").then(r => r.json()).catch(() => ({ totals: {}, orgs: [] }))
+  ]);
+
+  // Build compliance lookup by org_id
+  const compByOrg = {};
+  (complianceData.orgs || []).forEach(c => { compByOrg[c.org_id] = c; });
 
   // Calculate platform-wide totals
   let totalUsers = 0, totalExt = 0, totalReports = 0, totalAssignments = 0;
@@ -9197,6 +9381,10 @@ async function loadPlatformDashboardOverview() {
   statsWrap.style.display = "flex";
   statsWrap.style.flexWrap = "wrap";
 
+  const ct = complianceData.totals || {};
+  const complPct = ct.active_total > 0 ? Math.round((ct.compliant / ct.active_total) * 100) : null;
+  const complColor = complPct === null ? "var(--muted)" : complPct >= 90 ? "var(--teal)" : complPct >= 70 ? "var(--orange)" : "var(--red)";
+
   document.getElementById("platformDashStats").innerHTML = `
     <div style="${statBoxStyle}"><div style="${statNumStyle}color:var(--orange);">${orgs.length}</div><div style="${statLabelStyle}">Organizations</div></div>
     <div style="${statBoxStyle}"><div style="${statNumStyle}color:var(--teal);">${totalCompanies}</div><div style="${statLabelStyle}">Companies</div></div>
@@ -9205,6 +9393,29 @@ async function loadPlatformDashboardOverview() {
     <div style="${statBoxStyle}"><div style="${statNumStyle}color:var(--teal);">${totalUsers}</div><div style="${statLabelStyle}">Users</div></div>
     <div style="${statBoxStyle}"><div style="${statNumStyle}color:var(--orange);">${totalAssignments}</div><div style="${statLabelStyle}">Assignments</div></div>
     <div style="${statBoxStyle}"><div style="${statNumStyle}color:var(--red);">${totalReports}</div><div style="${statLabelStyle}">Reports</div></div>
+  `;
+
+  // Compliance health row
+  const compRowWrap = document.getElementById("platformDashStats").parentElement;
+  let compRowEl = document.getElementById("platformComplianceRow");
+  if (!compRowEl) {
+    compRowEl = document.createElement("div");
+    compRowEl.id = "platformComplianceRow";
+    compRowEl.style.cssText = "background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:0.9rem 1.2rem;margin-bottom:1rem;display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap;";
+    compRowWrap.insertBefore(compRowEl, document.getElementById("platformDashStats").nextSibling);
+  }
+  compRowEl.innerHTML = `
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:0.65rem;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;flex-shrink:0;">Platform Compliance</div>
+    <div style="display:flex;align-items:center;gap:0.4rem;">
+      <span style="font-size:1.4rem;font-weight:700;color:${complColor};font-family:'IBM Plex Mono',monospace;">${complPct !== null ? complPct + "%" : "—"}</span>
+      <span style="font-size:0.68rem;color:var(--muted);">overall</span>
+    </div>
+    <div style="display:flex;gap:1rem;flex-wrap:wrap;">
+      <span style="font-size:0.75rem;color:var(--teal);">✓ ${ct.compliant || 0} compliant</span>
+      <span style="font-size:0.75rem;color:var(--orange);">⚠ ${ct.overdue || 0} overdue</span>
+      <span style="font-size:0.75rem;color:var(--red);">✗ ${ct.non_compliant || 0} non-compliant</span>
+      <span style="font-size:0.75rem;color:var(--muted);">${ct.active_total || 0} active units tracked</span>
+    </div>
   `;
 
   // Per-org summary cards — compact on mobile
@@ -9223,15 +9434,23 @@ async function loadPlatformDashboardOverview() {
   let cardsHtml = "";
   orgs.forEach(o => {
     const stColor = stColors[o.platform_status] || "var(--muted)";
+    const comp = compByOrg[o.org_id] || {};
+    const pct  = comp.active_total > 0 ? Math.round((comp.compliant / comp.active_total) * 100) : null;
+    const pctColor = pct === null ? "var(--muted)" : pct >= 90 ? "var(--teal)" : pct >= 70 ? "var(--orange)" : "var(--red)";
+    const lastA = o.last_active ? new Date(o.last_active + "Z").toLocaleDateString([], {month:"short",day:"numeric",year:"numeric"}) : "Never";
     cardsHtml += `
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:${isMobile?'6':'8'}px;padding:${cardPad};cursor:pointer;transition:border-color 0.15s;"
       onmouseenter="this.style.borderColor='var(--orange)'" onmouseleave="this.style.borderColor='var(--border)'"
       onclick="platformViewOrg(${o.org_id},'${(o.name||"").replace(/'/g,"\\'")}')">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${isMobile?'0.3':'0.6'}rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${isMobile?'0.3':'0.4'}rem;">
         <div style="font-size:${cardTitleSize};font-weight:700;color:var(--text);">${o.name}</div>
-        <span style="padding:2px 6px;border-radius:4px;font-size:${isMobile?'0.55':'0.62'}rem;font-weight:600;color:${stColor};background:rgba(128,128,128,0.1);">${o.platform_status}</span>
+        <div style="display:flex;align-items:center;gap:0.4rem;">
+          ${pct !== null ? `<span style="padding:2px 7px;border-radius:4px;font-size:0.6rem;font-weight:700;color:${pctColor};background:rgba(128,128,128,0.12);">${pct}% compliant</span>` : ""}
+          <span style="padding:2px 6px;border-radius:4px;font-size:${isMobile?'0.55':'0.62'}rem;font-weight:600;color:${stColor};background:rgba(128,128,128,0.1);">${o.platform_status}</span>
+        </div>
       </div>
-      <div style="font-size:${cardAddrSize};color:var(--muted);margin-bottom:${isMobile?'0.4':'0.8'}rem;">${[o.address, o.city, o.state].filter(Boolean).join(", ") || "No address"}</div>
+      <div style="font-size:${cardAddrSize};color:var(--muted);margin-bottom:0.2rem;">${[o.address, o.city, o.state].filter(Boolean).join(", ") || "No address"}</div>
+      <div style="font-size:${cardAddrSize};color:var(--muted);margin-bottom:${isMobile?'0.4':'0.6'}rem;">Last active: ${lastA}</div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:${gridGap};text-align:center;">
         <div style="background:var(--bg3);border-radius:${isMobile?'4':'6'}px;padding:${countPad};">
           <div style="font-size:${countSize};font-weight:700;color:var(--orange);font-family:'IBM Plex Mono',monospace;">${o.company_count || 0}</div>
@@ -9265,13 +9484,14 @@ async function loadPlatformDashboardOverview() {
 }
 
 // ── Load Platform Organizations Management View ─────────────────────────────
+let _platformOrgsData = [];  // cache for client-side filter/search
 async function loadPlatformDashboard() {
   const orgs = await fetch("/api/platform/organizations").then(r => r.json());
-  const settingsRes = await fetch("/api/platform/settings").then(r => r.json());
-  const requireApproval = settingsRes.require_approval !== false;
+  _platformOrgsData = orgs;
 
   const total = orgs.length, pending = orgs.filter(o => o.platform_status === "pending").length;
   const approved = orgs.filter(o => o.platform_status === "approved").length;
+  const suspended = orgs.filter(o => o.platform_status === "suspended").length;
   const totalUsers = orgs.reduce((s, o) => s + (o.user_count || 0), 0);
   const totalExt   = orgs.reduce((s, o) => s + (o.extinguisher_count || 0), 0);
 
@@ -9282,51 +9502,91 @@ async function loadPlatformDashboard() {
     </div>`;
   document.getElementById("platformStats").innerHTML =
     statBox("Orgs",total,"var(--border)") + statBox("Pending",pending,"var(--orange)") +
-    statBox("Approved",approved,"var(--teal)") + statBox("Users",totalUsers,"var(--border)") +
-    statBox("Extinguishers",totalExt,"var(--border)");
+    statBox("Approved",approved,"var(--teal)") + statBox("Suspended",suspended,"var(--red)") +
+    statBox("Users",totalUsers,"var(--border)") + statBox("Extinguishers",totalExt,"var(--border)");
 
-  // Approval toggle
-  const toggleHtml = `
-    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:1rem 1.2rem;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.8rem;">
-      <div>
-        <div style="font-weight:600;color:var(--text);font-size:0.9rem;">Require Approval for New Organizations</div>
-        <div style="color:var(--muted);font-size:0.75rem;margin-top:2px;">When ON, new orgs start as "pending." When OFF, auto-approved.</div>
+  // Search + status filter toolbar
+  const toolbar = `
+    <div style="display:flex;gap:0.6rem;align-items:center;margin-bottom:0.8rem;flex-wrap:wrap;">
+      <input id="orgSearchInput" type="text" placeholder="Search organizations…"
+        oninput="renderPlatformOrgTable()"
+        style="flex:1;min-width:160px;padding:7px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.8rem;font-family:'IBM Plex Mono',monospace;">
+      <div style="display:flex;gap:0.3rem;" id="orgStatusTabs">
+        ${["all","approved","pending","suspended","rejected"].map(s =>
+          `<button onclick="document.getElementById('orgStatusFilter').value='${s}';renderPlatformOrgTable()"
+            style="padding:5px 10px;border:1px solid var(--border);border-radius:5px;background:var(--bg3);color:var(--muted);cursor:pointer;font-size:0.68rem;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;"
+            data-status="${s}">${s}</button>`
+        ).join("")}
       </div>
-      <label style="position:relative;display:inline-block;width:52px;height:28px;cursor:pointer;">
-        <input type="checkbox" id="approvalToggle" ${requireApproval ? "checked" : ""} style="opacity:0;width:0;height:0;" onchange="toggleApprovalRequirement(this.checked)">
-        <span style="position:absolute;inset:0;background:${requireApproval?"var(--teal)":"var(--border)"};border-radius:28px;transition:0.3s;" id="approvalSliderBg"></span>
-        <span style="position:absolute;top:3px;left:${requireApproval?"26px":"3px"};width:22px;height:22px;background:#fff;border-radius:50%;transition:0.3s;" id="approvalSliderDot"></span>
-      </label>
+      <input type="hidden" id="orgStatusFilter" value="all">
     </div>`;
 
-  // Org table
+  document.getElementById("platformPanelOrgs").innerHTML = toolbar +
+    `<div id="platformOrgTableBody" style="overflow-x:auto;"></div>`;
+  renderPlatformOrgTable();
+}
+
+function renderPlatformOrgTable() {
+  const search = (document.getElementById("orgSearchInput")?.value || "").toLowerCase();
+  const statusF = document.getElementById("orgStatusFilter")?.value || "all";
+
+  // Highlight active filter tab
+  document.querySelectorAll("#orgStatusTabs button").forEach(btn => {
+    const active = btn.dataset.status === statusF;
+    btn.style.background = active ? "var(--orange)" : "var(--bg3)";
+    btn.style.color = active ? "#fff" : "var(--muted)";
+    btn.style.borderColor = active ? "var(--orange)" : "var(--border)";
+  });
+
+  const filtered = _platformOrgsData.filter(o => {
+    const matchSearch = !search || (o.name || "").toLowerCase().includes(search) ||
+      (o.city || "").toLowerCase().includes(search) || (o.state || "").toLowerCase().includes(search);
+    const matchStatus = statusF === "all" || o.platform_status === statusF;
+    return matchSearch && matchStatus;
+  });
+
+  const stMap = { approved:{bg:"rgba(13,148,136,0.15)",color:"var(--teal)",label:"Approved"}, pending:{bg:"rgba(232,93,4,0.15)",color:"var(--orange)",label:"Pending"}, suspended:{bg:"rgba(193,18,31,0.15)",color:"var(--red)",label:"Suspended"}, rejected:{bg:"rgba(107,114,128,0.15)",color:"var(--muted)",label:"Rejected"} };
   const thS = "padding:10px 8px;text-align:left;color:var(--muted);font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;";
+
+  if (!filtered.length) {
+    document.getElementById("platformOrgTableBody").innerHTML = `<p style="color:var(--muted);padding:2rem;text-align:center;">No organizations match your filter.</p>`;
+    return;
+  }
+
   let tbl = `<table style="width:100%;border-collapse:collapse;font-size:0.78rem;font-family:'IBM Plex Mono',monospace;">
     <thead><tr style="border-bottom:2px solid var(--border);">
-      <th style="${thS}">Org</th><th style="${thS}">Status</th><th style="${thS}text-align:center;">Users</th>
+      <th style="${thS}">Org</th><th style="${thS}">Status</th>
+      <th style="${thS}text-align:center;">Compliance</th>
+      <th style="${thS}text-align:center;">Users</th>
       <th style="${thS}text-align:center;">Ext.</th><th style="${thS}text-align:center;">Reports</th>
-      <th style="${thS}">Created</th><th style="${thS}">Actions</th>
+      <th style="${thS}">Last Active</th><th style="${thS}">Created</th><th style="${thS}">Actions</th>
     </tr></thead><tbody>`;
-  const stMap = { approved:{bg:"rgba(13,148,136,0.15)",color:"var(--teal)",label:"Approved"}, pending:{bg:"rgba(232,93,4,0.15)",color:"var(--orange)",label:"Pending"}, suspended:{bg:"rgba(193,18,31,0.15)",color:"var(--red)",label:"Suspended"}, rejected:{bg:"rgba(107,114,128,0.15)",color:"var(--muted)",label:"Rejected"} };
-  orgs.forEach(o => {
-    const st = stMap[o.platform_status] || stMap.pending;
+
+  filtered.forEach(o => {
+    const st  = stMap[o.platform_status] || stMap.pending;
     const esc = o.name.replace(/'/g,"\\'");
+    const pct = o.active_ext_total > 0 ? Math.round((o.compliant_count / o.active_ext_total) * 100) : null;
+    const pctColor = pct === null ? "var(--muted)" : pct >= 90 ? "var(--teal)" : pct >= 70 ? "var(--orange)" : "var(--red)";
+    const lastA = o.last_active ? new Date(o.last_active + "Z").toLocaleDateString([], {month:"short",day:"numeric",year:"numeric"}) : "Never";
     let act = `<button onclick="platformViewOrg(${o.org_id},'${esc}')" style="padding:4px 10px;border:none;border-radius:4px;background:var(--blue);color:#fff;cursor:pointer;font-size:0.7rem;font-weight:600;">View</button> `;
     if (o.platform_status === "pending") act += `<button onclick="platformOrgAction(${o.org_id},'approved')" style="padding:4px 10px;border:none;border-radius:4px;background:var(--teal);color:#fff;cursor:pointer;font-size:0.7rem;font-weight:600;">Approve</button> <button onclick="platformOrgAction(${o.org_id},'rejected')" style="padding:4px 10px;border:none;border-radius:4px;background:var(--muted);color:#fff;cursor:pointer;font-size:0.7rem;font-weight:600;">Reject</button>`;
     else if (o.platform_status === "approved") act += `<button onclick="platformOrgAction(${o.org_id},'suspended')" style="padding:4px 10px;border:none;border-radius:4px;background:var(--red);color:#fff;cursor:pointer;font-size:0.7rem;font-weight:600;">Suspend</button>`;
+    else if (o.platform_status === "suspended") act += `<button onclick="platformOrgAction(${o.org_id},'approved')" style="padding:4px 10px;border:none;border-radius:4px;background:var(--teal);color:#fff;cursor:pointer;font-size:0.7rem;font-weight:600;">Reinstate</button>`;
     else act += `<button onclick="platformOrgAction(${o.org_id},'approved')" style="padding:4px 10px;border:none;border-radius:4px;background:var(--teal);color:#fff;cursor:pointer;font-size:0.7rem;font-weight:600;">Approve</button>`;
     act += ` <button onclick="platformDeleteOrg(${o.org_id},'${esc}')" style="padding:4px 10px;border:none;border-radius:4px;background:var(--bg3);border:1px solid var(--border);color:var(--red);cursor:pointer;font-size:0.7rem;font-weight:600;">Delete</button>`;
     tbl += `<tr style="border-bottom:1px solid var(--border);">
       <td style="padding:10px 8px;"><div style="font-weight:600;color:var(--text);">${o.name}</div><div style="font-size:0.65rem;color:var(--muted);">${[o.city,o.state].filter(Boolean).join(", ")||"—"}</div></td>
       <td style="padding:10px 8px;"><span style="background:${st.bg};color:${st.color};padding:3px 10px;border-radius:4px;font-size:0.68rem;font-weight:600;">${st.label}</span></td>
+      <td style="padding:10px 8px;text-align:center;">${pct !== null ? `<span style="font-weight:700;color:${pctColor};">${pct}%</span><div style="font-size:0.6rem;color:var(--muted);">${o.overdue_count||0} overdue</div>` : '<span style="color:var(--muted);">—</span>'}</td>
       <td style="padding:10px 8px;text-align:center;">${o.user_count||0}</td>
       <td style="padding:10px 8px;text-align:center;">${o.extinguisher_count||0}</td>
       <td style="padding:10px 8px;text-align:center;">${o.report_count||0}</td>
+      <td style="padding:10px 8px;color:var(--muted);font-size:0.7rem;white-space:nowrap;">${lastA}</td>
       <td style="padding:10px 8px;color:var(--muted);font-size:0.7rem;">${o.created_at?o.created_at.split("T")[0]:"—"}</td>
       <td style="padding:10px 8px;"><div style="display:flex;gap:4px;flex-wrap:wrap;">${act}</div></td></tr>`;
   });
   tbl += `</tbody></table>`;
-  document.getElementById("platformOrgTable").innerHTML = toggleHtml + tbl;
+  document.getElementById("platformOrgTableBody").innerHTML = tbl;
 }
 
 // ── Platform actions ─────────────────────────────────────────────────────────
@@ -9343,9 +9603,9 @@ async function platformDeleteOrg(orgId, orgName) {
 async function toggleApprovalRequirement(enabled) {
   const res = await fetch("/api/platform/settings", { method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify({require_approval:enabled}) });
   if (res.ok) {
-    document.getElementById("approvalSliderBg").style.background = enabled ? "var(--teal)" : "var(--border)";
-    document.getElementById("approvalSliderDot").style.left = enabled ? "26px" : "3px";
-  } else { alert("Error saving setting."); document.getElementById("approvalToggle").checked = !enabled; }
+    document.querySelectorAll(".approvalSliderBg").forEach(el => { el.style.background = enabled ? "var(--teal)" : "var(--border)"; });
+    document.querySelectorAll(".approvalSliderDot").forEach(el => { el.style.left = enabled ? "26px" : "3px"; });
+  } else { alert("Error saving setting."); }
 }
 
 // ── Platform: View Org Detail (drill-down) ───────────────────────────────────
@@ -9497,27 +9757,245 @@ function exitPlatformReadOnly() {
 }
 
 // ── Platform: Activity / Audit Log ───────────────────────────────────────────
-async function loadPlatformAuditLog() {
-  const logs = await fetch("/api/platform/audit?limit=200").then(r => r.json());
-  const el = document.getElementById("platformAuditLog");
-  if (!logs.length) { el.innerHTML = `<p style="color:var(--muted);padding:2rem;text-align:center;">No activity logged yet.</p>`; return; }
+let _auditLogsCache = [];  // cache for client-side filtering
 
-  const actionColors = { platform_login:"var(--blue)", platform_login_failed:"var(--red)", org_registered:"var(--orange)", org_approved:"var(--teal)", org_rejected:"var(--muted)", org_suspended:"var(--red)", org_deleted:"var(--red)", settings_changed:"var(--purple)", view_org:"var(--muted2)" };
+async function loadPlatformAuditLog() {
+  const el = document.getElementById("platformAuditLog");
+
+  // Build filter toolbar if not yet present
+  if (!document.getElementById("auditFilterBar")) {
+    el.innerHTML = `
+      <div id="auditFilterBar" style="display:flex;gap:0.6rem;align-items:center;margin-bottom:0.8rem;flex-wrap:wrap;">
+        <input id="auditSearchInput" type="text" placeholder="Filter by actor, action, target…"
+          oninput="renderAuditTable()"
+          style="flex:1;min-width:180px;padding:7px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.8rem;font-family:'IBM Plex Mono',monospace;">
+        <select id="auditActionFilter" onchange="renderAuditTable()"
+          style="padding:7px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.8rem;font-family:'IBM Plex Mono',monospace;">
+          <option value="">All Actions</option>
+          <option value="user_login">User Login</option>
+          <option value="platform_login">Platform Login</option>
+          <option value="user_updated">User Updated</option>
+          <option value="user_created">User Created</option>
+          <option value="login_failed">Login Failed</option>
+          <option value="org_registered">Org Registered</option>
+          <option value="org_approved">Org Approved</option>
+          <option value="org_suspended">Org Suspended</option>
+          <option value="org_deleted">Org Deleted</option>
+          <option value="settings_changed">Settings Changed</option>
+          <option value="announcement">Announcements</option>
+        </select>
+        <input id="auditDateFrom" type="date" onchange="renderAuditTable()"
+          style="padding:6px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.8rem;">
+        <span style="color:var(--muted);font-size:0.8rem;">to</span>
+        <input id="auditDateTo" type="date" onchange="renderAuditTable()"
+          style="padding:6px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.8rem;">
+        <button onclick="exportAuditCSV()"
+          style="padding:7px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--teal);cursor:pointer;font-size:0.75rem;font-weight:600;font-family:'IBM Plex Mono',monospace;white-space:nowrap;">
+          ↓ Export CSV
+        </button>
+      </div>
+      <div id="auditTableBody"></div>`;
+  }
+
+  const logs = await fetch("/api/platform/audit?limit=500").then(r => r.json());
+  _auditLogsCache = logs;
+  renderAuditTable();
+}
+
+function renderAuditTable() {
+  const search  = (document.getElementById("auditSearchInput")?.value || "").toLowerCase();
+  const actionF = document.getElementById("auditActionFilter")?.value || "";
+  const dateFrom = document.getElementById("auditDateFrom")?.value || "";
+  const dateTo   = document.getElementById("auditDateTo")?.value || "";
+
+  const filtered = _auditLogsCache.filter(l => {
+    if (actionF && !(l.action || "").includes(actionF)) return false;
+    if (dateFrom && l.timestamp < dateFrom) return false;
+    if (dateTo   && l.timestamp > dateTo + " 23:59:59") return false;
+    if (search) {
+      const haystack = `${l.actor} ${l.action} ${l.target} ${l.details}`.toLowerCase();
+      if (!haystack.includes(search)) return false;
+    }
+    return true;
+  });
+
+  const body = document.getElementById("auditTableBody");
+  if (!body) return;
+  if (!filtered.length) { body.innerHTML = `<p style="color:var(--muted);padding:2rem;text-align:center;">No entries match your filter.</p>`; return; }
+
+  const actionColors = {
+    platform_login:"var(--blue)", platform_login_failed:"var(--red)", user_login:"var(--teal)",
+    login_failed:"var(--red)", login_blocked:"var(--red)",
+    org_registered:"var(--orange)", org_approved:"var(--teal)", org_rejected:"var(--muted)",
+    org_suspended:"var(--red)", org_deleted:"var(--red)", settings_changed:"var(--purple)",
+    view_org:"var(--muted)", user_updated:"var(--orange)", user_created:"var(--teal)",
+    announcement_created:"var(--blue)", announcement_deleted:"var(--red)"
+  };
   const thS = "padding:10px 8px;text-align:left;color:var(--muted);font-size:0.6rem;letter-spacing:0.1em;text-transform:uppercase;border-bottom:2px solid var(--border);";
   const tdS = "padding:8px;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.78rem;";
 
-  let html = `<table style="width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;">
-    <thead><tr><th style="${thS}">Time</th><th style="${thS}">Actor</th><th style="${thS}">Action</th><th style="${thS}">Target</th><th style="${thS}">Details</th></tr></thead><tbody>`;
-  logs.forEach(l => {
+  let html = `<div style="color:var(--muted);font-size:0.7rem;margin-bottom:0.4rem;font-family:'IBM Plex Mono',monospace;">${filtered.length} entries</div>
+    <table style="width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;">
+    <thead><tr>
+      <th style="${thS}">Time</th><th style="${thS}">Actor</th><th style="${thS}">Action</th>
+      <th style="${thS}">Target</th><th style="${thS}">Details</th>
+    </tr></thead><tbody>`;
+  filtered.forEach(l => {
     const color = actionColors[l.action] || "var(--text)";
-    const time = l.timestamp ? new Date(l.timestamp + "Z").toLocaleString([], {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'}) : "—";
-    html += `<tr><td style="${tdS}color:var(--muted);font-size:0.72rem;white-space:nowrap;">${time}</td>
+    const time = l.timestamp ? new Date(l.timestamp + "Z").toLocaleString([], {year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit"}) : "—";
+    html += `<tr>
+      <td style="${tdS}color:var(--muted);font-size:0.72rem;white-space:nowrap;">${time}</td>
       <td style="${tdS}color:var(--text);">${l.actor}</td>
-      <td style="${tdS}"><span style="color:${color};font-weight:600;">${l.action.replace(/_/g," ")}</span></td>
+      <td style="${tdS}"><span style="color:${color};font-weight:600;">${(l.action||"").replace(/_/g," ")}</span></td>
       <td style="${tdS}color:var(--text);">${l.target||"—"}</td>
-      <td style="${tdS}color:var(--muted);font-size:0.72rem;">${l.details||"—"}</td></tr>`;
+      <td style="${tdS}color:var(--muted);font-size:0.72rem;">${l.details||"—"}</td>
+    </tr>`;
   });
-  el.innerHTML = html + `</tbody></table>`;
+  body.innerHTML = html + `</tbody></table>`;
+}
+
+function exportAuditCSV() {
+  const search  = (document.getElementById("auditSearchInput")?.value || "").toLowerCase();
+  const actionF = document.getElementById("auditActionFilter")?.value || "";
+  const dateFrom = document.getElementById("auditDateFrom")?.value || "";
+  const dateTo   = document.getElementById("auditDateTo")?.value || "";
+  const filtered = _auditLogsCache.filter(l => {
+    if (actionF && !(l.action || "").includes(actionF)) return false;
+    if (dateFrom && l.timestamp < dateFrom) return false;
+    if (dateTo   && l.timestamp > dateTo + " 23:59:59") return false;
+    if (search) {
+      const h = `${l.actor} ${l.action} ${l.target} ${l.details}`.toLowerCase();
+      if (!h.includes(search)) return false;
+    }
+    return true;
+  });
+  const esc = v => `"${(v||"").toString().replace(/"/g,'""')}"`;
+  const rows = [["Timestamp","Actor","Action","Target","Details"]];
+  filtered.forEach(l => rows.push([l.timestamp||"", l.actor||"", l.action||"", l.target||"", l.details||""]));
+  const csv = rows.map(r => r.map(esc).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+  a.download = `firewatch-audit-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click(); URL.revokeObjectURL(a.href);
+}
+
+
+// ── Platform Announcements ───────────────────────────────────────────────────
+async function loadPlatformAnnouncements() {
+  const panel = document.getElementById("platformAnnouncementsPanel");
+  panel.innerHTML = `<div style="color:var(--muted);padding:2rem;text-align:center;">Loading…</div>`;
+  const announcements = await fetch("/api/platform/announcements").then(r => r.json());
+
+  const priorityColors = { urgent:"var(--red)", warning:"var(--orange)", info:"var(--blue)" };
+  const priorityLabel  = { urgent:"🚨 Urgent", warning:"⚠️ Warning", info:"ℹ️ Info" };
+
+  const createForm = `
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:1.2rem;margin-bottom:1.5rem;">
+      <div style="font-weight:700;font-size:0.9rem;color:var(--text);margin-bottom:0.8rem;">New Announcement</div>
+      <input id="annTitle" type="text" placeholder="Title (e.g. Scheduled Maintenance)" maxlength="120"
+        style="width:100%;box-sizing:border-box;padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:0.82rem;margin-bottom:0.6rem;">
+      <textarea id="annBody" rows="3" placeholder="Message body…"
+        style="width:100%;box-sizing:border-box;padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:0.82rem;margin-bottom:0.6rem;resize:vertical;"></textarea>
+      <div style="display:flex;gap:0.8rem;align-items:center;flex-wrap:wrap;">
+        <select id="annPriority"
+          style="padding:7px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:0.8rem;">
+          <option value="info">Info</option>
+          <option value="warning">Warning</option>
+          <option value="urgent">Urgent</option>
+        </select>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+          <label style="font-size:0.65rem;color:var(--muted);">Expires (optional)</label>
+          <input id="annExpires" type="date"
+            style="padding:6px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.8rem;">
+        </div>
+        <button onclick="createAnnouncement()"
+          style="padding:8px 18px;background:var(--orange);border:none;border-radius:6px;color:#fff;cursor:pointer;font-weight:700;font-size:0.82rem;">
+          Broadcast
+        </button>
+        <span id="annCreateMsg" style="font-size:0.78rem;color:var(--teal);display:none;">Posted!</span>
+      </div>
+    </div>`;
+
+  if (!announcements.length) {
+    panel.innerHTML = createForm + `<p style="color:var(--muted);padding:1rem 0;text-align:center;">No announcements yet.</p>`;
+    return;
+  }
+
+  const rows = announcements.map(a => {
+    const pColor = priorityColors[a.priority] || "var(--blue)";
+    const pLabel = priorityLabel[a.priority]  || "ℹ️ Info";
+    const created = a.created_at ? new Date(a.created_at + "Z").toLocaleString([], {month:"short",day:"numeric",year:"numeric",hour:"2-digit",minute:"2-digit"}) : "—";
+    const expires = a.expires_at ? new Date(a.expires_at + "Z").toLocaleDateString([], {month:"short",day:"numeric",year:"numeric"}) : "No expiry";
+    const isActive = a.is_active !== 0;
+    return `
+      <div style="background:var(--bg2);border:1px solid ${isActive ? "var(--border)" : "rgba(107,114,128,0.2)"};border-left:3px solid ${pColor};border-radius:8px;padding:1rem 1.2rem;opacity:${isActive?1:0.55};">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:0.8rem;flex-wrap:wrap;">
+          <div style="flex:1;">
+            <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.3rem;">
+              <span style="font-size:0.65rem;font-weight:700;color:${pColor};text-transform:uppercase;">${pLabel}</span>
+              ${!isActive ? '<span style="font-size:0.6rem;color:var(--muted);background:var(--bg3);padding:1px 6px;border-radius:3px;">INACTIVE</span>' : ""}
+            </div>
+            <div style="font-weight:700;font-size:0.9rem;color:var(--text);margin-bottom:0.3rem;">${a.title}</div>
+            <div style="font-size:0.8rem;color:var(--muted);white-space:pre-wrap;">${a.body}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:0.3rem;align-items:flex-end;flex-shrink:0;">
+            <div style="font-size:0.65rem;color:var(--muted);">Posted ${created}</div>
+            <div style="font-size:0.65rem;color:var(--muted);">Expires: ${expires}</div>
+            <div style="display:flex;gap:0.4rem;margin-top:0.3rem;">
+              <button onclick="toggleAnnouncement(${a.announcement_id}, ${isActive ? 0 : 1})"
+                style="padding:3px 10px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:${isActive?"var(--orange)":"var(--teal)"};cursor:pointer;font-size:0.68rem;font-weight:600;">
+                ${isActive ? "Deactivate" : "Activate"}
+              </button>
+              <button onclick="deleteAnnouncement(${a.announcement_id})"
+                style="padding:3px 10px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--red);cursor:pointer;font-size:0.68rem;font-weight:600;">
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+  });
+
+  panel.innerHTML = createForm +
+    `<div style="font-family:'IBM Plex Mono',monospace;font-size:0.65rem;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:0.6rem;">
+      ${announcements.length} announcement${announcements.length !== 1 ? "s" : ""}
+    </div>` +
+    `<div style="display:flex;flex-direction:column;gap:0.6rem;">${rows.join("")}</div>`;
+}
+
+async function createAnnouncement() {
+  const title    = document.getElementById("annTitle")?.value.trim();
+  const body     = document.getElementById("annBody")?.value.trim();
+  const priority = document.getElementById("annPriority")?.value || "info";
+  const expires  = document.getElementById("annExpires")?.value || null;
+  if (!title || !body) { alert("Title and body are required."); return; }
+  const res = await fetch("/api/platform/announcements", {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({ title, body, priority, expires_at: expires || null })
+  });
+  if (res.ok) {
+    const msg = document.getElementById("annCreateMsg");
+    if (msg) { msg.style.display = "inline"; setTimeout(() => { msg.style.display = "none"; }, 2000); }
+    document.getElementById("annTitle").value = "";
+    document.getElementById("annBody").value  = "";
+    document.getElementById("annExpires").value = "";
+    loadPlatformAnnouncements();
+  } else { alert("Error creating announcement."); }
+}
+
+async function toggleAnnouncement(id, newActive) {
+  await fetch(`/api/platform/announcements/${id}`, {
+    method:"PUT", headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({ is_active: newActive })
+  });
+  loadPlatformAnnouncements();
+}
+
+async function deleteAnnouncement(id) {
+  if (!confirm("Delete this announcement? This cannot be undone.")) return;
+  const res = await fetch(`/api/platform/announcements/${id}`, { method:"DELETE" });
+  if (res.ok) loadPlatformAnnouncements();
+  else alert("Error deleting announcement.");
 }
 
 
