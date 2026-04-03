@@ -339,6 +339,40 @@ def run_migrations():
             """)
             print("  [Migration] Created AuditorTokens table")
 
+        # ── PlatformAnnouncements table ─────────────────────────────────────
+        if "PlatformAnnouncements" not in tables:
+            conn.execute("""
+                CREATE TABLE PlatformAnnouncements (
+                    announcement_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    title           TEXT NOT NULL,
+                    body            TEXT NOT NULL,
+                    priority        TEXT DEFAULT 'info',
+                    created_at      TEXT DEFAULT (datetime('now')),
+                    expires_at      TEXT,
+                    is_active       INTEGER DEFAULT 1
+                )
+            """)
+            conn.commit()
+            print("  [Migration] Created PlatformAnnouncements table")
+
+        # ── Organizations.last_active column ────────────────────────────────
+        org_cols_v2 = [r[1] for r in conn.execute("PRAGMA table_info(Organizations)").fetchall()]
+        if "last_active" not in org_cols_v2:
+            conn.execute("ALTER TABLE Organizations ADD COLUMN last_active TEXT")
+            conn.commit()
+            print("  [Migration] Added Organizations.last_active")
+
+        # ── NFPA interval defaults in PlatformSettings ──────────────────────
+        existing_keys = {r[0] for r in conn.execute("SELECT key FROM PlatformSettings").fetchall()}
+        for key, value in [
+            ("nfpa_annual_interval_days", "365"),
+            ("nfpa_6year_interval_days",  "2190"),
+            ("nfpa_hydro_interval_days",  "3650"),
+        ]:
+            if key not in existing_keys:
+                conn.execute("INSERT INTO PlatformSettings (key, value) VALUES (?,?)", (key, value))
+        conn.commit()
+
         conn.commit()
 
         # ── Auto-migrate: backfill last_report_id and last_inspection_date ──
@@ -661,6 +695,13 @@ def login():
                 org_name = org["name"]
                 platform_status = org["platform_status"] or "approved"
         platform_log(row["username"], "user_login", org_name, f"role={row['role']}")
+        # Update org's last_active timestamp on every successful login
+        if row["org_id"]:
+            with get_db() as conn:
+                conn.execute(
+                    "UPDATE Organizations SET last_active=datetime('now') WHERE org_id=?",
+                    (row["org_id"],)
+                )
         # Block login for suspended or rejected orgs
         if platform_status in ("suspended", "rejected"):
             platform_log(row["username"], "login_blocked", org_name, f"Org status: {platform_status}")
@@ -1538,7 +1579,9 @@ def update_user(user_id):
                     f"UPDATE Users SET {', '.join(updates)} WHERE user_id=?", params
                 )
 
-        platform_log("admin", "user_updated", str(user_id), "Updated")
+        changed_fields = [u.split("=?")[0] for u in updates] if updates else []
+        details = f"Changed: {', '.join(changed_fields)}" if changed_fields else "No changes"
+        platform_log("admin", "user_updated", str(user_id), details)
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -1840,10 +1883,29 @@ def platform_list_orgs():
     with get_db() as conn:
         orgs = conn.execute("""
             SELECT o.org_id, o.name, o.address, o.city, o.state, o.phone,
-                   o.contact_name, o.created_at, o.platform_status,
-                   COUNT(DISTINCT u.user_id) AS user_count,
-                   COUNT(DISTINCT e.extinguisher_id) AS extinguisher_count,
-                   COUNT(DISTINCT r.report_id) AS report_count
+                   o.contact_name, o.created_at, o.platform_status, o.last_active,
+                   COUNT(DISTINCT u.user_id)           AS user_count,
+                   COUNT(DISTINCT e.extinguisher_id)   AS extinguisher_count,
+                   COUNT(DISTINCT r.report_id)         AS report_count,
+                   (SELECT COUNT(*) FROM Extinguishers e2
+                    WHERE e2.org_id = o.org_id
+                      AND e2.ext_status NOT IN ('Condemned/Removed','Retired')
+                      AND (e2.next_due_date IS NULL OR e2.next_due_date >= date('now'))
+                   ) AS compliant_count,
+                   (SELECT COUNT(*) FROM Extinguishers e2
+                    WHERE e2.org_id = o.org_id
+                      AND e2.ext_status NOT IN ('Condemned/Removed','Retired','Out of Service','Missing')
+                      AND e2.next_due_date IS NOT NULL
+                      AND e2.next_due_date < date('now')
+                   ) AS overdue_count,
+                   (SELECT COUNT(*) FROM Extinguishers e2
+                    WHERE e2.org_id = o.org_id
+                      AND e2.ext_status IN ('Out of Service','Missing')
+                   ) AS non_compliant_count,
+                   (SELECT COUNT(*) FROM Extinguishers e2
+                    WHERE e2.org_id = o.org_id
+                      AND e2.ext_status NOT IN ('Condemned/Removed','Retired')
+                   ) AS active_ext_total
             FROM Organizations o
             LEFT JOIN Users u ON u.org_id = o.org_id
             LEFT JOIN Extinguishers e ON e.org_id = o.org_id
@@ -2010,12 +2072,143 @@ def platform_org_details(org_id):
 
 @app.route("/api/platform/audit", methods=["GET"])
 def platform_audit_log():
-    """Return the platform audit log, most recent first."""
-    limit = request.args.get("limit", 100, type=int)
+    """Return the platform audit log with optional filters (action, date_from, date_to)."""
+    limit       = request.args.get("limit", 200, type=int)
+    action_f    = request.args.get("action", "").strip()
+    date_from   = request.args.get("date_from", "").strip()
+    date_to     = request.args.get("date_to", "").strip()
+
+    conditions, params = [], []
+    if action_f:
+        conditions.append("action LIKE ?"); params.append(f"%{action_f}%")
+    if date_from:
+        conditions.append("timestamp >= ?"); params.append(date_from)
+    if date_to:
+        conditions.append("timestamp <= ?"); params.append(date_to + " 23:59:59")
+
+    where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+    params.append(limit)
     with get_db() as conn:
         rows = conn.execute(
-            "SELECT * FROM PlatformAuditLog ORDER BY timestamp DESC LIMIT ?", (limit,)
+            f"SELECT * FROM PlatformAuditLog {where} ORDER BY timestamp DESC LIMIT ?", params
         ).fetchall()
+    return jsonify([dict(r) for r in rows])
+
+
+@app.route("/api/platform/compliance", methods=["GET"])
+def platform_compliance_stats():
+    """Platform-wide and per-org compliance breakdown for the dashboard."""
+    with get_db() as conn:
+        rows = conn.execute("""
+            SELECT
+                o.org_id, o.name,
+                (SELECT COUNT(*) FROM Extinguishers e
+                 WHERE e.org_id = o.org_id
+                   AND e.ext_status NOT IN ('Condemned/Removed','Retired')
+                   AND (e.next_due_date IS NULL OR e.next_due_date >= date('now'))
+                ) AS compliant,
+                (SELECT COUNT(*) FROM Extinguishers e
+                 WHERE e.org_id = o.org_id
+                   AND e.ext_status NOT IN ('Condemned/Removed','Retired','Out of Service','Missing')
+                   AND e.next_due_date IS NOT NULL AND e.next_due_date < date('now')
+                ) AS overdue,
+                (SELECT COUNT(*) FROM Extinguishers e
+                 WHERE e.org_id = o.org_id
+                   AND e.ext_status IN ('Out of Service','Missing')
+                ) AS non_compliant,
+                (SELECT COUNT(*) FROM Extinguishers e
+                 WHERE e.org_id = o.org_id
+                   AND e.ext_status NOT IN ('Condemned/Removed','Retired')
+                ) AS active_total
+            FROM Organizations o
+            ORDER BY o.name
+        """).fetchall()
+    result = [dict(r) for r in rows]
+    totals = {"compliant": 0, "overdue": 0, "non_compliant": 0, "active_total": 0}
+    for r in result:
+        for k in totals:
+            totals[k] += r.get(k) or 0
+    return jsonify({"orgs": result, "totals": totals})
+
+
+# ── Platform Announcements ────────────────────────────────────────────────────
+
+@app.route("/api/platform/announcements", methods=["GET"])
+def platform_list_announcements():
+    """List all announcements (Platform Admin view — all, including inactive)."""
+    with get_db() as conn:
+        rows = conn.execute(
+            "SELECT * FROM PlatformAnnouncements ORDER BY created_at DESC"
+        ).fetchall()
+    return jsonify([dict(r) for r in rows])
+
+
+@app.route("/api/platform/announcements", methods=["POST"])
+def platform_create_announcement():
+    """Create a new platform-wide announcement."""
+    d = request.get_json()
+    title      = (d.get("title")    or "").strip()
+    body       = (d.get("body")     or "").strip()
+    priority   = (d.get("priority") or "info").strip()
+    expires_at = d.get("expires_at") or None
+    if not title or not body:
+        return jsonify({"error": "Title and body are required."}), 400
+    with get_db() as conn:
+        conn.execute(
+            "INSERT INTO PlatformAnnouncements (title, body, priority, expires_at) VALUES (?,?,?,?)",
+            (title, body, priority, expires_at)
+        )
+    platform_log("SuperAdmin", "announcement_created", title, f"Priority: {priority}")
+    return jsonify({"success": True}), 201
+
+
+@app.route("/api/platform/announcements/<int:ann_id>", methods=["PUT"])
+def platform_update_announcement(ann_id):
+    """Update an announcement (e.g. deactivate, change body)."""
+    d = request.get_json()
+    try:
+        with get_db() as conn:
+            updates, params = [], []
+            for field in ["title", "body", "priority", "expires_at", "is_active"]:
+                if field in d:
+                    updates.append(f"{field}=?"); params.append(d[field])
+            if not updates:
+                return jsonify({"error": "No fields provided."}), 400
+            params.append(ann_id)
+            conn.execute(
+                f"UPDATE PlatformAnnouncements SET {', '.join(updates)} WHERE announcement_id=?",
+                params
+            )
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/platform/announcements/<int:ann_id>", methods=["DELETE"])
+def platform_delete_announcement(ann_id):
+    """Permanently delete an announcement."""
+    with get_db() as conn:
+        row = conn.execute(
+            "SELECT title FROM PlatformAnnouncements WHERE announcement_id=?", (ann_id,)
+        ).fetchone()
+        if not row:
+            return jsonify({"error": "Announcement not found."}), 404
+        conn.execute("DELETE FROM PlatformAnnouncements WHERE announcement_id=?", (ann_id,))
+    platform_log("SuperAdmin", "announcement_deleted", row["title"], f"Deleted #{ann_id}")
+    return jsonify({"success": True})
+
+
+@app.route("/api/announcements", methods=["GET"])
+def get_active_announcements():
+    """Public endpoint — org users read active, non-expired announcements."""
+    with get_db() as conn:
+        rows = conn.execute("""
+            SELECT announcement_id, title, body, priority, created_at, expires_at
+            FROM PlatformAnnouncements
+            WHERE is_active = 1
+              AND (expires_at IS NULL OR expires_at > datetime('now'))
+            ORDER BY created_at DESC
+        """).fetchall()
     return jsonify([dict(r) for r in rows])
 
 
