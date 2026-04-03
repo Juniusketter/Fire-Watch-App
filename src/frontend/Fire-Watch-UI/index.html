@@ -6019,6 +6019,10 @@ document.getElementById("voidReportConfirm").addEventListener("click", async () 
   const errEl  = document.getElementById("voidReportError");
   if (!reason) { errEl.textContent = "A void reason is required."; return; }
 
+  const confirmBtn = document.getElementById("voidReportConfirm");
+  confirmBtn.disabled = true;
+  confirmBtn.textContent = "Voiding...";
+
   try {
     const res  = await fetch(`/api/reports/${_voidReportId}/void`, {
       method: "POST",
@@ -6028,11 +6032,44 @@ document.getElementById("voidReportConfirm").addEventListener("click", async () 
     const data = await res.json();
     if (data.success) {
       document.getElementById("voidReportModal").classList.add("hidden");
+      // Close any open report detail popup
+      document.getElementById("reportDetailModal")?.classList.add("hidden");
+
+      // Reload data so priority queue and reports reflect the revert
       loadReports();
+      loadStats();
+      if (typeof loadAssignments === "function") loadAssignments();
+
+      // ── Reassignment prompt ────────────────────────────────────────────
+      const extInfo = data.ext_info || {};
+      const extLabel = [
+        extInfo.company_name,
+        extInfo.building_name,
+        extInfo.floor_number ? `Floor ${extInfo.floor_number}` : null,
+        extInfo.room_number  ? `Rm ${extInfo.room_number}` : null,
+        extInfo.location_description
+      ].filter(Boolean).join(" · ");
+
+      const wantReassign = confirm(
+        `Report voided.\n\n` +
+        `EXT-${data.extinguisher_id}${extLabel ? " — " + extLabel : ""} has been returned ` +
+        `to Pending Inspection and will appear in the Priority Queue.\n\n` +
+        `Would you like to reassign this extinguisher now?`
+      );
+
+      if (wantReassign) {
+        // Open assignment modal pre-filled with this extinguisher
+        await openAssignModalForExt(data.extinguisher_id);
+      }
     } else {
       errEl.textContent = data.error || "Void failed.";
     }
-  } catch(e) { errEl.textContent = "Could not reach server."; }
+  } catch(e) {
+    errEl.textContent = "Could not reach server.";
+  } finally {
+    confirmBtn.disabled = false;
+    confirmBtn.textContent = "Void Report";
+  }
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -6889,10 +6926,10 @@ function openExtDetail(row) {
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth(); // 0-indexed
 
-  // Build set of months with inspections this year
+  // Build set of months with VALID inspections this year (exclude voided)
   const inspectedMonths = new Set();
   extReports.forEach(r => {
-    if (r.inspection_date) {
+    if (r.inspection_date && r.approval_status !== "Void") {
       const d = new Date(r.inspection_date + "T00:00:00");
       if (d.getFullYear() === currentYear) inspectedMonths.add(d.getMonth());
     }
@@ -6948,13 +6985,17 @@ function openExtDetail(row) {
           onmouseenter="this.style.background='var(--bg3)'" onmouseleave="this.style.background='none'">
           <div style="flex:1;min-width:0;">
             <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
-              <span style="color:var(--orange);font-weight:600;">RPT-${r.report_id}</span>
+              <span style="color:${r.approval_status === 'Void' ? 'var(--muted)' : 'var(--orange)'};font-weight:600;${r.approval_status === 'Void' ? 'text-decoration:line-through;' : ''}">RPT-${r.report_id}</span>
               <span style="color:var(--muted);">${r.inspection_date || "No date"}</span>
               <span style="color:var(--muted);">· ${r.inspector || "Unknown"}</span>
-              <span style="padding:1px 6px;border-radius:3px;font-size:0.62rem;font-weight:600;background:${resultBg};color:${resultColor};">${resultLabel}</span>
+              ${r.approval_status === "Void"
+                ? `<span style="padding:1px 6px;border-radius:3px;font-size:0.62rem;font-weight:600;background:rgba(193,18,31,0.15);color:#C1121F;border:1px solid #C1121F;">✗ VOID</span>`
+                : `<span style="padding:1px 6px;border-radius:3px;font-size:0.62rem;font-weight:600;background:${resultBg};color:${resultColor};">${resultLabel}</span>`}
               ${r.service_type && r.service_type !== "Routine Inspection" ? `<span style="font-size:0.6rem;color:var(--blue);">${r.service_type}</span>` : ""}
             </div>
-            ${r.notes ? `<div style="font-size:0.65rem;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${r.notes}</div>` : ""}
+            ${r.approval_status === "Void" && r.void_reason
+              ? `<div style="font-size:0.65rem;color:#C1121F;margin-top:2px;">Void reason: ${r.void_reason}</div>`
+              : r.notes ? `<div style="font-size:0.65rem;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${r.notes}</div>` : ""}
           </div>
           <div style="display:flex;gap:4px;flex-shrink:0;">
             <button onclick="event.stopPropagation();openReportDetail(${JSON.stringify(r).replace(/"/g,'&quot;')});"
