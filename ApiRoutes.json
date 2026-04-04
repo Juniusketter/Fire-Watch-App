@@ -1,0 +1,1 @@
+{"status":"/status","login":"/auth/login","refresh":"/token/refresh","inspectorTasks":"/inspector/tasks","inspectorLog":"/inspector/log"}
