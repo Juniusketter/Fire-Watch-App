@@ -1,0 +1,17 @@
+@startuml
+participant InactivityMonitor
+participant SessionManager
+
+loop Every 10 seconds
+    InactivityMonitor -> SessionManager: isLoggedIn()
+    alt Logged in
+        InactivityMonitor -> SessionManager: isInactivityExpired()
+        InactivityMonitor -> SessionManager: isTokenExpired()
+        alt Expired
+            InactivityMonitor -> SessionManager: logout()
+        else Valid
+            InactivityMonitor -> SessionManager: renewTokenIfAllowed()
+        end
+    end
+end
+@enduml
