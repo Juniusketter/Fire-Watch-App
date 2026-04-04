@@ -1,20 +1,24 @@
-# Fire Extinguisher Tracking – C++ Starter
-
-This repository contains a single-file C++17 **zip generator** that writes `fire-extinguisher-tracking-starter.zip` containing your **Assignment JSON Schema**, **flags.yml**, and a **valid example**. No external libraries are required.
-
-## Build & Run
-```bash
-cmake -S . -B build && cmake --build build
-./build/zipgen
+```mermaid
+erDiagram
+ ITEMS {
+  INTEGER id PK
+  TEXT name
+ }
 ```
-Or:
-```bash
-g++ -std=c++17 -O2 -o zipgen src/main.cpp && ./zipgen
-```
+Full implementation bundle for edit/delete user feature.
+Includes backend C++, Qt UI placeholder, Flask endpoints, migration.
 
-## Contents
-- `src/main.cpp` – minimal ZIP writer (store/no compression) + embedded artifacts
-- `schemas/assignment.schema.json` – provided also as a plain file for reference
-- `flags/flags.yml`
-- `examples/assignment.example.json`
-- `prebuilt/fire-extinguisher-tracking-starter.zip` – pre-generated for convenience
+# UML Diagram Documentation
+This directory contains Mermaid UML diagrams for Iteration 2 and 3.
+Each file can be rendered using Mermaid Live Editor.
+Refer to diagram names for context.
+# ERD
+```mermaid
+erDiagram
+ ITEMS {
+  INTEGER id PK
+  TEXT name
+ }
+```
+Full implementation bundle for edit/delete user feature.
+Includes backend C++, Qt UI placeholder, Flask endpoints, migration.

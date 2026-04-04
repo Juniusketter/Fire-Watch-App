@@ -6,16 +6,18 @@
 #include <iostream>
 #include <string>
 #include <vector>
+
 using namespace std;
 
-// Admin class - extends User class
-// Created by Lilly Bowen, March 3, 2026
-// Updated Sprint 2: Replaced cin/cout console I/O in generateAssignment()
-// and changeDB() with parameter-based methods.
-// UI input is handled by AssignDialog + ExtDialog in the Qt dashboard
-// and by the web UI modals (index.html). DB writes are handled by the
-// calling layer (dashboard.cpp / server.py), not this class.
-
+/*
+  Admin class - extends User class
+  Created by Lillian 
+  Updated Sprint 2: Replaced cin/cout console I/O in generateAssignment()
+  and changeDB() with parameter-based methods.
+  UI input is handled by AssignDialog + ExtDialog in the Qt dashboard
+  and by the web UI modals (index.html). DB writes are handled by the
+  calling layer (dashboard.cpp / server.py), not this class.
+*/
 class Admin : public User {
     private:
         string adminID;
@@ -29,12 +31,20 @@ class Admin : public User {
         Admin(string u, string p, string c, string id, int access)
             : User(u, p, c), adminID(id), DBAccess(access) {}
 
+        //getters and setters
         void   setDBAccess(int access) { DBAccess = access; }
         int    getDBAccess()           { return DBAccess; }
         string getAdminID()            { return adminID; }
         void   setAdminID(string id)   { adminID = id; }
 
-        // Returns true if access code matches
+        /* 
+           accessDB() - Ensures that the access code being used by the admin user matches the access code from the DB
+        
+           Parameters:
+             access   - admin access code for authorization
+        
+           Returns: true if the action was authorized and valid.
+        */
         bool accessDB(int access) {
             if (DBAccess == access) {
                 cout << "Access granted. You can now view and edit the database." << endl;
@@ -45,21 +55,21 @@ class Admin : public User {
             }
         }
 
-        // ─────────────────────────────────────────────────────────────────
-        //  changeDB()
-        //
-        //  Modifies an extinguisher record in the database.
-        //  All required data is passed in as parameters — no console I/O.
-        //  The Qt dashboard (ExtDialog) handles UI input and calls this
-        //  method with validated data, or writes directly via QSqlQuery.
-        //
-        //  Parameters:
-        //    access   - admin access code for authorization
-        //    action   - 1=Add, 2=Remove, 3=Update
-        //    field    - (for action=3) 1=Type, 2=Location, 3=Interval, 4=Report
-        //
-        //  Returns: true if the action was authorized and valid.
-        // ─────────────────────────────────────────────────────────────────
+        /* 
+           changeDB() 
+    
+           Modifies an extinguisher record in the database.
+           All required data is passed in as parameters — no console I/O.
+           The Qt dashboard (ExtDialog) handles UI input and calls this
+           method with validated data, or writes directly via QSqlQuery.
+        
+           Parameters:
+             access   - admin access code for authorization
+             action   - 1=Add, 2=Remove, 3=Update
+             field    - (for action=3) 1=Type, 2=Location, 3=Interval, 4=Report
+        
+           Returns: true if the action was authorized and valid.
+        */ 
         bool changeDB(int access, int action, int field = 0) {
             if (!accessDB(access)) return false;
 
@@ -84,58 +94,51 @@ class Admin : public User {
             }
         }
 
+
+        /* 
+           viewDB() - Gives admin users access to view the DB once access code is verified
+        
+           Parameters:
+             access   - admin access code for authorization
+        */
         void viewDB(int access) {
             if (!accessDB(access)) return;
             cout << "Here is the database." << endl;
         }
 
-        // ─────────────────────────────────────────────────────────────────
-        //  generateAssignment()
-        //
-        //  Creates and returns an Assignment for an admin.
-        //  All required data is passed in as parameters — no console I/O.
-        //  Supports two recipient types:
-        //    - invsList populated  → assign to internal inspectors
-        //    - thirdPCompanyName   → assign to a third-party company
-        //
-        //  Parameters:
-        //    extinguisherLocations - locations of extinguishers to inspect
-        //    dueDate               - due date string (YYYY-MM-DD)
-        //    invsList              - inspector IDs (empty if third party)
-        //    thirdPCompanyName     - third party company name (empty if internal)
-        //
-        //  Returns: populated Assignment object.
-        //  The caller (Qt dashboard or Flask server) saves it to the DB.
-        // ─────────────────────────────────────────────────────────────────
-        Assignment generateAssignment(
-            vector<string> extinguisherLocations,
-            string dueDate,
-            vector<string> invsList,
-            string thirdPCompanyName = "")
-        {
+        /*
+           generateAssignment()
+        
+           Creates and returns an Assignment for an admin.
+           All required data is passed in as parameters — no console I/O.
+           Supports two recipient types:
+             - invsList populated  → assign to internal inspectors
+             - thirdPCompanyName   → assign to a third-party company
+        
+           Parameters:
+             extinguisherLocations - locations of extinguishers to inspect
+             dueDate               - due date string (YYYY-MM-DD)
+             invsList              - inspector IDs (empty if third party)
+             thirdPCompanyName     - third party company name (empty if internal)
+        
+           Returns: populated Assignment object.
+           The caller (Qt dashboard or Flask server) saves it to the DB.
+        */
+        Assignment generateAssignment(vector<string> extinguisherLocations, string dueDate, vector<string> invsList, string thirdPCompanyName = "") {
             int numExtinguishers = extinguisherLocations.size();
             int numInvs          = invsList.size();
             string id            = getAdminID();
 
             if (!thirdPCompanyName.empty()) {
                 // Assign to third-party company
-                Assignment newAssignment(
-                    numExtinguishers, numInvs, id,
-                    extinguisherLocations, dueDate, thirdPCompanyName
-                );
-                cout << "Assignment generated for third-party company: "
-                     << thirdPCompanyName << ", "
-                     << numExtinguishers << " extinguisher(s), due " << dueDate << "." << endl;
+                Assignment newAssignment(numExtinguishers, numInvs, id, extinguisherLocations, dueDate, thirdPCompanyName);
+                cout << "Assignment generated for third-party company: " << thirdPCompanyName << ", " << numExtinguishers << " extinguisher(s), due " << dueDate << "." << endl;
                 return newAssignment;
-            } else {
+            } 
+            else {
                 // Assign to internal inspectors
-                Assignment newAssignment(
-                    numExtinguishers, numInvs, id,
-                    extinguisherLocations, dueDate, invsList
-                );
-                cout << "Assignment generated: "
-                     << numExtinguishers << " extinguisher(s), "
-                     << numInvs << " inspector(s), due " << dueDate << "." << endl;
+                Assignment newAssignment(numExtinguishers, numInvs, id, extinguisherLocations, dueDate, invsList);
+                cout << "Assignment generated: " << numExtinguishers << " extinguisher(s), " << numInvs << " inspector(s), due " << dueDate << "." << endl;
                 return newAssignment;
             }
         }
