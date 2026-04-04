@@ -1,0 +1,5 @@
+stateDiagram-v2
+    [*] --> Idle
+    Idle --> Generating : generateQRCode()
+    Generating --> Rendered : QR created
+    Rendered --> Idle : reset
