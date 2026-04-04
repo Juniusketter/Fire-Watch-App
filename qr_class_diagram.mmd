@@ -1,0 +1,15 @@
+classDiagram
+    class User
+    class generateQRCode {
+        +generate()
+    }
+    class Document {
+        +getElementById(id)
+    }
+    class QRCode {
+        +makeCode(text)
+    }
+
+    User --> generateQRCode : triggers
+    generateQRCode --> Document : reads input
+    generateQRCode --> QRCode : encodes text

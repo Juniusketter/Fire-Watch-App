@@ -1,0 +1,11 @@
+sequenceDiagram
+    participant User
+    participant generateQRCode
+    participant Document
+    participant QRCode
+
+    User->>generateQRCode: click Generate QR
+    generateQRCode->>Document: getElementById(input)
+    Document-->>generateQRCode: input text
+    generateQRCode->>QRCode: makeCode(text)
+    QRCode-->>generateQRCode: QR image
