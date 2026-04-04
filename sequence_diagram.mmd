@@ -1,0 +1,18 @@
+sequenceDiagram
+    participant User
+    participant changeLanguage
+    participant Document
+    participant translations
+    participant Element as HTML Element
+
+    User->>changeLanguage: select language
+    changeLanguage->>Document: querySelectorAll([data-key])
+
+    loop for each element
+        changeLanguage->>Element: read data-key
+        changeLanguage->>translations: lookup translations[lang][key]
+        translations-->>changeLanguage: translated text
+        changeLanguage->>Element: set innerText
+    end
+
+    changeLanguage->>Document: set documentElement.lang

@@ -1,0 +1,23 @@
+classDiagram
+    class translations {
+        +en : Object
+        +es : Object
+    }
+
+    class changeLanguage {
+        +changeLanguage(lang : string)
+    }
+
+    class Document {
+        +querySelectorAll(selector) NodeList
+        +documentElement HtmlElement
+    }
+
+    class HtmlElement {
+        +innerText : string
+        +lang : string
+    }
+
+    translations --> changeLanguage : provides text
+    changeLanguage --> Document : queries DOM
+    Document --> HtmlElement : updates
