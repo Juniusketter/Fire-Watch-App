@@ -103,6 +103,11 @@
     }
     *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
     html,body{font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
+   
+    //for language selection   
+    .language-selector{position:fixed;top:12px;right:16px;display:flex;align-items:center;gap:0.5rem;z-index:200;background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:6px 10px;box-shadow:0 8px 20px rgba(0,0,0,0.2);}
+    .language-selector label{font-family:'IBM Plex Mono',monospace;font-size:0.65rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted2);}
+    .language-selector select{background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:0.75rem;padding:4px 6px;border-radius:4px;}
 
     /* LOGIN */
     #loginPage{min-height:100vh;display:grid;grid-template-columns:1fr 1fr;}
@@ -398,7 +403,17 @@
   <script src="https://unpkg.com/@zxing/library@0.18.6/umd/index.min.js"></script>
 </head>
 <body>
-
+ 
+  // for language selection 
+  
+  <div class="language-selector" aria-label="Language selection">
+    <label for="languageSelect">Language</label>
+    <select id="languageSelect" name="language">
+      <option value="en">English</option>
+      <option value="es">Spanish</option>
+    </select>
+  </div>
+  
 <!-- LOGIN -->
 <div id="loginPage">
   <section class="brand-side">
@@ -10749,6 +10764,25 @@ function changeLanguage(lang) {
     element.innerText = translations[lang][key];
   });
   document.documentElement.lang = lang;
+}
+
+// for langguage selection  
+const languageSelect = document.getElementById("languageSelect");
+if (languageSelect) {
+  languageSelect.addEventListener("change", async (event) => {
+    const lang = event.target.value;
+    try {
+      await fetch("/api/changeLanguage", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ language: lang })
+      });
+    } catch (error) {
+      // Backend may be unavailable; still update UI language locally.
+    }
+    changeLanguage(lang);
+  });
+  changeLanguage(languageSelect.value);
 }
   
 </script>
