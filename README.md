@@ -1,29 +1,24 @@
-
-# C++ Starter (CMake + CI)
-
-A minimal, cross-platform C++ starter with CMake, GitHub Actions CI, and a basic test placeholder.
-
-## Build (local)
-
-```bash
-mkdir -p build && cd build
-cmake -DCMAKE_BUILD_TYPE=Release ..
-cmake --build . -j
-./app  # Windows: .\Debug\app.exe (or .\app.exe if single-config)
+```mermaid
+erDiagram
+ ITEMS {
+  INTEGER id PK
+  TEXT name
+ }
 ```
+Full implementation bundle for edit/delete user feature.
+Includes backend C++, Qt UI placeholder, Flask endpoints, migration.
 
-## Run (args)
-
-```bash
-./app hello world
+# UML Diagram Documentation
+This directory contains Mermaid UML diagrams for Iteration 2 and 3.
+Each file can be rendered using Mermaid Live Editor.
+Refer to diagram names for context.
+# ERD
+```mermaid
+erDiagram
+ ITEMS {
+  INTEGER id PK
+  TEXT name
+ }
 ```
-
-## Run tests (placeholder)
-
-Add your test framework (e.g., Catch2, GTest) and a test target in CMake.
-
-## Format (clang-format)
-
-```bash
-clang-format -i src/*.cpp src/*.hpp
-```
+Full implementation bundle for edit/delete user feature.
+Includes backend C++, Qt UI placeholder, Flask endpoints, migration.

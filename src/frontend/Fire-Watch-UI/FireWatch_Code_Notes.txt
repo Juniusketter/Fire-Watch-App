@@ -1,0 +1,31 @@
+FireWatch HTML Structure - Design Rationale
+
+Overview
+This document explains why the HTML, CSS, and JavaScript are structured the way they are for the FireWatch front-end.
+
+Layout and Page Structure
+- The login view and the post-login dashboard are both included in one HTML file so we can switch views quickly without reloading or navigating away from the page.
+- The login view uses a two-column grid to keep the brand name on the left and the login form on the right, matching the requested layout.
+- The dashboard is hidden by default and shown only after a successful login response. This keeps the first screen focused on login.
+
+Tabs and Content Panels
+- The dashboard uses a row of tabs that map to content panels by id. Clicking a tab simply toggles which panel is visible.
+- Tabs are ordered left-to-right exactly as requested to match the intended workflow.
+- The "manila folder" look is achieved with layered backgrounds, a border, and tab styling that visually sits above the folder body.
+
+Styling Approach
+- All styling is centralized in styles.json and loaded dynamically so multiple pages or future views can share the same theme without duplicating CSS.
+- Colors are defined as CSS variables to make the beige/manila theme and the navy button color easy to maintain.
+- The login button uses navy and black text because the design requirement replaced green with navy.
+
+Accessibility and Usability
+- Labels are associated with inputs for better accessibility and form clarity.
+- The status message area uses aria-live so screen readers can announce login feedback.
+- Responsive rules collapse the layout to a single column on smaller screens so the site remains usable on mobile.
+
+Backend Integration Placeholder
+- The login form calls /api/login via fetch to reflect the intended backend validation.
+- The front-end only handles the request and response display. It does not implement any backend or database logic.
+
+Summary
+The code is organized to keep the UI simple, on-brand, and easy to extend while honoring the requested layout, colors, and post-login tabbed interface.

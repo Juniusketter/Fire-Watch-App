@@ -5,6 +5,7 @@
 #include <QApplication>
 #include <QDir>
 #include <QFileInfo>
+#include <QCryptographicHash>
 #include <QtSql/QSqlDatabase>
 #include <QtSql/QSqlQuery>
 #include <QtSql/QSqlError>
@@ -12,6 +13,10 @@
 // ─────────────────────────────────────────────────────────────────────────────
 static QString findDatabasePath()
 {
+    QString direct = QDir::homePath() +
+                     "/OneDrive/Desktop/Fire-Watch-App/src/database/FireWatch.db";
+    if (QFileInfo::exists(direct)) return direct;
+
     QDir dir(QApplication::applicationDirPath());
     for (int i = 0; i < 6; ++i) {
         QString candidate = dir.filePath("src/database/FireWatch.db");
@@ -19,9 +24,6 @@ static QString findDatabasePath()
             return candidate;
         dir.cdUp();
     }
-    QString cwd = QDir::currentPath() + "/src/database/FireWatch.db";
-    if (QFileInfo::exists(cwd))
-        return cwd;
     return QString();
 }
 
@@ -90,14 +92,19 @@ void MainWindow::onLoginClicked()
         return;
     }
 
+    // Hash the password with SHA-256 before comparing against stored hash
+    QString hashedPassword = QString(
+        QCryptographicHash::hash(password.toUtf8(), QCryptographicHash::Sha256).toHex()
+    );
+
     QSqlQuery query(db);
     query.prepare(
-        "SELECT user_id, username, role "
+        "SELECT user_id, username, role, org_id "
         "FROM Users "
         "WHERE username = :username AND password_hash = :password"
     );
     query.bindValue(":username", username);
-    query.bindValue(":password", password);
+    query.bindValue(":password", hashedPassword);
 
     if (!query.exec()) {
         ui->labelMessage->setStyleSheet("color: red;");
@@ -109,9 +116,10 @@ void MainWindow::onLoginClicked()
         int     userId   = query.value("user_id").toInt();
         QString uname    = query.value("username").toString();
         QString role     = query.value("role").toString();
+        int     orgId    = query.value("org_id").toInt();
 
         // Open the Dashboard window and close the login window
-        Dashboard *dash = new Dashboard(userId, uname, role, db);
+        Dashboard *dash = new Dashboard(userId, uname, role, orgId, db);
         dash->show();
         this->close();
 

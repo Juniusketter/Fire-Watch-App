@@ -3,112 +3,178 @@
  <class>Dashboard</class>
  <widget class="QMainWindow" name="Dashboard">
   <property name="geometry">
-   <rect>
-    <x>0</x>
-    <y>0</y>
-    <width>1000</width>
-    <height>680</height>
-   </rect>
+   <rect><x>0</x><y>0</y><width>1000</width><height>680</height></rect>
   </property>
   <property name="windowTitle">
    <string>FireWatch — Dashboard</string>
   </property>
+
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout">
 
-    <!-- TOP BAR -->
+    <!-- ── TOP BAR ─────────────────────────────────────────────────────── -->
     <item>
      <widget class="QFrame" name="topBar">
-      <property name="frameShape">
-       <enum>QFrame::StyledPanel</enum>
+      <property name="frameShape"><enum>QFrame::StyledPanel</enum></property>
+      <property name="styleSheet">
+       <string>QFrame#topBar { background-color: #1f3864; border-radius: 6px; padding: 4px; }</string>
       </property>
       <layout class="QHBoxLayout" name="topBarLayout">
+
        <item>
         <widget class="QLabel" name="labelTitle">
-         <property name="text">
-          <string>🔥 FireWatch Dashboard</string>
-         </property>
-         <property name="font">
-          <font><pointsize>14</pointsize><bold>true</bold></font>
-         </property>
+         <property name="text"><string>🔥 FireWatch</string></property>
+         <property name="font"><font><pointsize>14</pointsize><bold>true</bold></font></property>
+         <property name="styleSheet"><string>color: white;</string></property>
         </widget>
        </item>
+
        <item>
         <spacer>
          <property name="orientation"><enum>Qt::Horizontal</enum></property>
         </spacer>
        </item>
+
        <item>
         <widget class="QLabel" name="labelWelcome">
          <property name="text"><string>Welcome</string></property>
          <property name="font"><font><pointsize>10</pointsize><bold>true</bold></font></property>
+         <property name="styleSheet"><string>color: white;</string></property>
         </widget>
        </item>
+
        <item>
         <widget class="QLabel" name="labelRole">
          <property name="text"><string>Role: —</string></property>
          <property name="font"><font><pointsize>10</pointsize></font></property>
-         <property name="styleSheet"><string>color: #b07d2a;</string></property>
+         <property name="styleSheet"><string>color: #f0c040; font-weight: bold; margin-left: 8px;</string></property>
         </widget>
        </item>
+
        <item>
         <widget class="QPushButton" name="btnRefresh">
-         <property name="text"><string>Refresh</string></property>
-         <property name="minimumSize"><size><width>80</width><height>28</height></size></property>
+         <property name="text"><string>⟳ Refresh</string></property>
+         <property name="minimumSize"><size><width>90</width><height>28</height></size></property>
+         <property name="styleSheet"><string>QPushButton { background: #2e5fa3; color: white; border-radius: 4px; padding: 4px 10px; } QPushButton:hover { background: #3a78cc; }</string></property>
         </widget>
        </item>
+
        <item>
         <widget class="QPushButton" name="btnLogout">
          <property name="text"><string>Logout</string></property>
          <property name="minimumSize"><size><width>80</width><height>28</height></size></property>
-         <property name="styleSheet"><string>color: #8b2222;</string></property>
+         <property name="styleSheet"><string>QPushButton { background: #8b2222; color: white; border-radius: 4px; padding: 4px 10px; } QPushButton:hover { background: #b03030; }</string></property>
         </widget>
        </item>
+
       </layout>
      </widget>
     </item>
 
-    <!-- STATS ROW -->
+    <!-- ── STATS ROW ───────────────────────────────────────────────────── -->
     <item>
      <widget class="QFrame" name="statsFrame">
+      <property name="styleSheet">
+       <string>QFrame#statsFrame { background: #f4f6fb; border-radius: 6px; }</string>
+      </property>
       <layout class="QHBoxLayout" name="statsLayout">
 
+       <!-- Extinguishers stat -->
        <item>
         <widget class="QFrame" name="frameExt">
          <property name="frameShape"><enum>QFrame::Box</enum></property>
+         <property name="styleSheet"><string>QFrame { border: 1px solid #ccd4e8; border-radius: 6px; background: white; padding: 6px; }</string></property>
          <layout class="QVBoxLayout">
-          <item><widget class="QLabel" name="lblExt"><property name="text"><string>Extinguishers</string></property><property name="alignment"><set>Qt::AlignCenter</set></property></widget></item>
-          <item><widget class="QLabel" name="statExtinguishers"><property name="text"><string>—</string></property><property name="font"><font><pointsize>22</pointsize><bold>true</bold></font></property><property name="alignment"><set>Qt::AlignCenter</set></property></widget></item>
+          <item>
+           <widget class="QLabel" name="lblExt">
+            <property name="text"><string>Extinguishers</string></property>
+            <property name="alignment"><set>Qt::AlignCenter</set></property>
+            <property name="styleSheet"><string>color: #555; font-size: 11px;</string></property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="statExtinguishers">
+            <property name="text"><string>—</string></property>
+            <property name="font"><font><pointsize>22</pointsize><bold>true</bold></font></property>
+            <property name="alignment"><set>Qt::AlignCenter</set></property>
+            <property name="styleSheet"><string>color: #1f3864;</string></property>
+           </widget>
+          </item>
          </layout>
         </widget>
        </item>
 
+       <!-- Assignments stat -->
        <item>
         <widget class="QFrame" name="frameAssign">
          <property name="frameShape"><enum>QFrame::Box</enum></property>
+         <property name="styleSheet"><string>QFrame { border: 1px solid #ccd4e8; border-radius: 6px; background: white; padding: 6px; }</string></property>
          <layout class="QVBoxLayout">
-          <item><widget class="QLabel" name="lblAssign"><property name="text"><string>Assignments</string></property><property name="alignment"><set>Qt::AlignCenter</set></property></widget></item>
-          <item><widget class="QLabel" name="statAssignments"><property name="text"><string>—</string></property><property name="font"><font><pointsize>22</pointsize><bold>true</bold></font></property><property name="alignment"><set>Qt::AlignCenter</set></property></widget></item>
+          <item>
+           <widget class="QLabel" name="lblAssign">
+            <property name="text"><string>Assignments</string></property>
+            <property name="alignment"><set>Qt::AlignCenter</set></property>
+            <property name="styleSheet"><string>color: #555; font-size: 11px;</string></property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="statAssignments">
+            <property name="text"><string>—</string></property>
+            <property name="font"><font><pointsize>22</pointsize><bold>true</bold></font></property>
+            <property name="alignment"><set>Qt::AlignCenter</set></property>
+            <property name="styleSheet"><string>color: #1f3864;</string></property>
+           </widget>
+          </item>
          </layout>
         </widget>
        </item>
 
+       <!-- Reports stat -->
        <item>
         <widget class="QFrame" name="frameReports">
          <property name="frameShape"><enum>QFrame::Box</enum></property>
+         <property name="styleSheet"><string>QFrame { border: 1px solid #ccd4e8; border-radius: 6px; background: white; padding: 6px; }</string></property>
          <layout class="QVBoxLayout">
-          <item><widget class="QLabel" name="lblReports"><property name="text"><string>Reports</string></property><property name="alignment"><set>Qt::AlignCenter</set></property></widget></item>
-          <item><widget class="QLabel" name="statReports"><property name="text"><string>—</string></property><property name="font"><font><pointsize>22</pointsize><bold>true</bold></font></property><property name="alignment"><set>Qt::AlignCenter</set></property></widget></item>
+          <item>
+           <widget class="QLabel" name="lblReports">
+            <property name="text"><string>Reports</string></property>
+            <property name="alignment"><set>Qt::AlignCenter</set></property>
+            <property name="styleSheet"><string>color: #555; font-size: 11px;</string></property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="statReports">
+            <property name="text"><string>—</string></property>
+            <property name="font"><font><pointsize>22</pointsize><bold>true</bold></font></property>
+            <property name="alignment"><set>Qt::AlignCenter</set></property>
+            <property name="styleSheet"><string>color: #1f3864;</string></property>
+           </widget>
+          </item>
          </layout>
         </widget>
        </item>
 
+       <!-- Users stat -->
        <item>
         <widget class="QFrame" name="frameUsers">
          <property name="frameShape"><enum>QFrame::Box</enum></property>
+         <property name="styleSheet"><string>QFrame { border: 1px solid #ccd4e8; border-radius: 6px; background: white; padding: 6px; }</string></property>
          <layout class="QVBoxLayout">
-          <item><widget class="QLabel" name="lblUsers"><property name="text"><string>Users</string></property><property name="alignment"><set>Qt::AlignCenter</set></property></widget></item>
-          <item><widget class="QLabel" name="statUsers"><property name="text"><string>—</string></property><property name="font"><font><pointsize>22</pointsize><bold>true</bold></font></property><property name="alignment"><set>Qt::AlignCenter</set></property></widget></item>
+          <item>
+           <widget class="QLabel" name="lblUsers">
+            <property name="text"><string>Users</string></property>
+            <property name="alignment"><set>Qt::AlignCenter</set></property>
+            <property name="styleSheet"><string>color: #555; font-size: 11px;</string></property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="statUsers">
+            <property name="text"><string>—</string></property>
+            <property name="font"><font><pointsize>22</pointsize><bold>true</bold></font></property>
+            <property name="alignment"><set>Qt::AlignCenter</set></property>
+            <property name="styleSheet"><string>color: #1f3864;</string></property>
+           </widget>
+          </item>
          </layout>
         </widget>
        </item>
@@ -117,10 +183,17 @@
      </widget>
     </item>
 
-    <!-- TABS -->
+    <!-- ── TABS ────────────────────────────────────────────────────────── -->
     <item>
      <widget class="QTabWidget" name="tabWidget">
+      <property name="styleSheet">
+       <string>
+        QTabBar::tab { padding: 6px 18px; font-size: 12px; }
+        QTabBar::tab:selected { background: #2e5fa3; color: white; border-radius: 4px 4px 0 0; }
+       </string>
+      </property>
 
+      <!-- Tab 0: Extinguishers -->
       <widget class="QWidget" name="tabExtinguishers">
        <attribute name="title"><string>Extinguishers</string></attribute>
        <layout class="QVBoxLayout">
@@ -129,11 +202,13 @@
           <property name="alternatingRowColors"><bool>true</bool></property>
           <property name="selectionBehavior"><enum>QAbstractItemView::SelectRows</enum></property>
           <property name="editTriggers"><set>QAbstractItemView::NoEditTriggers</set></property>
+          <property name="styleSheet"><string>QHeaderView::section { background-color: #1f3864; color: white; padding: 4px; }</string></property>
          </widget>
         </item>
        </layout>
       </widget>
 
+      <!-- Tab 1: Assignments -->
       <widget class="QWidget" name="tabAssignments">
        <attribute name="title"><string>Assignments</string></attribute>
        <layout class="QVBoxLayout">
@@ -142,11 +217,13 @@
           <property name="alternatingRowColors"><bool>true</bool></property>
           <property name="selectionBehavior"><enum>QAbstractItemView::SelectRows</enum></property>
           <property name="editTriggers"><set>QAbstractItemView::NoEditTriggers</set></property>
+          <property name="styleSheet"><string>QHeaderView::section { background-color: #1f3864; color: white; padding: 4px; }</string></property>
          </widget>
         </item>
        </layout>
       </widget>
 
+      <!-- Tab 2: Reports -->
       <widget class="QWidget" name="tabReports">
        <attribute name="title"><string>Reports</string></attribute>
        <layout class="QVBoxLayout">
@@ -155,11 +232,13 @@
           <property name="alternatingRowColors"><bool>true</bool></property>
           <property name="selectionBehavior"><enum>QAbstractItemView::SelectRows</enum></property>
           <property name="editTriggers"><set>QAbstractItemView::NoEditTriggers</set></property>
+          <property name="styleSheet"><string>QHeaderView::section { background-color: #1f3864; color: white; padding: 4px; }</string></property>
          </widget>
         </item>
        </layout>
       </widget>
 
+      <!-- Tab 3: Users -->
       <widget class="QWidget" name="tabUsers">
        <attribute name="title"><string>Users</string></attribute>
        <layout class="QVBoxLayout">
@@ -168,6 +247,7 @@
           <property name="alternatingRowColors"><bool>true</bool></property>
           <property name="selectionBehavior"><enum>QAbstractItemView::SelectRows</enum></property>
           <property name="editTriggers"><set>QAbstractItemView::NoEditTriggers</set></property>
+          <property name="styleSheet"><string>QHeaderView::section { background-color: #1f3864; color: white; padding: 4px; }</string></property>
          </widget>
         </item>
        </layout>
