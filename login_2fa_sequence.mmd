@@ -1,0 +1,12 @@
+sequenceDiagram
+    participant User
+    participant API
+    participant Database
+    participant Email/SMS
+
+    User->>API: POST /auth/login
+    API->>Database: Verify password
+    API->>Email/SMS: Send 2FA code
+    User->>API: POST /auth/2fa/verify
+    API->>Database: Mark verified
+    API-->>User: JWT issued

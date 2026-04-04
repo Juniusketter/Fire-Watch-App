@@ -1,9 +1,6 @@
-flowchart TD
-    A[data-key attribute]
-    B[translations[lang]]
-    C[Translated String]
-    D[HTML Element.innerText]
-
-    A --> B
-    B --> C
-    C --> D
+flowchart LR
+    InspectorInput --> API
+    API --> Database
+    Database --> API
+    API --> EmailSMS
+    API --> Frontend
