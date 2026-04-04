@@ -5,3 +5,1264 @@ app = Flask(__name__)
 def update_user(uid): return jsonify(ok=True)
 @app.route('/api/user/<uid>', methods=['DELETE'])
 def delete_user(uid): return jsonify(ok=True)
+
+# ── Paths ──────────────────────────────────────────────────────────────────────
+BASE_DIR    = os.path.dirname(os.path.abspath(__file__))
+DB_PATH     = os.path.join(BASE_DIR, "src", "database", "FireWatch.db")
+UI_DIR      = os.path.join(BASE_DIR, "src", "frontend", "Fire-Watch-UI")
+UPLOAD_DIR  = os.path.join(BASE_DIR, "src", "uploads")
+os.makedirs(UPLOAD_DIR, exist_ok=True)  # create uploads folder if it doesn't exist
+
+ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "gif", "webp", "heic", "heif"}
+
+# ── Platform Super Admin ──────────────────────────────────────────────────────
+# Default platform password: FireWatch2026!
+# To override without changing code, set the FW_PLATFORM_HASH environment variable.
+PLATFORM_PASSWORD_HASH = os.environ.get(
+    "FW_PLATFORM_HASH",
+    hashlib.sha256("FireWatch2026!".encode()).hexdigest()
+)
+
+# ── DB helper ──────────────────────────────────────────────────────────────────
+def get_db():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+# ── Startup migrations — run once on server start ──────────────────────────────
+def run_migrations():
+    with get_db() as conn:
+
+        tables = [r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'").fetchall()]
+
+        # ── Organizations table ────────────────────────────────────────────
+        if "Organizations" not in tables:
+            conn.execute("""
+                CREATE TABLE Organizations (
+                    org_id       INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name         TEXT NOT NULL,
+                    address      TEXT,
+                    city         TEXT,
+                    state        TEXT,
+                    zip          TEXT,
+                    phone        TEXT,
+                    contact_name TEXT,
+                    created_at   TEXT DEFAULT (datetime('now'))
+                )
+            """)
+            conn.commit()
+
+        # ── Add platform_status to Organizations ────────────────────────────
+        org_cols = [r[1] for r in conn.execute("PRAGMA table_info(Organizations)").fetchall()]
+        if "platform_status" not in org_cols:
+            conn.execute("ALTER TABLE Organizations ADD COLUMN platform_status TEXT DEFAULT 'approved'")
+            conn.commit()
+            print("  [Migration] Added Organizations.platform_status")
+
+        # ── Platform Settings table ─────────────────────────────────────────
+        if "PlatformSettings" not in tables:
+            conn.execute("""
+                CREATE TABLE PlatformSettings (
+                    key   TEXT PRIMARY KEY,
+                    value TEXT
+                )
+            """)
+            conn.execute("INSERT INTO PlatformSettings (key, value) VALUES ('require_approval', 'true')")
+            conn.commit()
+            print("  [Migration] Created PlatformSettings table")
+
+        # ── Platform Audit Log table ────────────────────────────────────────
+        if "PlatformAuditLog" not in tables:
+            conn.execute("""
+                CREATE TABLE PlatformAuditLog (
+                    log_id     INTEGER PRIMARY KEY AUTOINCREMENT,
+                    timestamp  TEXT DEFAULT (datetime('now')),
+                    actor      TEXT NOT NULL,
+                    action     TEXT NOT NULL,
+                    target     TEXT,
+                    details    TEXT
+                )
+            """)
+            conn.commit()
+            print("  [Migration] Created PlatformAuditLog table")
+
+        # ── Users ──────────────────────────────────────────────────────────
+        user_cols = [r[1] for r in conn.execute("PRAGMA table_info(Users)").fetchall()]
+        if "preferences" not in user_cols:
+            conn.execute("ALTER TABLE Users ADD COLUMN preferences TEXT DEFAULT '{}'")
+        if "org_id" not in user_cols:
+            conn.execute("ALTER TABLE Users ADD COLUMN org_id INTEGER REFERENCES Organizations(org_id)")
+
+        # ── Assignments ────────────────────────────────────────────────────
+        assign_cols = [r[1] for r in conn.execute("PRAGMA table_info(Assignments)").fetchall()]
+        if "due_date" not in assign_cols:
+            conn.execute("ALTER TABLE Assignments ADD COLUMN due_date DATE")
+        if "notes" not in assign_cols:
+            conn.execute("ALTER TABLE Assignments ADD COLUMN notes TEXT DEFAULT ''")
+        if "org_id" not in assign_cols:
+            conn.execute("ALTER TABLE Assignments ADD COLUMN org_id INTEGER REFERENCES Organizations(org_id)")
+
+        # ── Reports ────────────────────────────────────────────────────────
+        report_cols = [r[1] for r in conn.execute("PRAGMA table_info(Reports)").fetchall()]
+        if "photo_path" not in report_cols:
+            conn.execute("ALTER TABLE Reports ADD COLUMN photo_path TEXT")
+        if "org_id" not in report_cols:
+            conn.execute("ALTER TABLE Reports ADD COLUMN org_id INTEGER REFERENCES Organizations(org_id)")
+
+        # ── Companies table ────────────────────────────────────────────────
+        if "Companies" not in tables:
+            conn.execute("""
+                CREATE TABLE Companies (
+                    company_id   INTEGER PRIMARY KEY AUTOINCREMENT,
+                    org_id       INTEGER REFERENCES Organizations(org_id),
+                    name         TEXT NOT NULL,
+                    address      TEXT,
+                    city         TEXT,
+                    state        TEXT,
+                    zip          TEXT,
+                    phone        TEXT,
+                    contact_name TEXT,
+                    created_at   TEXT DEFAULT (date('now'))
+                )
+            """)
+        else:
+            co_cols = [r[1] for r in conn.execute("PRAGMA table_info(Companies)").fetchall()]
+            if "org_id" not in co_cols:
+                conn.execute("ALTER TABLE Companies ADD COLUMN org_id INTEGER REFERENCES Organizations(org_id)")
+
+        # ── Buildings table ────────────────────────────────────────────────
+        if "Buildings" not in tables:
+            conn.execute("""
+                CREATE TABLE Buildings (
+                    building_id  INTEGER PRIMARY KEY AUTOINCREMENT,
+                    company_id   INTEGER NOT NULL REFERENCES Companies(company_id),
+                    org_id       INTEGER REFERENCES Organizations(org_id),
+                    name         TEXT NOT NULL,
+                    address      TEXT,
+                    floors       INTEGER DEFAULT 1,
+                    notes        TEXT,
+                    created_at   TEXT DEFAULT (date('now'))
+                )
+            """)
+        else:
+            bldg_cols = [r[1] for r in conn.execute("PRAGMA table_info(Buildings)").fetchall()]
+            if "org_id" not in bldg_cols:
+                conn.execute("ALTER TABLE Buildings ADD COLUMN org_id INTEGER REFERENCES Organizations(org_id)")
+
+        # ── Add building_id + org_id to Extinguishers ─────────────────────
+        ext_cols = [r[1] for r in conn.execute("PRAGMA table_info(Extinguishers)").fetchall()]
+        if "building_id" not in ext_cols:
+            conn.execute("ALTER TABLE Extinguishers ADD COLUMN building_id INTEGER REFERENCES Buildings(building_id)")
+        if "org_id" not in ext_cols:
+            conn.execute("ALTER TABLE Extinguishers ADD COLUMN org_id INTEGER REFERENCES Organizations(org_id)")
+
+        # ── NFPA 10 compliance metadata on Extinguishers ──────────────────
+        # Sprint 3 — adds classification, physical, and service tracking fields
+        nfpa_cols = {
+            "ext_type":            "TEXT DEFAULT ''",          # A, B, C, D, K, ABC, BC, etc.
+            "ext_size_lbs":        "REAL",                     # capacity in pounds (e.g. 5, 10, 20)
+            "serial_number":       "TEXT DEFAULT ''",          # manufacturer serial number
+            "manufacturer":        "TEXT DEFAULT ''",          # brand name
+            "model":               "TEXT DEFAULT ''",          # model number
+            "manufacture_date":    "DATE",                     # for hydro test / 6-yr / 12-yr tracking
+            "last_annual_date":    "DATE",                     # last NFPA annual maintenance
+            "last_6year_date":     "DATE",                     # last 6-year internal exam
+            "last_hydro_date":     "DATE",                     # last hydrostatic pressure test
+            "ext_status":          "TEXT DEFAULT 'Active'",    # Active, Out of Service, Retired, Missing
+        }
+        for col, col_type in nfpa_cols.items():
+            if col not in ext_cols:
+                conn.execute(f"ALTER TABLE Extinguishers ADD COLUMN {col} {col_type}")
+                print(f"  [Migration] Added Extinguishers.{col}")
+
+        conn.commit()
+
+        # ── Auto-migrate: seed default org for existing data ──────────────
+        # Only runs once — when Organizations table is empty but Users exist
+        org_count  = conn.execute("SELECT COUNT(*) FROM Organizations").fetchone()[0]
+        user_count = conn.execute("SELECT COUNT(*) FROM Users").fetchone()[0]
+
+        if org_count == 0 and user_count > 0:
+            # Create a default org for all existing data
+            conn.execute("""
+                INSERT INTO Organizations (name, address, city, state)
+                VALUES ('Fire Wardens Safety', 'National University', 'San Diego', 'CA')
+            """)
+            conn.commit()
+            default_org = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+
+            # Stamp every existing table row with the default org
+            conn.execute("UPDATE Users          SET org_id=? WHERE org_id IS NULL", (default_org,))
+            conn.execute("UPDATE Companies      SET org_id=? WHERE org_id IS NULL", (default_org,))
+            conn.execute("UPDATE Buildings      SET org_id=? WHERE org_id IS NULL", (default_org,))
+            conn.execute("UPDATE Extinguishers  SET org_id=? WHERE org_id IS NULL", (default_org,))
+            conn.execute("UPDATE Assignments    SET org_id=? WHERE org_id IS NULL", (default_org,))
+            conn.execute("UPDATE Reports        SET org_id=? WHERE org_id IS NULL", (default_org,))
+            conn.commit()
+            print(f"  [Migration] Created default org #{default_org} and stamped all existing data.")
+
+        # ── Auto-migrate extinguisher data into Companies/Buildings ────────
+        co_count  = conn.execute("SELECT COUNT(*) FROM Companies WHERE org_id IS NOT NULL").fetchone()[0]
+        ext_count = conn.execute("SELECT COUNT(*) FROM Extinguishers").fetchone()[0]
+
+        if co_count == 0 and ext_count > 0:
+            default_org = conn.execute("SELECT org_id FROM Organizations LIMIT 1").fetchone()[0]
+            rows = conn.execute(
+                "SELECT extinguisher_id, address, building_number FROM Extinguishers"
+            ).fetchall()
+            address_to_company = {}
+            for row in rows:
+                addr = row["address"] or "Unknown Address"
+                if addr not in address_to_company:
+                    conn.execute(
+                        "INSERT INTO Companies (org_id, name, address) VALUES (?, ?, ?)",
+                        (default_org, addr, addr)
+                    )
+                    conn.commit()
+                    address_to_company[addr] = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+
+            addr_bldg_to_building = {}
+            for row in rows:
+                addr     = row["address"] or "Unknown Address"
+                bldg_num = row["building_number"] or "Main Building"
+                key      = (addr, bldg_num)
+                if key not in addr_bldg_to_building:
+                    co_id = address_to_company[addr]
+                    conn.execute(
+                        "INSERT INTO Buildings (org_id, company_id, name, address) VALUES (?,?,?,?)",
+                        (default_org, co_id, bldg_num, addr)
+                    )
+                    conn.commit()
+                    addr_bldg_to_building[key] = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+
+            for row in rows:
+                addr     = row["address"] or "Unknown Address"
+                bldg_num = row["building_number"] or "Main Building"
+                bldg_id  = addr_bldg_to_building[(addr, bldg_num)]
+                conn.execute(
+                    "UPDATE Extinguishers SET building_id=?, org_id=? WHERE extinguisher_id=?",
+                    (bldg_id, default_org, row["extinguisher_id"])
+                )
+            conn.commit()
+
+run_migrations()
+
+# ── Serve frontend ─────────────────────────────────────────────────────────────
+@app.route("/")
+def index():
+    return send_from_directory(UI_DIR, "index.html")
+
+@app.route("/<path:filename>")
+def static_files(filename):
+    return send_from_directory(UI_DIR, filename)
+
+@app.route("/uploads/<path:filename>")
+def serve_upload(filename):
+    return send_from_directory(UPLOAD_DIR, filename)
+
+# ── PHOTO UPLOAD ───────────────────────────────────────────────────────────────
+@app.route("/api/upload", methods=["POST"])
+def upload_photo():
+    if "photo" not in request.files:
+        return jsonify({"error": "No photo file provided"}), 400
+    file = request.files["photo"]
+    if file.filename == "":
+        return jsonify({"error": "Empty filename"}), 400
+    ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
+    if ext not in ALLOWED_EXTENSIONS:
+        return jsonify({"error": f"File type .{ext} not allowed"}), 400
+    # Generate unique filename to avoid collisions
+    unique_name = f"{uuid.uuid4().hex}.{ext}"
+    file.save(os.path.join(UPLOAD_DIR, unique_name))
+    return jsonify({"success": True, "filename": unique_name}), 201
+# ── ORGANIZATION REGISTRATION ──────────────────────────────────────────────────
+@app.route("/api/register", methods=["POST"])
+def register_org():
+    d        = request.get_json()
+    org_name = (d.get("org_name")  or "").strip()
+    username = (d.get("username")  or "").strip()
+    password = (d.get("password")  or "").strip()
+    address  = (d.get("address")   or "").strip()
+    city     = (d.get("city")      or "").strip()
+    state    = (d.get("state")     or "").strip()
+    phone    = (d.get("phone")     or "").strip()
+    contact  = (d.get("contact_name") or "").strip()
+
+    if not org_name:
+        return jsonify({"error": "Organization name is required."}), 400
+    if not username or not password:
+        return jsonify({"error": "Admin username and password are required."}), 400
+    if len(password) < 64:
+        return jsonify({"error": "Password must be SHA-256 hashed before sending."}), 400
+
+    try:
+        with get_db() as conn:
+            # Check org name not already taken
+            if conn.execute("SELECT org_id FROM Organizations WHERE name=?", (org_name,)).fetchone():
+                return jsonify({"error": "An organization with that name already exists."}), 409
+            # Check username not already taken globally
+            if conn.execute("SELECT user_id FROM Users WHERE username=?", (username,)).fetchone():
+                return jsonify({"error": "That username is already taken."}), 409
+
+            # Create org — check if approval is required
+            approval_row = conn.execute(
+                "SELECT value FROM PlatformSettings WHERE key='require_approval'"
+            ).fetchone()
+            require_approval = (approval_row and approval_row["value"] == "true") if approval_row else True
+            initial_status = "pending" if require_approval else "approved"
+
+            conn.execute(
+                "INSERT INTO Organizations (name, address, city, state, phone, contact_name, platform_status) "
+                "VALUES (?,?,?,?,?,?,?)",
+                (org_name, address, city, state, phone, contact, initial_status)
+            )
+            conn.commit()
+            org_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+
+            # Create first Admin account for this org
+            conn.execute(
+                "INSERT INTO Users (username, password_hash, role, org_id) VALUES (?,?,?,?)",
+                (username, password, "Admin", org_id)
+            )
+            conn.commit()
+            user_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+
+        platform_log("system", "org_registered", org_name, f"New org registered by {username} (status: {initial_status})")
+        return jsonify({
+            "success":  True,
+            "org_id":   org_id,
+            "org_name": org_name,
+            "user_id":  user_id,
+            "username": username,
+            "role":     "Admin",
+            "platform_status": initial_status
+        }), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/login", methods=["POST"])
+def login():
+    data     = request.get_json()
+    username = (data.get("username") or "").strip()
+    password = data.get("password") or ""
+
+    if not username or not password:
+        return jsonify({"success": False, "error": "Missing credentials"}), 400
+
+    with get_db() as conn:
+        row = conn.execute(
+            "SELECT user_id, username, role, org_id FROM Users "
+            "WHERE username = ? AND password_hash = ?",
+            (username, password)
+        ).fetchone()
+
+    if row:
+        # Get org name and platform status for display
+        org_name = ""
+        platform_status = "approved"
+        if row["org_id"]:
+            org = get_db().execute(
+                "SELECT name, platform_status FROM Organizations WHERE org_id=?", (row["org_id"],)
+            ).fetchone()
+            if org:
+                org_name = org["name"]
+                platform_status = org["platform_status"] or "approved"
+        return jsonify({
+            "success":  True,
+            "user_id":  row["user_id"],
+            "username": row["username"],
+            "role":     row["role"],
+            "org_id":   row["org_id"],
+            "org_name": org_name,
+            "platform_status": platform_status,
+        })
+    return jsonify({"success": False, "error": "Invalid username or password"}), 401
+
+
+# ── COMPANIES ──────────────────────────────────────────────────────────────────
+@app.route("/api/companies", methods=["GET"])
+def get_companies():
+    org_id = request.args.get("org_id")
+    with get_db() as conn:
+        rows = conn.execute("""
+            SELECT c.company_id, c.name, c.address, c.city, c.state, c.phone, c.contact_name,
+                   COUNT(DISTINCT b.building_id) AS building_count,
+                   COUNT(DISTINCT e.extinguisher_id) AS extinguisher_count
+            FROM Companies c
+            LEFT JOIN Buildings b ON b.company_id = c.company_id
+            LEFT JOIN Extinguishers e ON e.building_id = b.building_id
+            WHERE c.org_id = ?
+            GROUP BY c.company_id
+            ORDER BY c.name
+        """, (org_id,)).fetchall()
+    return jsonify([dict(r) for r in rows])
+
+@app.route("/api/companies", methods=["POST"])
+def add_company():
+    d = request.get_json()
+    name   = (d.get("name")   or "").strip()
+    org_id = d.get("org_id")
+    if not name:
+        return jsonify({"error": "Company name is required."}), 400
+    try:
+        with get_db() as conn:
+            conn.execute(
+                "INSERT INTO Companies (org_id, name, address, city, state, zip, phone, contact_name) "
+                "VALUES (?,?,?,?,?,?,?,?)",
+                (org_id, name, d.get("address",""), d.get("city",""), d.get("state",""),
+                 d.get("zip",""), d.get("phone",""), d.get("contact_name",""))
+            )
+        return jsonify({"success": True}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/companies/<int:company_id>", methods=["PUT"])
+def update_company(company_id):
+    d = request.get_json()
+    try:
+        with get_db() as conn:
+            conn.execute(
+                "UPDATE Companies SET name=?, address=?, city=?, state=?, zip=?, phone=?, contact_name=? "
+                "WHERE company_id=?",
+                (d.get("name"), d.get("address",""), d.get("city",""), d.get("state",""),
+                 d.get("zip",""), d.get("phone",""), d.get("contact_name",""), company_id)
+            )
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/companies/<int:company_id>", methods=["DELETE"])
+def delete_company(company_id):
+    try:
+        with get_db() as conn:
+            bldgs = conn.execute(
+                "SELECT building_id FROM Buildings WHERE company_id=?", (company_id,)
+            ).fetchall()
+            for b in bldgs:
+                bid = b["building_id"]
+                exts = conn.execute(
+                    "SELECT extinguisher_id FROM Extinguishers WHERE building_id=?", (bid,)
+                ).fetchall()
+                for e in exts:
+                    eid = e["extinguisher_id"]
+                    conn.execute("DELETE FROM Reports     WHERE extinguisher_id=?", (eid,))
+                    conn.execute("DELETE FROM Assignments WHERE extinguisher_id=?", (eid,))
+                conn.execute("DELETE FROM Extinguishers WHERE building_id=?", (bid,))
+            conn.execute("DELETE FROM Buildings WHERE company_id=?", (company_id,))
+            conn.execute("DELETE FROM Companies WHERE company_id=?", (company_id,))
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ── BUILDINGS ──────────────────────────────────────────────────────────────────
+@app.route("/api/buildings", methods=["GET"])
+def get_buildings():
+    company_id = request.args.get("company_id")
+    org_id     = request.args.get("org_id")
+    with get_db() as conn:
+        if company_id:
+            rows = conn.execute("""
+                SELECT b.building_id, b.company_id, b.name, b.address, b.floors, b.notes,
+                       c.name AS company_name,
+                       COUNT(DISTINCT e.extinguisher_id) AS extinguisher_count,
+                       SUM(CASE WHEN e.next_due_date < date('now') AND e.next_due_date IS NOT NULL THEN 1 ELSE 0 END) AS overdue_count,
+                       SUM(CASE WHEN a.status = 'Pending Inspection' THEN 1 ELSE 0 END) AS pending_count
+                FROM Buildings b
+                JOIN Companies c ON c.company_id = b.company_id
+                LEFT JOIN Extinguishers e ON e.building_id = b.building_id
+                LEFT JOIN Assignments a ON a.extinguisher_id = e.extinguisher_id AND a.status = 'Pending Inspection'
+                WHERE b.company_id = ?
+                GROUP BY b.building_id ORDER BY b.name
+            """, (company_id,)).fetchall()
+        elif org_id:
+            rows = conn.execute("""
+                SELECT b.building_id, b.company_id, b.name, b.address, b.floors, b.notes,
+                       c.name AS company_name,
+                       COUNT(DISTINCT e.extinguisher_id) AS extinguisher_count,
+                       SUM(CASE WHEN e.next_due_date < date('now') AND e.next_due_date IS NOT NULL THEN 1 ELSE 0 END) AS overdue_count,
+                       SUM(CASE WHEN a.status = 'Pending Inspection' THEN 1 ELSE 0 END) AS pending_count
+                FROM Buildings b
+                JOIN Companies c ON c.company_id = b.company_id
+                LEFT JOIN Extinguishers e ON e.building_id = b.building_id
+                LEFT JOIN Assignments a ON a.extinguisher_id = e.extinguisher_id AND a.status = 'Pending Inspection'
+                WHERE b.org_id = ?
+                GROUP BY b.building_id ORDER BY c.name, b.name
+            """, (org_id,)).fetchall()
+        else:
+            rows = []
+    return jsonify([dict(r) for r in rows])
+
+@app.route("/api/buildings", methods=["POST"])
+def add_building():
+    d          = request.get_json()
+    name       = (d.get("name") or "").strip()
+    company_id = d.get("company_id")
+    org_id     = d.get("org_id")
+    if not name or not company_id:
+        return jsonify({"error": "Building name and company_id are required."}), 400
+    try:
+        with get_db() as conn:
+            conn.execute(
+                "INSERT INTO Buildings (org_id, company_id, name, address, floors, notes) VALUES (?,?,?,?,?,?)",
+                (org_id, company_id, name, d.get("address",""), d.get("floors",1), d.get("notes",""))
+            )
+        return jsonify({"success": True}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/buildings/<int:building_id>", methods=["PUT"])
+def update_building(building_id):
+    d = request.get_json()
+    try:
+        with get_db() as conn:
+            conn.execute(
+                "UPDATE Buildings SET name=?, address=?, floors=?, notes=? WHERE building_id=?",
+                (d.get("name"), d.get("address",""), d.get("floors",1), d.get("notes",""), building_id)
+            )
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/buildings/<int:building_id>", methods=["DELETE"])
+def delete_building(building_id):
+    try:
+        with get_db() as conn:
+            exts = conn.execute(
+                "SELECT extinguisher_id FROM Extinguishers WHERE building_id=?", (building_id,)
+            ).fetchall()
+            for e in exts:
+                eid = e["extinguisher_id"]
+                conn.execute("DELETE FROM Reports     WHERE extinguisher_id=?", (eid,))
+                conn.execute("DELETE FROM Assignments WHERE extinguisher_id=?", (eid,))
+            conn.execute("DELETE FROM Extinguishers WHERE building_id=?", (building_id,))
+            conn.execute("DELETE FROM Buildings WHERE building_id=?", (building_id,))
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ── EXTINGUISHERS ──────────────────────────────────────────────────────────────
+@app.route("/api/extinguishers", methods=["GET"])
+def get_extinguishers():
+    building_id = request.args.get("building_id")
+    company_id  = request.args.get("company_id")
+    org_id      = request.args.get("org_id")
+    with get_db() as conn:
+        base = """
+            SELECT e.*,
+                   b.name    AS building_name,
+                   c.name    AS company_name,
+                   c.company_id AS company_id_fk
+            FROM Extinguishers e
+            LEFT JOIN Buildings b ON b.building_id = e.building_id
+            LEFT JOIN Companies c ON c.company_id  = b.company_id
+        """
+        if building_id:
+            rows = conn.execute(base + " WHERE e.building_id=? ORDER BY e.floor_number, e.room_number",
+                                (building_id,)).fetchall()
+        elif company_id:
+            rows = conn.execute(base + " WHERE c.company_id=? ORDER BY b.name, e.floor_number, e.room_number",
+                                (company_id,)).fetchall()
+        elif org_id:
+            rows = conn.execute(base + " WHERE e.org_id=? ORDER BY c.name, b.name, e.floor_number, e.room_number",
+                                (org_id,)).fetchall()
+        else:
+            rows = conn.execute(base + " ORDER BY c.name, b.name, e.floor_number, e.room_number").fetchall()
+    return jsonify([dict(r) for r in rows])
+
+@app.route("/api/extinguishers", methods=["POST"])
+def add_extinguisher():
+    d = request.get_json()
+    try:
+        with get_db() as conn:
+            conn.execute(
+                "INSERT INTO Extinguishers "
+                "(address, building_number, floor_number, room_number, "
+                " location_description, inspection_interval_days, next_due_date, building_id, org_id,"
+                " ext_type, ext_size_lbs, serial_number, manufacturer, model,"
+                " manufacture_date, last_annual_date, last_6year_date, last_hydro_date, ext_status) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (d.get("address"), d.get("building_number"),
+                 d.get("floor_number", 1), d.get("room_number"),
+                 d.get("location_description"),
+                 d.get("inspection_interval_days", 30),
+                 d.get("next_due_date"),
+                 d.get("building_id"),
+                 d.get("org_id"),
+                 d.get("ext_type", ""),
+                 d.get("ext_size_lbs"),
+                 d.get("serial_number", ""),
+                 d.get("manufacturer", ""),
+                 d.get("model", ""),
+                 d.get("manufacture_date"),
+                 d.get("last_annual_date"),
+                 d.get("last_6year_date"),
+                 d.get("last_hydro_date"),
+                 d.get("ext_status", "Active"))
+            )
+        return jsonify({"success": True}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/extinguishers/<int:ext_id>", methods=["PUT"])
+def update_extinguisher(ext_id):
+    d = request.get_json()
+    try:
+        with get_db() as conn:
+            conn.execute(
+                "UPDATE Extinguishers SET address=?, building_number=?, "
+                "floor_number=?, room_number=?, location_description=?, "
+                "inspection_interval_days=?, next_due_date=?, building_id=?,"
+                "ext_type=?, ext_size_lbs=?, serial_number=?, manufacturer=?, model=?,"
+                "manufacture_date=?, last_annual_date=?, last_6year_date=?, last_hydro_date=?, ext_status=? "
+                "WHERE extinguisher_id=?",
+                (d.get("address"), d.get("building_number"),
+                 d.get("floor_number", 1), d.get("room_number"),
+                 d.get("location_description"),
+                 d.get("inspection_interval_days", 30),
+                 d.get("next_due_date"),
+                 d.get("building_id"),
+                 d.get("ext_type", ""),
+                 d.get("ext_size_lbs"),
+                 d.get("serial_number", ""),
+                 d.get("manufacturer", ""),
+                 d.get("model", ""),
+                 d.get("manufacture_date"),
+                 d.get("last_annual_date"),
+                 d.get("last_6year_date"),
+                 d.get("last_hydro_date"),
+                 d.get("ext_status", "Active"),
+                 ext_id)
+            )
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/extinguishers/<int:ext_id>", methods=["DELETE"])
+def delete_extinguisher(ext_id):
+    try:
+        with get_db() as conn:
+            conn.execute("DELETE FROM Reports     WHERE extinguisher_id=?", (ext_id,))
+            conn.execute("DELETE FROM Assignments WHERE extinguisher_id=?", (ext_id,))
+            conn.execute("DELETE FROM Extinguishers WHERE extinguisher_id=?", (ext_id,))
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ── ASSIGNMENTS ────────────────────────────────────────────────────────────────
+@app.route("/api/assignments", methods=["GET"])
+def get_assignments():
+    user_id = request.args.get("user_id")
+    org_id  = request.args.get("org_id")
+    with get_db() as conn:
+        existing = [r[1] for r in conn.execute("PRAGMA table_info(Assignments)").fetchall()]
+        if "due_date" not in existing:
+            conn.execute("ALTER TABLE Assignments ADD COLUMN due_date DATE")
+        if "notes" not in existing:
+            conn.execute("ALTER TABLE Assignments ADD COLUMN notes TEXT DEFAULT ''")
+
+        base = """
+            SELECT a.assignment_id, a.inspector_id, a.extinguisher_id,
+                   a.due_date, a.status, a.notes,
+                   u_a.username AS assigned_by,
+                   u_i.username AS inspector,
+                   e.floor_number, e.room_number, e.location_description,
+                   e.next_due_date, e.building_id,
+                   b.name  AS building_name,
+                   c.name  AS company_name,
+                   c.address AS company_address
+            FROM Assignments a
+            LEFT JOIN Users u_a        ON a.admin_id      = u_a.user_id
+            LEFT JOIN Users u_i        ON a.inspector_id  = u_i.user_id
+            LEFT JOIN Extinguishers e  ON a.extinguisher_id = e.extinguisher_id
+            LEFT JOIN Buildings b      ON e.building_id   = b.building_id
+            LEFT JOIN Companies c      ON b.company_id    = c.company_id
+        """
+        if user_id:
+            rows = conn.execute(
+                base + " WHERE a.inspector_id=? AND (a.org_id=? OR ? IS NULL)",
+                (user_id, org_id, org_id)
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                base + " WHERE (a.org_id=? OR ? IS NULL)",
+                (org_id, org_id)
+            ).fetchall()
+    return jsonify([dict(r) for r in rows])
+
+@app.route("/api/assignments", methods=["POST"])
+def create_assignment():
+    d = request.get_json()
+    try:
+        with get_db() as conn:
+            conn.execute(
+                "INSERT INTO Assignments (admin_id, inspector_id, extinguisher_id, due_date, notes, status, org_id) "
+                "VALUES (?,?,?,?,?,'Pending Inspection',?)",
+                (d.get("admin_id"), d.get("inspector_id"), d.get("extinguisher_id"),
+                 d.get("due_date",""), d.get("notes",""), d.get("org_id"))
+            )
+        return jsonify({"success": True}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ── UPDATE ASSIGNMENT ─────────────────────────────────────────────────────────
+@app.route("/api/assignments/<int:assign_id>", methods=["PUT"])
+def update_assignment(assign_id):
+    d = request.get_json()
+    try:
+        with get_db() as conn:
+            conn.execute(
+                "UPDATE Assignments SET inspector_id=?, extinguisher_id=?, "
+                "due_date=?, notes=?, status=? WHERE assignment_id=?",
+                (d.get("inspector_id"), d.get("extinguisher_id"),
+                 d.get("due_date", ""), d.get("notes", ""),
+                 d.get("status", "Pending Inspection"), assign_id)
+            )
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ── REPORTS ────────────────────────────────────────────────────────────────────
+@app.route("/api/reports", methods=["GET"])
+def get_reports():
+    user_id = request.args.get("user_id")
+    org_id  = request.args.get("org_id")
+    with get_db() as conn:
+        base = """
+            SELECT r.report_id, r.extinguisher_id, r.inspection_date,
+                   r.notes, r.photo_path,
+                   u.username  AS inspector,
+                   e.floor_number, e.room_number, e.location_description,
+                   e.next_due_date,
+                   b.name      AS building_name,
+                   c.name      AS company_name,
+                   c.address   AS company_address
+            FROM Reports r
+            LEFT JOIN Users u         ON r.inspector_id    = u.user_id
+            LEFT JOIN Extinguishers e ON r.extinguisher_id = e.extinguisher_id
+            LEFT JOIN Buildings b     ON e.building_id     = b.building_id
+            LEFT JOIN Companies c     ON b.company_id      = c.company_id
+        """
+        if user_id:
+            rows = conn.execute(
+                base + " WHERE r.inspector_id=? AND (r.org_id=? OR ? IS NULL)",
+                (user_id, org_id, org_id)
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                base + " WHERE (r.org_id=? OR ? IS NULL)",
+                (org_id, org_id)
+            ).fetchall()
+    return jsonify([dict(r) for r in rows])
+
+@app.route("/api/reports", methods=["POST"])
+def create_report():
+    d = request.get_json()
+    try:
+        with get_db() as conn:
+            report_cols = [r[1] for r in conn.execute("PRAGMA table_info(Reports)").fetchall()]
+            if "photo_path" not in report_cols:
+                conn.execute("ALTER TABLE Reports ADD COLUMN photo_path TEXT")
+            conn.execute(
+                "INSERT INTO Reports (extinguisher_id, inspector_id, inspection_date, notes, photo_path, org_id) "
+                "VALUES (?,?,?,?,?,?)",
+                (d.get("extinguisher_id"), d.get("inspector_id"),
+                 d.get("inspection_date"), d.get("notes",""),
+                 d.get("photo_path"), d.get("org_id"))
+            )
+            if d.get("assignment_id"):
+                conn.execute(
+                    "UPDATE Assignments SET status='Inspection Complete' WHERE assignment_id=?",
+                    (d.get("assignment_id"),)
+                )
+        return jsonify({"success": True}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ── USERS ──────────────────────────────────────────────────────────────────────
+@app.route("/api/users", methods=["GET"])
+def get_users():
+    org_id = request.args.get("org_id")
+    with get_db() as conn:
+        if org_id:
+            rows = conn.execute(
+                "SELECT user_id, username, role FROM Users WHERE org_id=?", (org_id,)
+            ).fetchall()
+        else:
+            rows = conn.execute("SELECT user_id, username, role FROM Users").fetchall()
+    return jsonify([dict(r) for r in rows])
+
+# ── USER PREFERENCES ──────────────────────────────────────────────────────────
+@app.route("/api/users/<int:user_id>/password", methods=["PUT"])
+def change_password(user_id):
+    d = request.get_json()
+    current_pw = (d.get("current_password") or "").strip()
+    new_pw     = (d.get("new_password") or "").strip()
+
+    if not current_pw or not new_pw:
+        return jsonify({"error": "Both current and new password are required."}), 400
+
+    try:
+        with get_db() as conn:
+            # Verify current password matches
+            row = conn.execute(
+                "SELECT user_id FROM Users WHERE user_id = ? AND password_hash = ?",
+                (user_id, current_pw)
+            ).fetchone()
+            if not row:
+                return jsonify({"error": "Current password is incorrect."}), 401
+            # Update to new password
+            conn.execute(
+                "UPDATE Users SET password_hash = ? WHERE user_id = ?",
+                (new_pw, user_id)
+            )
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/users/<int:user_id>/preferences", methods=["GET"])
+def get_preferences(user_id):
+    import json
+    with get_db() as conn:
+        existing = [r[1] for r in conn.execute("PRAGMA table_info(Users)").fetchall()]
+        if "preferences" not in existing:
+            conn.execute("ALTER TABLE Users ADD COLUMN preferences TEXT DEFAULT '{}'")
+        row = conn.execute(
+            "SELECT preferences FROM Users WHERE user_id = ?", (user_id,)
+        ).fetchone()
+    if row and row["preferences"]:
+        try:
+            return jsonify(json.loads(row["preferences"]))
+        except:
+            return jsonify({"theme": "dark"})
+    return jsonify({"theme": "dark"})
+
+@app.route("/api/users/<int:user_id>/preferences", methods=["PUT"])
+def save_preferences(user_id):
+    import json
+    prefs = request.get_json()
+    try:
+        with get_db() as conn:
+            existing = [r[1] for r in conn.execute("PRAGMA table_info(Users)").fetchall()]
+            if "preferences" not in existing:
+                conn.execute("ALTER TABLE Users ADD COLUMN preferences TEXT DEFAULT '{}'")
+            conn.execute(
+                "UPDATE Users SET preferences = ? WHERE user_id = ?",
+                (json.dumps(prefs), user_id)
+            )
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ── CREATE USER ───────────────────────────────────────────────────────────────
+@app.route("/api/users", methods=["POST"])
+def create_user():
+    d = request.get_json()
+    username = (d.get("username") or "").strip()
+    password = (d.get("password") or "").strip()
+    role     = (d.get("role")     or "").strip()
+    org_id   = d.get("org_id")
+
+    if not username or not password or not role:
+        return jsonify({"error": "Username, password, and role are required."}), 400
+
+    valid_roles = ["Admin", "Inspector", "3rd_Party_Admin", "3rd_Party_Inspector"]
+    if role not in valid_roles:
+        return jsonify({"error": f"Invalid role. Must be one of: {', '.join(valid_roles)}"}), 400
+
+    try:
+        with get_db() as conn:
+            existing = conn.execute(
+                "SELECT user_id FROM Users WHERE username=?", (username,)
+            ).fetchone()
+            if existing:
+                return jsonify({"error": "Username already exists."}), 409
+            conn.execute(
+                "INSERT INTO Users (username, password_hash, role, org_id) VALUES (?,?,?,?)",
+                (username, password, role, org_id)
+            )
+        return jsonify({"success": True}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ── EDIT USER ─────────────────────────────────────────────────────────────────
+@app.route("/api/users/<int:user_id>", methods=["PUT"])
+def update_user(user_id):
+    d = request.get_json()
+    role     = (d.get("role") or "").strip()
+    username = (d.get("username") or "").strip()
+    new_pw   = (d.get("password") or "").strip()  # optional — only set if provided
+
+    valid_roles = ["Admin", "Inspector", "3rd_Party_Admin", "3rd_Party_Inspector"]
+    if role and role not in valid_roles:
+        return jsonify({"error": f"Invalid role. Must be one of: {', '.join(valid_roles)}"}), 400
+
+    try:
+        with get_db() as conn:
+            # Check user exists
+            existing = conn.execute("SELECT user_id, username FROM Users WHERE user_id=?", (user_id,)).fetchone()
+            if not existing:
+                return jsonify({"error": "User not found."}), 404
+
+            # Check for duplicate username (if changing)
+            if username and username != existing["username"]:
+                dup = conn.execute("SELECT user_id FROM Users WHERE username=? AND user_id!=?", (username, user_id)).fetchone()
+                if dup:
+                    return jsonify({"error": "Username already exists."}), 409
+
+            # Build dynamic update
+            updates = []
+            params  = []
+            if username:
+                updates.append("username=?"); params.append(username)
+            if role:
+                updates.append("role=?"); params.append(role)
+            if new_pw:
+                updates.append("password_hash=?"); params.append(new_pw)
+
+            if updates:
+                params.append(user_id)
+                conn.execute(f"UPDATE Users SET {', '.join(updates)} WHERE user_id=?", params)
+
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ── DELETE USER ───────────────────────────────────────────────────────────────
+@app.route("/api/users/<int:user_id>", methods=["DELETE"])
+def delete_user(user_id):
+    try:
+        with get_db() as conn:
+            # Don't allow deleting yourself
+            # (The UI will enforce this too, but belt-and-suspenders)
+            user = conn.execute("SELECT username, role FROM Users WHERE user_id=?", (user_id,)).fetchone()
+            if not user:
+                return jsonify({"error": "User not found."}), 404
+
+            # Reassign their assignments to unassigned (null inspector)
+            conn.execute("UPDATE Assignments SET inspector_id=NULL WHERE inspector_id=?", (user_id,))
+            # Keep their reports for audit trail, but delete the user
+            conn.execute("DELETE FROM Users WHERE user_id=?", (user_id,))
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ── NOTIFICATIONS ─────────────────────────────────────────────────────────────
+@app.route("/api/notifications", methods=["GET"])
+def get_notifications():
+    from datetime import datetime, timedelta
+    user_id = request.args.get("user_id")
+    role    = request.args.get("role", "")
+    org_id  = request.args.get("org_id")
+    since   = (datetime.now() - timedelta(hours=24)).strftime("%Y-%m-%d %H:%M:%S")
+    notifs  = []
+    org_filter     = "AND (a.org_id=? OR ? IS NULL)"
+    org_filter_r   = "AND (r.org_id=? OR ? IS NULL)"
+    org_filter_e   = "AND (e.org_id=? OR ? IS NULL)"
+    op = (org_id, org_id)  # reusable param pair
+
+    with get_db() as conn:
+        # ── New assignments ────────────────────────────────────────────────
+        if role in ("Admin", "3rd_Party_Admin"):
+            rows = conn.execute(
+                "SELECT a.assignment_id, u_i.username AS inspector, a.extinguisher_id, a.due_date "
+                "FROM Assignments a LEFT JOIN Users u_i ON a.inspector_id = u_i.user_id "
+                f"WHERE 1=1 {org_filter} ORDER BY a.assignment_id DESC LIMIT 10", op
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT a.assignment_id, u_a.username AS admin, a.extinguisher_id, a.due_date "
+                "FROM Assignments a LEFT JOIN Users u_a ON a.admin_id = u_a.user_id "
+                f"WHERE a.inspector_id=? {org_filter} ORDER BY a.assignment_id DESC LIMIT 10",
+                (user_id,) + op
+            ).fetchall()
+        for r in rows:
+            msg = (f"Assignment #{r['assignment_id']} created for {r['inspector'] or 'Inspector'} — Ext #{r['extinguisher_id']}"
+                   if role in ("Admin","3rd_Party_Admin")
+                   else f"New assignment: Ext #{r['extinguisher_id']} assigned to you")
+            notifs.append({"id": f"assign_new_{r['assignment_id']}", "type": "assignment_created",
+                           "message": msg, "timestamp": r['due_date'] or since})
+
+        # ── Completed assignments ──────────────────────────────────────────
+        if role in ("Admin", "3rd_Party_Admin"):
+            completed = conn.execute(
+                "SELECT a.assignment_id, u_i.username AS inspector, a.extinguisher_id "
+                "FROM Assignments a LEFT JOIN Users u_i ON a.inspector_id = u_i.user_id "
+                f"WHERE a.status='Inspection Complete' {org_filter} ORDER BY a.assignment_id DESC LIMIT 5", op
+            ).fetchall()
+        else:
+            completed = conn.execute(
+                "SELECT a.assignment_id, a.extinguisher_id FROM Assignments a "
+                f"WHERE a.status='Inspection Complete' AND a.inspector_id=? {org_filter} "
+                "ORDER BY a.assignment_id DESC LIMIT 5", (user_id,) + op
+            ).fetchall()
+        for r in completed:
+            notifs.append({"id": f"assign_complete_{r['assignment_id']}", "type": "assignment_complete",
+                           "message": f"Assignment #{r['assignment_id']} marked complete — Ext #{r['extinguisher_id']}",
+                           "timestamp": since})
+
+        # ── Reports submitted ──────────────────────────────────────────────
+        if role in ("Admin", "3rd_Party_Admin"):
+            reports = conn.execute(
+                "SELECT r.report_id, u.username AS inspector, r.extinguisher_id, r.inspection_date "
+                "FROM Reports r LEFT JOIN Users u ON r.inspector_id = u.user_id "
+                f"WHERE 1=1 {org_filter_r} ORDER BY r.report_id DESC LIMIT 10", op
+            ).fetchall()
+        else:
+            reports = conn.execute(
+                "SELECT r.report_id, r.extinguisher_id, r.inspection_date FROM Reports r "
+                f"WHERE r.inspector_id=? {org_filter_r} ORDER BY r.report_id DESC LIMIT 10",
+                (user_id,) + op
+            ).fetchall()
+        for r in reports:
+            notifs.append({"id": f"report_{r['report_id']}", "type": "report_submitted",
+                           "message": f"Inspection report #{r['report_id']} submitted for Ext #{r['extinguisher_id']}",
+                           "timestamp": r['inspection_date'] or since})
+
+        # ── Overdue extinguishers ──────────────────────────────────────────
+        today = datetime.now().strftime("%Y-%m-%d")
+        overdue = conn.execute(
+            "SELECT extinguisher_id, address, next_due_date FROM Extinguishers e "
+            f"WHERE next_due_date IS NOT NULL AND next_due_date<? {org_filter_e} "
+            "ORDER BY next_due_date ASC LIMIT 10", (today,) + op
+        ).fetchall()
+        for r in overdue:
+            notifs.append({"id": f"overdue_{r['extinguisher_id']}", "type": "overdue",
+                           "message": f"Ext #{r['extinguisher_id']} at {r['address']} overdue since {r['next_due_date']}",
+                           "timestamp": r['next_due_date']})
+
+    notifs.sort(key=lambda x: x.get("timestamp",""), reverse=True)
+    return jsonify(notifs)
+
+# ── STATS ──────────────────────────────────────────────────────────────────────
+@app.route("/api/stats", methods=["GET"])
+def get_stats():
+    org_id = request.args.get("org_id")
+    with get_db() as conn:
+        if org_id:
+            ext     = conn.execute("SELECT COUNT(*) FROM Extinguishers WHERE org_id=?",  (org_id,)).fetchone()[0]
+            assigns = conn.execute("SELECT COUNT(*) FROM Assignments   WHERE org_id=?",  (org_id,)).fetchone()[0]
+            reports = conn.execute("SELECT COUNT(*) FROM Reports       WHERE org_id=?",  (org_id,)).fetchone()[0]
+            users   = conn.execute("SELECT COUNT(*) FROM Users         WHERE org_id=?",  (org_id,)).fetchone()[0]
+        else:
+            ext     = conn.execute("SELECT COUNT(*) FROM Extinguishers").fetchone()[0]
+            assigns = conn.execute("SELECT COUNT(*) FROM Assignments").fetchone()[0]
+            reports = conn.execute("SELECT COUNT(*) FROM Reports").fetchone()[0]
+            users   = conn.execute("SELECT COUNT(*) FROM Users").fetchone()[0]
+    return jsonify({"extinguishers":ext, "assignments":assigns, "reports":reports, "users":users})
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  PLATFORM SUPER ADMIN
+# ══════════════════════════════════════════════════════════════════════════════
+
+@app.route("/api/platform/login", methods=["POST"])
+def platform_login():
+    """Authenticate with the platform password (separate from org login)."""
+    d = request.get_json()
+    password = (d.get("password") or "").strip()
+    if not password:
+        return jsonify({"error": "Password is required."}), 400
+
+    # Compare SHA-256 hash (client sends pre-hashed, same as org login)
+    if password == PLATFORM_PASSWORD_HASH:
+        platform_log("SuperAdmin", "platform_login", None, "Platform admin logged in")
+        return jsonify({"success": True, "role": "SuperAdmin"})
+    platform_log("unknown", "platform_login_failed", None, "Failed platform login attempt")
+    return jsonify({"error": "Invalid platform password."}), 401
+
+@app.route("/api/platform/organizations", methods=["GET"])
+def platform_list_orgs():
+    """List all organizations with stats for the Super Admin dashboard."""
+    with get_db() as conn:
+        orgs = conn.execute("""
+            SELECT o.org_id, o.name, o.address, o.city, o.state, o.phone,
+                   o.contact_name, o.created_at, o.platform_status,
+                   COUNT(DISTINCT u.user_id) AS user_count,
+                   COUNT(DISTINCT e.extinguisher_id) AS extinguisher_count,
+                   COUNT(DISTINCT r.report_id) AS report_count
+            FROM Organizations o
+            LEFT JOIN Users u ON u.org_id = o.org_id
+            LEFT JOIN Extinguishers e ON e.org_id = o.org_id
+            LEFT JOIN Reports r ON r.org_id = o.org_id
+            GROUP BY o.org_id
+            ORDER BY o.created_at DESC
+        """).fetchall()
+    return jsonify([dict(r) for r in orgs])
+
+@app.route("/api/platform/organizations/<int:org_id>/status", methods=["PUT"])
+def platform_update_org_status(org_id):
+    """Approve, reject, or suspend an organization."""
+    d = request.get_json()
+    new_status = (d.get("status") or "").strip()
+    valid = ["approved", "pending", "suspended", "rejected"]
+    if new_status not in valid:
+        return jsonify({"error": f"Status must be one of: {', '.join(valid)}"}), 400
+    try:
+        with get_db() as conn:
+            org = conn.execute("SELECT org_id FROM Organizations WHERE org_id=?", (org_id,)).fetchone()
+            if not org:
+                return jsonify({"error": "Organization not found."}), 404
+            conn.execute("UPDATE Organizations SET platform_status=? WHERE org_id=?", (new_status, org_id))
+            org_name = conn.execute("SELECT name FROM Organizations WHERE org_id=?", (org_id,)).fetchone()
+            platform_log("SuperAdmin", f"org_{new_status}", org_name["name"] if org_name else str(org_id), f"Changed org #{org_id} to {new_status}")
+        return jsonify({"success": True, "status": new_status})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/platform/organizations/<int:org_id>", methods=["DELETE"])
+def platform_delete_org(org_id):
+    """Permanently delete an organization and all its data."""
+    try:
+        with get_db() as conn:
+            org = conn.execute("SELECT name FROM Organizations WHERE org_id=?", (org_id,)).fetchone()
+            if not org:
+                return jsonify({"error": "Organization not found."}), 404
+            # Cascade delete all org data
+            conn.execute("DELETE FROM Reports      WHERE org_id=?", (org_id,))
+            conn.execute("DELETE FROM Assignments   WHERE org_id=?", (org_id,))
+            conn.execute("DELETE FROM Extinguishers WHERE org_id=?", (org_id,))
+            conn.execute("DELETE FROM Buildings     WHERE org_id=?", (org_id,))
+            conn.execute("DELETE FROM Companies     WHERE org_id=?", (org_id,))
+            conn.execute("DELETE FROM Users         WHERE org_id=?", (org_id,))
+            conn.execute("DELETE FROM Organizations WHERE org_id=?", (org_id,))
+        platform_log("SuperAdmin", "org_deleted", org["name"], f"Permanently deleted org #{org_id} and all data")
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/platform/settings", methods=["GET"])
+def platform_get_settings():
+    """Get platform settings."""
+    with get_db() as conn:
+        rows = conn.execute("SELECT key, value FROM PlatformSettings").fetchall()
+    settings = {}
+    for r in rows:
+        val = r["value"]
+        if val == "true": val = True
+        elif val == "false": val = False
+        settings[r["key"]] = val
+    return jsonify(settings)
+
+@app.route("/api/platform/settings", methods=["PUT"])
+def platform_update_settings():
+    """Update platform settings."""
+    d = request.get_json()
+    try:
+        with get_db() as conn:
+            for key, value in d.items():
+                str_val = "true" if value is True else "false" if value is False else str(value)
+                existing = conn.execute("SELECT key FROM PlatformSettings WHERE key=?", (key,)).fetchone()
+                if existing:
+                    conn.execute("UPDATE PlatformSettings SET value=? WHERE key=?", (str_val, key))
+                else:
+                    conn.execute("INSERT INTO PlatformSettings (key, value) VALUES (?,?)", (key, str_val))
+        for key, value in d.items():
+            platform_log("SuperAdmin", "settings_changed", key, f"Set {key} = {value}")
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ── Audit log helper ──────────────────────────────────────────────────────────
+def platform_log(actor, action, target=None, details=None):
+    """Record a platform-level action to the audit log."""
+    try:
+        with get_db() as conn:
+            conn.execute(
+                "INSERT INTO PlatformAuditLog (actor, action, target, details) VALUES (?,?,?,?)",
+                (actor, action, target, details)
+            )
+    except:
+        pass  # don't break the main action if logging fails
+
+@app.route("/api/platform/organizations/<int:org_id>/details", methods=["GET"])
+def platform_org_details(org_id):
+    """Drill into an org — returns users, extinguishers, assignments, reports."""
+    with get_db() as conn:
+        org = conn.execute("SELECT * FROM Organizations WHERE org_id=?", (org_id,)).fetchone()
+        if not org:
+            return jsonify({"error": "Organization not found."}), 404
+
+        users = conn.execute(
+            "SELECT user_id, username, role FROM Users WHERE org_id=?", (org_id,)
+        ).fetchall()
+
+        extinguishers = conn.execute("""
+            SELECT e.extinguisher_id, e.floor_number, e.room_number,
+                   e.location_description, e.ext_type, e.ext_status,
+                   e.serial_number, e.next_due_date,
+                   b.name AS building_name, c.name AS company_name
+            FROM Extinguishers e
+            LEFT JOIN Buildings b ON b.building_id = e.building_id
+            LEFT JOIN Companies c ON c.company_id  = b.company_id
+            WHERE e.org_id=?
+            ORDER BY c.name, b.name, e.floor_number
+        """, (org_id,)).fetchall()
+
+        assignments = conn.execute("""
+            SELECT a.assignment_id, a.status, a.due_date, a.notes,
+                   u_admin.username AS assigned_by,
+                   u_insp.username AS inspector
+            FROM Assignments a
+            LEFT JOIN Users u_admin ON a.admin_id = u_admin.user_id
+            LEFT JOIN Users u_insp  ON a.inspector_id = u_insp.user_id
+            WHERE a.org_id=?
+            ORDER BY a.due_date DESC
+        """, (org_id,)).fetchall()
+
+        reports = conn.execute("""
+            SELECT r.report_id, r.inspection_date, r.notes,
+                   u.username AS inspector,
+                   e.extinguisher_id, e.location_description
+            FROM Reports r
+            LEFT JOIN Users u ON r.inspector_id = u.user_id
+            LEFT JOIN Extinguishers e ON r.extinguisher_id = e.extinguisher_id
+            WHERE r.org_id=?
+            ORDER BY r.inspection_date DESC
+        """, (org_id,)).fetchall()
+
+        companies = conn.execute(
+            "SELECT company_id, name, address, city, state FROM Companies WHERE org_id=?", (org_id,)
+        ).fetchall()
+
+        buildings = conn.execute("""
+            SELECT b.building_id, b.name, b.address, b.floors,
+                   c.name AS company_name
+            FROM Buildings b
+            LEFT JOIN Companies c ON c.company_id = b.company_id
+            WHERE b.org_id=?
+        """, (org_id,)).fetchall()
+
+    platform_log("SuperAdmin", "view_org", org["name"], f"Viewed org #{org_id} details")
+
+    return jsonify({
+        "org":           dict(org),
+        "users":         [dict(r) for r in users],
+        "extinguishers": [dict(r) for r in extinguishers],
+        "assignments":   [dict(r) for r in assignments],
+        "reports":       [dict(r) for r in reports],
+        "companies":     [dict(r) for r in companies],
+        "buildings":     [dict(r) for r in buildings],
+    })
+
+@app.route("/api/platform/audit", methods=["GET"])
+def platform_audit_log():
+    """Return the platform audit log, most recent first."""
+    limit = request.args.get("limit", 100, type=int)
+    with get_db() as conn:
+        rows = conn.execute(
+            "SELECT * FROM PlatformAuditLog ORDER BY timestamp DESC LIMIT ?", (limit,)
+        ).fetchall()
+    return jsonify([dict(r) for r in rows])
+
+# ── START ──────────────────────────────────────────────────────────────────────
+if __name__ == "__main__":
+    print("=" * 50)
+    print("  FireWatch Server")
+    print(f"  Database : {DB_PATH}")
+    print(f"  Frontend : {UI_DIR}")
+    print("  Open     : http://localhost:5000")
+    print("=" * 50)
+    # debug=False in production, port from environment variable (Render sets PORT)
+    port = int(os.environ.get("PORT", 5000))
+    debug = os.environ.get("RENDER") is None  # debug only when running locally
+    app.run(debug=debug, host="0.0.0.0", port=port)
