@@ -8,6 +8,7 @@
 #include <QtSql/QSqlDatabase>
 #include <QtSql/QSqlQuery>
 #include <QtSql/QSqlError>
+#include "DueDateAlert.h"
 
 namespace Ui {
 class Dashboard;
@@ -19,7 +20,8 @@ class Dashboard : public QMainWindow
 
 public:
     explicit Dashboard(int userId, const QString &username,
-                       const QString &role, QSqlDatabase db,
+                       const QString &role, int orgId,
+                       QSqlDatabase db,
                        QWidget *parent = nullptr);
     ~Dashboard();
 
@@ -38,8 +40,13 @@ private slots:
     // ── Inspector: Generate Report ────────────────────────────────────────
     void onGenerateReport();
 
-    // ── Admin: Add User ───────────────────────────────────────────────────
+    // ── Admin: Add / Edit / Delete User ──────────────────────────────────
     void onAddUser();
+    void onEditUser();
+    void onDeleteUser();
+
+    // ── Admin: Export Reports ────────────────────────────────────────────
+    void onExportReports();
 
 private:
     Ui::Dashboard *ui;
@@ -47,6 +54,7 @@ private:
     int          m_userId;
     QString      m_username;
     QString      m_role;
+    int          m_orgId;
     QSqlDatabase m_db;
 
     // ── Role helpers ──────────────────────────────────────────────────────
@@ -67,6 +75,9 @@ private:
     // ── Report toolbar (Inspector) ────────────────────────────────────────
     void setupReportToolbar();
 
+    // ── Report Export toolbar (Admin) ───────────────────────────────────
+    void setupReportExportToolbar();
+
     // ── User toolbar (Admin) ──────────────────────────────────────────────
     void setupUserToolbar();
 
@@ -83,6 +94,12 @@ private:
 
     // ── Returns extinguisher_id of selected row, -1 if none ──────────────
     int selectedExtinguisherId() const;
+
+    // ── Returns user_id of selected row in Users table, -1 if none ───────
+    int selectedUserId() const;
+
+    // ── Due date alerts — called after loadAssignments() ─────────────────
+    void checkDueDateAlerts();
 };
 
 #endif // DASHBOARD_H

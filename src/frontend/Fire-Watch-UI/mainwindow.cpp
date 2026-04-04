@@ -99,7 +99,7 @@ void MainWindow::onLoginClicked()
 
     QSqlQuery query(db);
     query.prepare(
-        "SELECT user_id, username, role "
+        "SELECT user_id, username, role, org_id "
         "FROM Users "
         "WHERE username = :username AND password_hash = :password"
     );
@@ -116,9 +116,10 @@ void MainWindow::onLoginClicked()
         int     userId   = query.value("user_id").toInt();
         QString uname    = query.value("username").toString();
         QString role     = query.value("role").toString();
+        int     orgId    = query.value("org_id").toInt();
 
         // Open the Dashboard window and close the login window
-        Dashboard *dash = new Dashboard(userId, uname, role, db);
+        Dashboard *dash = new Dashboard(userId, uname, role, orgId, db);
         dash->show();
         this->close();
 
