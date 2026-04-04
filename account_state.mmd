@@ -1,0 +1,6 @@
+stateDiagram-v2
+    [*] --> Registered
+    Registered --> Inactive
+    Inactive --> Active : Admin Approval
+    Active --> Locked : Too many failures
+    Locked --> Active : Lock expires

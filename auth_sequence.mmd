@@ -1,0 +1,10 @@
+sequenceDiagram
+    participant Inspector
+    participant Frontend
+    participant API
+    participant Database
+
+    Inspector->>Frontend: Submit registration
+    Frontend->>API: POST /inspectors/register
+    API->>Database: Insert inspector (INACTIVE)
+    API-->>Frontend: Registration pending

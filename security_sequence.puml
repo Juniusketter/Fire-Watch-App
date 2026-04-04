@@ -1,0 +1,12 @@
+@startuml
+participant User
+participant API
+participant DB
+
+User -> API : login()
+API -> DB : verify credentials
+API -> User : 2FA required
+User -> API : submit code
+API -> DB : validate code
+API -> User : JWT issued
+@enduml

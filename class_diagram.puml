@@ -1,0 +1,17 @@
+@startuml
+class Inspector {
+  username
+  email
+  phone
+  employeeId
+  status
+}
+
+class Administrator
+class AuthService
+class NotificationService
+
+Administrator --> AuthService
+AuthService --> Inspector
+AuthService --> NotificationService
+@enduml
