@@ -394,6 +394,7 @@
     }
     @media (max-width: 640px) {
       .nav-links { display: none; }
+      .hamburger { display: flex; }
       .features-grid { grid-template-columns: 1fr; }
       .steps { grid-template-columns: 1fr; }
       .problem-points { grid-template-columns: 1fr; }
@@ -484,6 +485,65 @@
       color: var(--muted); line-height: 1.8;
       max-width: 500px; margin: 0 auto;
     }
+
+    /* ── HAMBURGER ── */
+    .hamburger {
+      display: none;
+      flex-direction: column;
+      gap: 5px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px;
+      z-index: 300;
+    }
+    .hamburger span {
+      display: block;
+      width: 24px; height: 2px;
+      background: var(--white);
+      border-radius: 2px;
+      transition: all 0.3s ease;
+    }
+    .hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+    .hamburger.open span:nth-child(2) { opacity: 0; }
+    .hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+    /* ── MOBILE MENU ── */
+    .mobile-menu {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(13,31,60,0.98);
+      backdrop-filter: blur(16px);
+      z-index: 250;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2rem;
+    }
+    .mobile-menu.hidden { display: none; }
+    .mobile-menu a {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2.2rem;
+      letter-spacing: 0.1em;
+      color: var(--white);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .mobile-menu a:hover { color: var(--orange); }
+    .mobile-menu .mobile-signin {
+      background: var(--orange);
+      color: var(--white) !important;
+      padding: 0.75rem 2.5rem;
+      border-radius: 4px;
+      font-size: 1.5rem;
+      margin-top: 1rem;
+    }
+    .mobile-menu .mobile-signin:hover { background: var(--orange2); }
+
+    @media (max-width: 640px) {
+      .hamburger { display: flex; }
+    }
   </style>
 </head>
 <body>
@@ -491,13 +551,28 @@
 <!-- NAV -->
 <nav>
   <a href="#" class="nav-logo"><span class="fire">🔥</span> FireWatch</a>
-  <ul class="nav-links">
-    <li><a href="#features">Features</a></li>
-    <li><a href="#who">Who It's For</a></li>
-    <li><a href="#how">How It Works</a></li>
+  <ul class="nav-links" id="navLinks">
+    <li><a href="#features" onclick="closeMenu()">Features</a></li>
+    <li><a href="#who" onclick="closeMenu()">Who It's For</a></li>
+    <li><a href="#how" onclick="closeMenu()">How It Works</a></li>
     <li><a href="/app" class="nav-btn">Sign In</a></li>
   </ul>
+
+  <!-- Hamburger button -->
+  <button class="hamburger" id="hamburger" onclick="toggleMenu()" aria-label="Menu">
+    <span></span>
+    <span></span>
+    <span></span>
+  </button>
 </nav>
+
+<!-- Mobile menu overlay -->
+<div class="mobile-menu hidden" id="mobileMenu">
+  <a href="#features" onclick="closeMenu()">Features</a>
+  <a href="#who" onclick="closeMenu()">Who It's For</a>
+  <a href="#how" onclick="closeMenu()">How It Works</a>
+  <a href="/app" class="mobile-signin">Sign In</a>
+</div>
 
 <!-- HERO -->
 <section class="hero">
@@ -696,5 +771,18 @@
       window.scrollY > 40 ? '0 4px 30px rgba(0,0,0,0.4)' : 'none';
   });
 </script>
+
+  <script>
+    function toggleMenu() {
+      const menu = document.getElementById('mobileMenu');
+      const btn  = document.getElementById('hamburger');
+      menu.classList.toggle('hidden');
+      btn.classList.toggle('open');
+    }
+    function closeMenu() {
+      document.getElementById('mobileMenu').classList.add('hidden');
+      document.getElementById('hamburger').classList.remove('open');
+    }
+  </script>
 </body>
 </html>
