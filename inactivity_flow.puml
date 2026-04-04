@@ -1,0 +1,17 @@
+@startuml
+participant InactivityMonitor
+participant SessionService
+
+loop Periodic check
+    InactivityMonitor -> SessionService: isLoggedIn()
+    alt Logged in
+        InactivityMonitor -> SessionService: checkInactivity()
+        InactivityMonitor -> SessionService: checkTokenValidity()
+        alt Expired
+            InactivityMonitor -> SessionService: logout()
+        else Valid
+            InactivityMonitor -> SessionService: renewToken()
+        end
+    end
+end
+@enduml

@@ -1,0 +1,19 @@
+@startuml
+class SessionManager {
+  -activeUser : string
+  -activeRole : Role
+  -loggedIn : bool
+  -sessionToken : string
+  -tokenIssuedAt : steady_clock::time_point
+  -lastActivityAt : steady_clock::time_point
+  -sessionMutex : mutex
+
+  +login(u : string, r : Role)
+  +logout()
+  +isLoggedIn() : bool
+  +isAdmin() : bool
+  +isTokenExpired() : bool
+  +isInactivityExpired() : bool
+  +renewTokenIfAllowed()
+}
+@enduml

@@ -1,0 +1,1 @@
+// SessionManager tests full implementation placeholder
