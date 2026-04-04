@@ -104,6 +104,14 @@
     *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
     html,body{font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
 
+    /* Language selector (EN/ES toggle — Sprint 5) */
+    /* Only visible on the login page — hidden once app or platform page is active */
+    .language-selector{position:fixed;top:12px;right:16px;display:flex;align-items:center;gap:0.5rem;z-index:200;background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:6px 10px;box-shadow:0 8px 20px rgba(0,0,0,0.2);}
+    .language-selector label{font-family:'IBM Plex Mono',monospace;font-size:0.65rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted2);}
+    .language-selector select{background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:0.75rem;padding:4px 6px;border-radius:4px;}
+    body:has(#appPage:not(.hidden)) .language-selector,
+    body:has(#platformPage:not(.hidden)) .language-selector{display:none;}
+
     /* LOGIN */
     #loginPage{min-height:100vh;display:grid;grid-template-columns:1fr 1fr;}
     .brand-side{background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:flex-start;justify-content:center;padding:3rem 3.5rem;position:relative;overflow:hidden;}
@@ -398,6 +406,15 @@
   <script src="https://unpkg.com/@zxing/library@0.18.6/umd/index.min.js"></script>
 </head>
 <body>
+
+<!-- Language selector (EN/ES toggle — Sprint 5) -->
+<div class="language-selector" id="languageSelectorWidget" aria-label="Language selection">
+  <label for="languageSelect">Language</label>
+  <select id="languageSelect" name="language">
+    <option value="en">English</option>
+    <option value="es">Spanish</option>
+  </select>
+</div>
 
 <!-- LOGIN -->
 <div id="loginPage">
@@ -3846,12 +3863,9 @@ document.getElementById("btnLogout").addEventListener("click",()=>{
   currentUser=null; selectedExtId=null;
   localStorage.removeItem("fw_session");
   document.getElementById("appPage").classList.add("hidden");
-  document.getElementById("loginPage").classList.remove("hidden");
-  document.getElementById("username").value="";
-  document.getElementById("password").value="";
-  document.getElementById("loginMsg").textContent="";
   document.getElementById("tabBar").innerHTML="";
   ["extToolbar","assignToolbar","reportToolbar","userToolbar"].forEach(id=>document.getElementById(id).classList.add("hidden"));
+  window.location.href = "/";
 });
 
 // ── CRUD: Company ─────────────────────────────────────────────────────────────
@@ -9313,10 +9327,7 @@ document.getElementById("platformLoginBtn")?.addEventListener("click", async () 
 document.getElementById("platformLogoutBtn")?.addEventListener("click", () => {
   _platformAuth = false;
   document.getElementById("platformPage").classList.add("hidden");
-  document.getElementById("loginPage").classList.remove("hidden");
-  document.getElementById("platformPassword").value = "";
-  document.getElementById("platformMsg").textContent = "";
-  switchAuthTab("signin");
+  window.location.href = "/";
 });
 
 // ── Load Platform Dashboard (Orgs tab) ───────────────────────────────────────
@@ -10712,6 +10723,51 @@ function _getCurrentFloor() {
     localStorage.removeItem("fw_session"); // corrupt data — clear it
   }
 })();
+
+// ── Language Toggle (EN/ES — Sprint 5) ────────────────────────────────────
+// translations{} maps data-key attribute values to display strings per locale.
+// To translate a UI element, add data-key="keyName" to the HTML tag and add
+// the matching key to both en{} and es{} below.
+const translations = {
+  en: {
+    // example: greeting: "Welcome"
+  },
+  es: {
+    // example: greeting: "Bienvenido"
+  }
+};
+
+function changeLanguage(lang) {
+  document.querySelectorAll('[data-key]').forEach(element => {
+    const key = element.getAttribute('data-key');
+    if (translations[lang] && translations[lang][key] !== undefined) {
+      element.innerText = translations[lang][key];
+    }
+  });
+  document.documentElement.lang = lang;
+  try { localStorage.setItem('fw_lang', lang); } catch(e) {}
+}
+
+const languageSelect = document.getElementById('languageSelect');
+if (languageSelect) {
+  // Restore saved preference on load
+  const savedLang = (function(){ try { return localStorage.getItem('fw_lang'); } catch(e){ return null; } })();
+  if (savedLang && (savedLang === 'en' || savedLang === 'es')) {
+    languageSelect.value = savedLang;
+  }
+  changeLanguage(languageSelect.value);
+
+  languageSelect.addEventListener('change', (event) => {
+    const lang = event.target.value;
+    changeLanguage(lang);
+    // Notify backend (optional — for server-side preference storage)
+    fetch('/api/changeLanguage', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ language: lang })
+    }).catch(() => { /* backend optional for this feature */ });
+  });
+}
 </script>
 </body>
 </html>

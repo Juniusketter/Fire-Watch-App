@@ -461,9 +461,13 @@ def run_migrations():
 run_migrations()
 
 # ── Serve frontend ─────────────────────────────────────────────────────────────
-@app.route("/")
+@app.route('/')
+def landing():
+    return send_from_directory(BASE_DIR, 'landing.html')
+
+@app.route('/app')
 def index():
-    return send_from_directory(UI_DIR, "index.html")
+    return send_from_directory(UI_DIR, 'index.html')
 
 @app.route("/<path:filename>")
 def static_files(filename):
