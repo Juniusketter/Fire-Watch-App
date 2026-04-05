@@ -548,22 +548,28 @@
     .stat-box.color-blue:hover   .stat-val { text-shadow: 0 0 20px rgba(29,78,216,0.45); }
     .stat-box.color-purple:hover .stat-val { text-shadow: 0 0 20px rgba(124,58,237,0.45); }
     /* Stat boxes are clickable drill-downs */
-    .stat-box { cursor: pointer; user-select: none; }
+    .stat-box { cursor: pointer; user-select: none; -webkit-tap-highlight-color: rgba(232,93,4,0.15); }
+    .stat-box:active { filter: brightness(1.15); }
     .stat-box::before { content:''; position:absolute;inset:0;opacity:0;transition:opacity 0.15s;
       background:rgba(255,255,255,0.03);border-radius:inherit; }
     .stat-box:active::before { opacity:1; }
     /* Drill-down table */
     .drill-table { width:100%;border-collapse:collapse;font-size:0.75rem;font-family:'IBM Plex Mono',monospace; }
-    .drill-table th { padding:8px 12px;text-align:left;font-size:0.65rem;letter-spacing:0.08em;
+    .drill-table th { padding:10px 12px;text-align:left;font-size:0.65rem;letter-spacing:0.08em;
       text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);
       background:var(--bg2);position:sticky;top:0;z-index:1;cursor:pointer;white-space:nowrap;user-select:none; }
     .drill-table th:hover { color:var(--text); }
     .drill-table th .sort-arrow { margin-left:4px;opacity:0.4;font-size:0.6rem; }
     .drill-table th.sorted .sort-arrow { opacity:1;color:var(--orange); }
-    .drill-table td { padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.04);
+    .drill-table td { padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.04);
       color:var(--text);white-space:nowrap;max-width:200px;overflow:hidden;text-overflow:ellipsis;vertical-align:middle; }
-    .drill-table tr:hover td { background:var(--bg3);cursor:pointer; }
+    .drill-table tr:hover td, .drill-table tr:active td { background:var(--bg3);cursor:pointer; }
     .drill-empty { padding:2.5rem;text-align:center;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:0.8rem; }
+    /* Mobile: larger touch targets, slightly smaller font */
+    @media(max-width:767px){
+      .drill-table th { padding:11px 10px;font-size:0.6rem; }
+      .drill-table td { padding:11px 10px;font-size:0.7rem;max-width:130px; }
+    }
 
     /* ── 6. Company/building cards: landing feature-card hover */
     .company-card, .building-card {
@@ -2433,24 +2439,24 @@
 
 <!-- STAT DRILL-DOWN MODAL -->
 <div class="modal-overlay hidden" id="statDrillModal" style="z-index:290;" onclick="if(event.target===this)closeStatDrill()">
-  <div class="modal-box" style="width:min(96vw,900px);max-height:88vh;display:flex;flex-direction:column;padding:0;overflow:hidden;">
-    <!-- Header -->
-    <div style="display:flex;align-items:center;gap:0.75rem;padding:1rem 1.2rem 0.75rem;border-bottom:1px solid var(--border);flex-shrink:0;">
-      <div id="statDrillIcon" style="font-size:1.3rem;"></div>
+  <div class="modal-box" style="width:min(96vw,900px);height:min(88vh,700px);display:flex;flex-direction:column;padding:0;overflow:hidden;">
+    <!-- Header: title row -->
+    <div style="display:flex;align-items:center;gap:0.6rem;padding:0.85rem 1rem 0.6rem;border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;">
+      <div id="statDrillIcon" style="font-size:1.2rem;flex-shrink:0;"></div>
       <div style="flex:1;min-width:0;">
-        <div id="statDrillTitle" style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:0.06em;color:var(--text);"></div>
-        <div id="statDrillSub"   style="font-size:0.7rem;color:var(--muted);font-family:'IBM Plex Mono',monospace;margin-top:1px;"></div>
+        <div id="statDrillTitle" style="font-family:'Bebas Neue',sans-serif;font-size:1.2rem;letter-spacing:0.06em;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+        <div id="statDrillSub"   style="font-size:0.68rem;color:var(--muted);font-family:'IBM Plex Mono',monospace;margin-top:1px;"></div>
       </div>
       <input id="statDrillSearch" type="text" placeholder="Search…"
-        style="padding:5px 10px;border:1px solid var(--border);border-radius:5px;background:var(--bg3);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:0.75rem;width:180px;"
+        style="padding:6px 10px;border:1px solid var(--border);border-radius:5px;background:var(--bg3);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:0.75rem;width:clamp(100px,30%,200px);-webkit-appearance:none;"
         oninput="_drillRender()">
       <button onclick="closeStatDrill()"
-        style="background:none;border:none;color:var(--muted2);font-size:1.2rem;cursor:pointer;padding:4px 6px;line-height:1;">✕</button>
+        style="background:none;border:none;color:var(--muted2);font-size:1.3rem;cursor:pointer;padding:6px 8px;line-height:1;flex-shrink:0;-webkit-tap-highlight-color:transparent;">✕</button>
     </div>
     <!-- Table area -->
-    <div id="statDrillBody" style="flex:1;overflow-y:auto;overflow-x:auto;padding:0;"></div>
+    <div id="statDrillBody" style="flex:1;overflow-y:auto;overflow-x:auto;-webkit-overflow-scrolling:touch;padding:0;"></div>
     <!-- Footer count -->
-    <div id="statDrillFooter" style="padding:0.5rem 1.2rem;border-top:1px solid var(--border);font-size:0.68rem;color:var(--muted);font-family:'IBM Plex Mono',monospace;flex-shrink:0;"></div>
+    <div id="statDrillFooter" style="padding:0.5rem 1rem;border-top:1px solid var(--border);font-size:0.68rem;color:var(--muted);font-family:'IBM Plex Mono',monospace;flex-shrink:0;"></div>
   </div>
 </div>
 
@@ -8549,15 +8555,15 @@ function openExtDetail(row) {
               <span style="color:var(--muted);font-size:0.65rem;">${when}</span>
               <span style="color:var(--muted2);font-size:0.65rem;">by ${_esc(who)}</span>
             </div>
-            <div style="display:flex;align-items:flex-start;gap:6px;">
-              <div style="flex:1;min-width:0;">
+            <div style="display:flex;align-items:flex-start;gap:6px;flex-wrap:wrap;">
+              <div style="flex:1;min-width:80px;">
                 <div style="font-size:0.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px;">From</div>
-                <div style="color:var(--text);">${_esc(oldLoc)}</div>
+                <div style="color:var(--text);word-break:break-word;">${_esc(oldLoc)}</div>
               </div>
-              <div style="color:var(--orange);font-size:1rem;padding-top:14px;">→</div>
-              <div style="flex:1;min-width:0;">
+              <div style="color:var(--orange);font-size:1rem;padding-top:14px;flex-shrink:0;">→</div>
+              <div style="flex:1;min-width:80px;">
                 <div style="font-size:0.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px;">To</div>
-                <div style="color:var(--teal);">${_esc(newLoc)}</div>
+                <div style="color:var(--teal);word-break:break-word;">${_esc(newLoc)}</div>
               </div>
             </div>
             ${h.notes ? `<div style="font-size:0.65rem;color:var(--muted);margin-top:4px;">${_esc(h.notes)}</div>` : ""}
@@ -10981,15 +10987,16 @@ async function loadPlatformDashboardOverview() {
   const complPct = ct.active_total > 0 ? Math.round((ct.compliant / ct.active_total) * 100) : null;
   const complColor = complPct === null ? "var(--muted)" : complPct >= 90 ? "var(--teal)" : complPct >= 70 ? "var(--orange)" : "var(--red)";
 
-  const clickableStatStyle = statBoxStyle + "cursor:pointer;transition:filter 0.15s;";
+  const clickableStatStyle = statBoxStyle + "cursor:pointer;transition:filter 0.15s;-webkit-tap-highlight-color:rgba(232,93,4,0.18);";
+  const hover = "onmouseenter=\"this.style.filter='brightness(1.15)'\" onmouseleave=\"this.style.filter=''\" ontouchstart=\"this.style.filter='brightness(1.2)'\" ontouchend=\"this.style.filter=''\"";
   document.getElementById("platformDashStats").innerHTML = `
-    <div style="${clickableStatStyle}" onclick="_platformStatClick('all')"     title="Click to view organizations"  onmouseover="this.style.filter='brightness(1.15)'" onmouseout="this.style.filter=''"><div style="${statNumStyle}color:var(--orange);">${orgs.length}</div><div style="${statLabelStyle}">Organizations</div></div>
-    <div style="${clickableStatStyle}" onclick="_platformStatClick('companies')" title="Click to view companies"     onmouseover="this.style.filter='brightness(1.15)'" onmouseout="this.style.filter=''"><div style="${statNumStyle}color:var(--teal);">${totalCompanies}</div><div style="${statLabelStyle}">Companies</div></div>
-    <div style="${clickableStatStyle}" onclick="_platformStatClick('buildings')" title="Click to view buildings"     onmouseover="this.style.filter='brightness(1.15)'" onmouseout="this.style.filter=''"><div style="${statNumStyle}color:var(--blue);">${totalBuildings}</div><div style="${statLabelStyle}">Buildings</div></div>
-    <div style="${clickableStatStyle}" onclick="_platformStatClick('ext')"       title="Click to view extinguishers" onmouseover="this.style.filter='brightness(1.15)'" onmouseout="this.style.filter=''"><div style="${statNumStyle}color:var(--purple);">${totalExt}</div><div style="${statLabelStyle}">Extinguishers</div></div>
-    <div style="${clickableStatStyle}" onclick="_platformStatClick('users')"     title="Click to view users"         onmouseover="this.style.filter='brightness(1.15)'" onmouseout="this.style.filter=''"><div style="${statNumStyle}color:var(--teal);">${totalUsers}</div><div style="${statLabelStyle}">Users</div></div>
-    <div style="${clickableStatStyle}" onclick="_platformStatClick('assign')"    title="Click to view assignments"   onmouseover="this.style.filter='brightness(1.15)'" onmouseout="this.style.filter=''"><div style="${statNumStyle}color:var(--orange);">${totalAssignments}</div><div style="${statLabelStyle}">Assignments</div></div>
-    <div style="${clickableStatStyle}" onclick="_platformStatClick('reports')"   title="Click to view reports"       onmouseover="this.style.filter='brightness(1.15)'" onmouseout="this.style.filter=''"><div style="${statNumStyle}color:var(--red);">${totalReports}</div><div style="${statLabelStyle}">Reports</div></div>
+    <div style="${clickableStatStyle}" onclick="_platformStatClick('all')"      ${hover}><div style="${statNumStyle}color:var(--orange);">${orgs.length}</div><div style="${statLabelStyle}">Organizations</div></div>
+    <div style="${clickableStatStyle}" onclick="_platformStatClick('companies')" ${hover}><div style="${statNumStyle}color:var(--teal);">${totalCompanies}</div><div style="${statLabelStyle}">Companies</div></div>
+    <div style="${clickableStatStyle}" onclick="_platformStatClick('buildings')" ${hover}><div style="${statNumStyle}color:var(--blue);">${totalBuildings}</div><div style="${statLabelStyle}">Buildings</div></div>
+    <div style="${clickableStatStyle}" onclick="_platformStatClick('ext')"       ${hover}><div style="${statNumStyle}color:var(--purple);">${totalExt}</div><div style="${statLabelStyle}">Extinguishers</div></div>
+    <div style="${clickableStatStyle}" onclick="_platformStatClick('users')"     ${hover}><div style="${statNumStyle}color:var(--teal);">${totalUsers}</div><div style="${statLabelStyle}">Users</div></div>
+    <div style="${clickableStatStyle}" onclick="_platformStatClick('assign')"    ${hover}><div style="${statNumStyle}color:var(--orange);">${totalAssignments}</div><div style="${statLabelStyle}">Assignments</div></div>
+    <div style="${clickableStatStyle}" onclick="_platformStatClick('reports')"   ${hover}><div style="${statNumStyle}color:var(--red);">${totalReports}</div><div style="${statLabelStyle}">Reports</div></div>
   `;
 
   // Compliance health row
