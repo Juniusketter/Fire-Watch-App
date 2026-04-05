@@ -669,8 +669,19 @@
     .settings-save-bar .btn-save { min-height:auto; padding:8px 20px; font-size:0.78rem; }
 
     /* ── 23. Platform background — ensure bg layer stays behind everything */
-    #platformBgLayer { z-index: 0; }
-    .app-body, .topbar, .sidebar, .main-content { position: relative; z-index: 1; }
+    #platformBgLayer,
+    #platformBgLayerAdmin { z-index: 0; }
+    /* Raise app chrome above background layer.
+       Do NOT include .sidebar here — on mobile it already has z-index:150 via
+       the media query and overriding it to 1 would put it behind the overlay. */
+    .app-body, .topbar, .main-content { position: relative; z-index: 1; }
+
+    /* Mobile sidebar: must stay on top of background layer and overlay */
+    @media (max-width: 767px) {
+      .sidebar { z-index: 150 !important; overflow-y: auto; }
+      .sidebar-nav { overflow-y: auto; flex-shrink: 1; }
+      .sidebar-footer { flex-shrink: 0; }
+    }
 
     /* ── 24. Background drop zone hover */
     #bgDropZone:hover { border-color: var(--orange); background: var(--bg3); }
@@ -893,7 +904,6 @@
     position:fixed;inset:0;z-index:0;
     pointer-events:none;
     background-size:cover;background-position:center;background-repeat:no-repeat;
-    background-attachment:fixed;
     transition:opacity 0.6s ease;
   "></div>
   <div class="topbar" style="background:var(--bg2);border-bottom:1px solid var(--border);">
@@ -1344,7 +1354,6 @@
     position:fixed;inset:0;z-index:0;
     pointer-events:none;
     background-size:cover;background-position:center;background-repeat:no-repeat;
-    background-attachment:fixed;
     transition:opacity 0.6s ease;
   "></div>
   <div class="topbar">
