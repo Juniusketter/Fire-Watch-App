@@ -747,6 +747,12 @@
         </div>
         <button class="btn-login" id="loginBtn">Login</button>
         <p id="loginMsg"></p>
+        <p style="text-align:center;margin:0.25rem 0 0;">
+          <a href="#" onclick="openForgotPassword();return false;"
+             style="font-size:0.75rem;color:var(--orange);text-decoration:none;">
+            Forgot password?
+          </a>
+        </p>
       </div>
 
       <!-- ── SIGN UP PANEL (user self-registration) ── -->
@@ -1395,6 +1401,10 @@
           <span class="si-icon">🔔</span> Notifications
           <span class="notif-badge hidden" id="sidebarNotifBadge">0</span>
         </button>
+        <button class="sidebar-item" data-view="messages" onclick="showView('messages')">
+          <span class="si-icon">✉️</span> Messages
+          <span class="notif-badge hidden" id="sidebarMsgBadge">0</span>
+        </button>
         <!-- QR Scanner — available to all roles; opens device camera to scan an extinguisher QR code -->
         <button class="sidebar-item" onclick="openQRScanner()">
           <span class="si-icon">📷</span> Scan QR Code
@@ -2037,6 +2047,57 @@
         </div>
       </div><!-- /viewNotifications -->
 
+      <!-- ── MESSAGES VIEW ───────────────────────────────────────────────── -->
+      <div id="viewMessages" class="hidden" style="padding:1.25rem;max-width:900px;margin:0 auto;">
+
+        <!-- Header row -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:0.5rem;">
+          <div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:0.62rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted);margin-bottom:3px;">In-App</div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:1.2rem;color:var(--orange);">Messages</div>
+          </div>
+          <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+            <button onclick="openComposeModal()" class="btn-save" style="font-size:0.78rem;padding:7px 18px;min-height:36px;">✏️ Compose</button>
+            <button id="broadcastBtn" onclick="openBroadcastModal()" class="btn-crud" style="font-size:0.75rem;padding:7px 16px;min-height:36px;display:none;">📢 Broadcast</button>
+            <button onclick="openEmailComposeModal()" class="btn-crud" style="font-size:0.75rem;padding:7px 16px;min-height:36px;">📧 Send Email</button>
+          </div>
+        </div>
+
+        <!-- Tab bar: Inbox / Sent -->
+        <div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:1rem;">
+          <button id="msgTabInbox" onclick="switchMsgTab('inbox')"
+            style="background:none;border:none;border-bottom:2px solid var(--orange);margin-bottom:-2px;padding:8px 18px;font-family:'IBM Plex Mono',monospace;font-size:0.78rem;font-weight:700;color:var(--orange);cursor:pointer;letter-spacing:0.05em;">
+            INBOX
+          </button>
+          <button id="msgTabSent" onclick="switchMsgTab('sent')"
+            style="background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;padding:8px 18px;font-family:'IBM Plex Mono',monospace;font-size:0.78rem;color:var(--muted);cursor:pointer;letter-spacing:0.05em;">
+            SENT
+          </button>
+        </div>
+
+        <!-- Message list -->
+        <div id="msgList" style="display:flex;flex-direction:column;gap:0.4rem;min-height:120px;">
+          <div id="msgEmpty" style="color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:0.78rem;padding:2rem;text-align:center;">[ NO MESSAGES ]</div>
+        </div>
+
+        <!-- Message detail panel (shown when a message is clicked) -->
+        <div id="msgDetail" style="display:none;margin-top:1.5rem;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1.25rem;">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:0.75rem;gap:0.5rem;">
+            <div>
+              <div id="msgDetailSubject" style="font-weight:700;font-size:1rem;color:var(--text);margin-bottom:4px;"></div>
+              <div id="msgDetailMeta" style="font-size:0.73rem;color:var(--muted);"></div>
+            </div>
+            <button onclick="document.getElementById('msgDetail').style.display='none'" style="background:none;border:none;color:var(--muted2);font-size:1.1rem;cursor:pointer;padding:2px 6px;flex-shrink:0;">✕</button>
+          </div>
+          <div id="msgDetailBody" style="font-size:0.85rem;color:var(--text);line-height:1.6;white-space:pre-wrap;border-top:1px solid var(--border);padding-top:0.75rem;"></div>
+          <div style="display:flex;gap:0.5rem;margin-top:1rem;justify-content:flex-end;">
+            <button id="msgDetailDeleteBtn" onclick="_deleteMsgDetail()" class="btn-crud btn-delete" style="font-size:0.75rem;padding:6px 14px;min-height:32px;">🗑 Delete</button>
+            <button id="msgDetailReplyBtn" onclick="_replyToMsg()" class="btn-save" style="font-size:0.75rem;padding:6px 16px;min-height:32px;">↩ Reply</button>
+          </div>
+        </div>
+
+      </div><!-- /viewMessages -->
+
     </div><!-- /main-content -->
   </div><!-- /app-body -->
 </div><!-- /appPage -->
@@ -2563,6 +2624,173 @@
       <button id="bqSaveBtn" onclick="_submitBarcodeAdd()" class="btn-save" style="font-size:0.78rem;padding:7px 22px;min-height:36px;">
         Add &amp; Inspect →
       </button>
+    </div>
+  </div>
+</div>
+
+<!-- ── FORGOT PASSWORD MODAL ──────────────────────────────────────────────── -->
+<div class="modal-overlay hidden" id="forgotPasswordModal" onclick="if(event.target===this)closeForgotPassword()">
+  <div class="modal-box" style="max-width:420px;width:92%;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+      <div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:0.62rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted);margin-bottom:3px;">Account Recovery</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:1rem;color:var(--orange);">Reset Password</div>
+      </div>
+      <button onclick="closeForgotPassword()" style="background:none;border:none;color:var(--muted2);font-size:1.3rem;cursor:pointer;padding:4px 8px;line-height:1;">✕</button>
+    </div>
+    <div id="fpStep1">
+      <p style="font-size:0.8rem;color:var(--muted);margin:0 0 1rem;line-height:1.5;">Enter the email address associated with your account and we'll send you a reset link.</p>
+      <div class="form-row">
+        <label>Email Address</label>
+        <input type="email" id="fpEmail" placeholder="you@example.com" style="width:100%;box-sizing:border-box;" />
+      </div>
+      <div id="fpMsg" style="display:none;font-size:0.78rem;margin:0.5rem 0;padding:0.6rem 0.9rem;border-radius:6px;"></div>
+      <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem;">
+        <button onclick="closeForgotPassword()" class="btn-crud" style="font-size:0.75rem;padding:7px 18px;min-height:36px;background:var(--bg3);border-color:var(--border);color:var(--muted);">Cancel</button>
+        <button id="fpSendBtn" onclick="_sendForgotPassword()" class="btn-save" style="font-size:0.78rem;padding:7px 22px;min-height:36px;">Send Reset Link</button>
+      </div>
+    </div>
+    <div id="fpStep2" style="display:none;text-align:center;padding:1rem 0;">
+      <div style="font-size:2rem;margin-bottom:0.75rem;">📧</div>
+      <div style="font-weight:700;color:var(--orange);margin-bottom:0.5rem;">Check your inbox</div>
+      <p style="font-size:0.8rem;color:var(--muted);margin:0 0 1rem;line-height:1.5;">If an account exists for that email, we've sent a password reset link. It expires in 2 hours.</p>
+      <button onclick="closeForgotPassword()" class="btn-save" style="font-size:0.78rem;padding:7px 22px;min-height:36px;">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── PASSWORD RESET PAGE (token link) ──────────────────────────────────── -->
+<div id="resetPasswordPage" class="hidden" style="position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:1rem;">
+  <div class="modal-box" style="max-width:420px;width:92%;">
+    <div style="text-align:center;margin-bottom:1.25rem;">
+      <div style="font-size:1.8rem;margin-bottom:0.3rem;">🔥</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:1.1rem;color:var(--orange);">Set New Password</div>
+      <div style="font-size:0.75rem;color:var(--muted);margin-top:4px;">FireWatch Account Recovery</div>
+    </div>
+    <div id="rpError" style="display:none;background:rgba(193,18,31,0.12);border:1px solid rgba(193,18,31,0.3);border-radius:6px;padding:0.6rem 0.9rem;font-size:0.78rem;color:#f87171;margin-bottom:0.75rem;"></div>
+    <div id="rpSuccess" style="display:none;text-align:center;">
+      <div style="font-size:2rem;margin-bottom:0.5rem;">✅</div>
+      <div style="font-weight:700;color:#4ade80;margin-bottom:0.5rem;">Password Updated!</div>
+      <p style="font-size:0.8rem;color:var(--muted);margin:0 0 1rem;">You can now log in with your new password.</p>
+      <button onclick="document.getElementById('resetPasswordPage').classList.add('hidden');document.getElementById('loginPage').classList.remove('hidden');" class="btn-save" style="font-size:0.78rem;padding:7px 22px;min-height:36px;">Go to Login</button>
+    </div>
+    <div id="rpForm">
+      <div class="form-row">
+        <label>New Password</label>
+        <input type="password" id="rpNewPassword" placeholder="At least 6 characters" autocomplete="new-password" style="width:100%;box-sizing:border-box;" />
+      </div>
+      <div class="form-row" style="margin-top:0.55rem;">
+        <label>Confirm Password</label>
+        <input type="password" id="rpConfirmPassword" placeholder="Repeat new password" autocomplete="new-password" style="width:100%;box-sizing:border-box;" />
+      </div>
+      <div style="display:flex;justify-content:center;margin-top:1rem;">
+        <button id="rpSaveBtn" onclick="_submitResetPassword()" class="btn-save" style="font-size:0.78rem;padding:8px 28px;min-height:36px;width:100%;">Set New Password</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── COMPOSE MESSAGE MODAL ──────────────────────────────────────────────── -->
+<div class="modal-overlay hidden" id="composeModal" onclick="if(event.target===this)closeComposeModal()">
+  <div class="modal-box" style="max-width:500px;width:92%;max-height:90vh;overflow-y:auto;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+      <div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:0.62rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted);margin-bottom:3px;">Direct Message</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:1rem;color:var(--orange);">New Message</div>
+      </div>
+      <button onclick="closeComposeModal()" style="background:none;border:none;color:var(--muted2);font-size:1.3rem;cursor:pointer;padding:4px 8px;line-height:1;">✕</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:0.55rem;">
+      <div class="form-row">
+        <label>To <span style="color:var(--red);">*</span></label>
+        <select id="cmpRecipient" style="width:100%;box-sizing:border-box;">
+          <option value="">— Select recipient —</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Subject <span style="color:var(--red);">*</span></label>
+        <input type="text" id="cmpSubject" placeholder="Message subject" style="width:100%;box-sizing:border-box;" />
+      </div>
+      <div class="form-row">
+        <label>Message <span style="color:var(--red);">*</span></label>
+        <textarea id="cmpBody" rows="6" placeholder="Type your message here..." style="width:100%;box-sizing:border-box;resize:vertical;"></textarea>
+      </div>
+    </div>
+    <div id="cmpError" style="display:none;background:rgba(193,18,31,0.12);border:1px solid rgba(193,18,31,0.3);border-radius:6px;padding:0.6rem 0.9rem;font-size:0.78rem;color:#f87171;margin-top:0.75rem;"></div>
+    <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem;">
+      <button onclick="closeComposeModal()" class="btn-crud" style="font-size:0.75rem;padding:7px 18px;min-height:36px;background:var(--bg3);border-color:var(--border);color:var(--muted);">Cancel</button>
+      <button id="cmpSendBtn" onclick="_sendCompose()" class="btn-save" style="font-size:0.78rem;padding:7px 22px;min-height:36px;">Send ✉</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── BROADCAST MESSAGE MODAL ────────────────────────────────────────────── -->
+<div class="modal-overlay hidden" id="broadcastModal" onclick="if(event.target===this)closeBroadcastModal()">
+  <div class="modal-box" style="max-width:480px;width:92%;max-height:90vh;overflow-y:auto;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+      <div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:0.62rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted);margin-bottom:3px;">Admin Broadcast</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:1rem;color:var(--orange);">Send to Group</div>
+      </div>
+      <button onclick="closeBroadcastModal()" style="background:none;border:none;color:var(--muted2);font-size:1.3rem;cursor:pointer;padding:4px 8px;line-height:1;">✕</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:0.55rem;">
+      <div class="form-row">
+        <label>Send To</label>
+        <select id="bcRole" style="width:100%;box-sizing:border-box;">
+          <option value="">All users in org</option>
+          <option value="Inspector">All Inspectors</option>
+          <option value="Client">All Clients</option>
+          <option value="FireMarshal">All Fire Marshals</option>
+          <option value="Admin">All Admins</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Subject <span style="color:var(--red);">*</span></label>
+        <input type="text" id="bcSubject" placeholder="Broadcast subject" style="width:100%;box-sizing:border-box;" />
+      </div>
+      <div class="form-row">
+        <label>Message <span style="color:var(--red);">*</span></label>
+        <textarea id="bcBody" rows="5" placeholder="Your broadcast message..." style="width:100%;box-sizing:border-box;resize:vertical;"></textarea>
+      </div>
+    </div>
+    <div id="bcError" style="display:none;background:rgba(193,18,31,0.12);border:1px solid rgba(193,18,31,0.3);border-radius:6px;padding:0.6rem 0.9rem;font-size:0.78rem;color:#f87171;margin-top:0.75rem;"></div>
+    <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem;">
+      <button onclick="closeBroadcastModal()" class="btn-crud" style="font-size:0.75rem;padding:7px 18px;min-height:36px;background:var(--bg3);border-color:var(--border);color:var(--muted);">Cancel</button>
+      <button id="bcSendBtn" onclick="_sendBroadcast()" class="btn-save" style="font-size:0.78rem;padding:7px 22px;min-height:36px;">Broadcast 📢</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── SEND EMAIL MODAL ───────────────────────────────────────────────────── -->
+<div class="modal-overlay hidden" id="emailComposeModal" onclick="if(event.target===this)closeEmailComposeModal()">
+  <div class="modal-box" style="max-width:500px;width:92%;max-height:90vh;overflow-y:auto;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+      <div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:0.62rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted);margin-bottom:3px;">Send Email</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:1rem;color:var(--orange);">Compose Email</div>
+      </div>
+      <button onclick="closeEmailComposeModal()" style="background:none;border:none;color:var(--muted2);font-size:1.3rem;cursor:pointer;padding:4px 8px;line-height:1;">✕</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:0.55rem;">
+      <div class="form-row">
+        <label>To (email) <span style="color:var(--red);">*</span></label>
+        <input type="email" id="ecTo" placeholder="recipient@example.com" style="width:100%;box-sizing:border-box;" />
+      </div>
+      <div class="form-row">
+        <label>Subject <span style="color:var(--red);">*</span></label>
+        <input type="text" id="ecSubject" placeholder="Email subject" style="width:100%;box-sizing:border-box;" />
+      </div>
+      <div class="form-row">
+        <label>Body <span style="color:var(--red);">*</span></label>
+        <textarea id="ecBody" rows="7" placeholder="Email content..." style="width:100%;box-sizing:border-box;resize:vertical;"></textarea>
+      </div>
+    </div>
+    <div id="ecError" style="display:none;background:rgba(193,18,31,0.12);border:1px solid rgba(193,18,31,0.3);border-radius:6px;padding:0.6rem 0.9rem;font-size:0.78rem;color:#f87171;margin-top:0.75rem;"></div>
+    <div id="ecSuccess" style="display:none;background:rgba(74,222,128,0.12);border:1px solid rgba(74,222,128,0.3);border-radius:6px;padding:0.6rem 0.9rem;font-size:0.78rem;color:#4ade80;margin-top:0.75rem;"></div>
+    <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem;">
+      <button onclick="closeEmailComposeModal()" class="btn-crud" style="font-size:0.75rem;padding:7px 18px;min-height:36px;background:var(--bg3);border-color:var(--border);color:var(--muted);">Cancel</button>
+      <button id="ecSendBtn" onclick="_sendEmailCompose()" class="btn-save" style="font-size:0.78rem;padding:7px 22px;min-height:36px;">Send 📧</button>
     </div>
   </div>
 </div>
@@ -3559,6 +3787,8 @@ function showDashboard() {
   loadUserPreferences();
   // Apply platform background (non-blocking — fires in background)
   loadPlatformBackground();
+  // Start message badge polling
+  _startMsgPolling();
 }
 
 // ── Build tabs by role ────────────────────────────────────────────────────────
@@ -4452,6 +4682,7 @@ document.getElementById("btnLogout").addEventListener("click",()=>{
   }
   stopPolling();
   stopInactivityWatch(); // cancel auto-logout timers on explicit logout
+  _stopMsgPolling();
   clearAllBadges();
   _notifications = []; _seenNotifIds = new Set(); _unreadCount = 0;
   updateNotifBadge();
@@ -6424,7 +6655,8 @@ function showView(view) {
     dashboard:     document.getElementById("viewDashboard"),
     settings:      document.getElementById("viewSettings"),
     profile:       document.getElementById("viewProfile"),
-    notifications: document.getElementById("viewNotifications")
+    notifications: document.getElementById("viewNotifications"),
+    messages:      document.getElementById("viewMessages")
   };
   Object.entries(_views).forEach(([name, el]) => {
     if (!el) return;
@@ -6463,6 +6695,15 @@ function showView(view) {
   if (view === "notifications") {
     renderNotifications();
     markAllRead();
+  }
+  if (view === "messages") {
+    loadMessages("inbox");
+    // Show broadcast button only for admins/marshals
+    const bcastBtn = document.getElementById("broadcastBtn");
+    if (bcastBtn) {
+      const r = currentUser && currentUser.role;
+      bcastBtn.style.display = (r === "Admin" || r === "FireMarshal") ? "" : "none";
+    }
   }
   window._currentView = view;
   closeSidebar();
@@ -11684,6 +11925,443 @@ if (languageSelect) {
       body: JSON.stringify({ language: lang })
     }).catch(() => { /* backend optional for this feature */ });
   });
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// FORGOT PASSWORD / RESET PASSWORD
+// ════════════════════════════════════════════════════════════════════════════
+function openForgotPassword() {
+  const modal = document.getElementById("forgotPasswordModal");
+  document.getElementById("fpEmail").value = "";
+  document.getElementById("fpStep1").style.display = "";
+  document.getElementById("fpStep2").style.display = "none";
+  const msgEl = document.getElementById("fpMsg");
+  msgEl.style.display = "none"; msgEl.textContent = "";
+  modal.classList.remove("hidden");
+}
+function closeForgotPassword() {
+  document.getElementById("forgotPasswordModal").classList.add("hidden");
+}
+async function _sendForgotPassword() {
+  const email = document.getElementById("fpEmail").value.trim();
+  const msgEl = document.getElementById("fpMsg");
+  const btn   = document.getElementById("fpSendBtn");
+  if (!email) { _showFpMsg("Please enter your email address.", false); return; }
+  btn.disabled = true; btn.textContent = "Sending…";
+  try {
+    const res  = await fetch("/api/auth/forgot-password", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ email })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      document.getElementById("fpStep1").style.display = "none";
+      document.getElementById("fpStep2").style.display = "";
+    } else {
+      _showFpMsg(data.error || "Something went wrong.", false);
+    }
+  } catch(e) {
+    _showFpMsg("Network error. Please try again.", false);
+  } finally {
+    btn.disabled = false; btn.textContent = "Send Reset Link";
+  }
+}
+function _showFpMsg(text, success) {
+  const el = document.getElementById("fpMsg");
+  el.style.display = "";
+  el.textContent   = text;
+  if (success) {
+    el.style.background = "rgba(74,222,128,0.12)";
+    el.style.borderColor = "rgba(74,222,128,0.3)";
+    el.style.color = "#4ade80";
+  } else {
+    el.style.background = "rgba(193,18,31,0.12)";
+    el.style.borderColor = "rgba(193,18,31,0.3)";
+    el.style.color = "#f87171";
+  }
+}
+
+// Called on page load if URL has ?token= (password reset link)
+document.addEventListener("DOMContentLoaded", function _checkResetToken() {
+  const params = new URLSearchParams(window.location.search);
+  const token  = params.get("token");
+  if (!token) return;
+  // Show reset page, hide login
+  const loginPage = document.getElementById("loginPage");
+  const resetPage = document.getElementById("resetPasswordPage");
+  if (loginPage) loginPage.classList.add("hidden");
+  if (resetPage) {
+    resetPage.classList.remove("hidden");
+    resetPage.style.display = "flex";
+    resetPage._token = token;
+  }
+});
+
+async function _submitResetPassword() {
+  const token   = document.getElementById("resetPasswordPage")._token;
+  const pw      = document.getElementById("rpNewPassword").value;
+  const confirm = document.getElementById("rpConfirmPassword").value;
+  const errEl   = document.getElementById("rpError");
+  const btn     = document.getElementById("rpSaveBtn");
+  errEl.style.display = "none";
+  if (!pw) { errEl.textContent = "Please enter a new password."; errEl.style.display = ""; return; }
+  if (pw.length < 6) { errEl.textContent = "Password must be at least 6 characters."; errEl.style.display = ""; return; }
+  if (pw !== confirm) { errEl.textContent = "Passwords do not match."; errEl.style.display = ""; return; }
+  btn.disabled = true; btn.textContent = "Saving…";
+  try {
+    const res  = await fetch("/api/auth/reset-password", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ token, password: pw })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      document.getElementById("rpForm").style.display    = "none";
+      document.getElementById("rpSuccess").style.display = "";
+      // Clean URL
+      window.history.replaceState({}, "", window.location.pathname);
+    } else {
+      errEl.textContent = data.error || "Reset failed.";
+      errEl.style.display = "";
+    }
+  } catch(e) {
+    errEl.textContent = "Network error. Please try again.";
+    errEl.style.display = "";
+  } finally {
+    btn.disabled = false; btn.textContent = "Set New Password";
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// MESSAGING SYSTEM
+// ════════════════════════════════════════════════════════════════════════════
+let _msgCurrentTab     = "inbox";
+let _msgCurrentId      = null;
+let _msgCurrentMessage = null;   // full message object currently open in detail panel
+let _msgPollTimer      = null;
+
+function _msgParams() {
+  const u = currentUser || {};
+  return `user_id=${u.user_id||0}&org_id=${u.org_id||0}&role=${encodeURIComponent(u.role||'')}`;
+}
+function _msgBody() {
+  const u = currentUser || {};
+  return { user_id: u.user_id, org_id: u.org_id, role: u.role || "" };
+}
+
+async function loadMessages(tab) {
+  _msgCurrentTab = tab || _msgCurrentTab;
+  // Hide detail panel when reloading list
+  document.getElementById("msgDetail").style.display = "none";
+  _msgCurrentId = null;
+  const listEl  = document.getElementById("msgList");
+  listEl.innerHTML = '<div id="msgEmpty" style="color:var(--muted);font-family:\'IBM Plex Mono\',monospace;font-size:0.78rem;padding:2rem;text-align:center;">[ LOADING… ]</div>';
+
+  const base     = (_msgCurrentTab === "sent") ? "/api/messages/sent" : "/api/messages";
+  const endpoint = `${base}?${_msgParams()}`;
+  try {
+    const res  = await fetch(endpoint);
+    const msgs = await res.json();
+    _renderMsgList(msgs);
+    // Update unread badge after loading
+    _refreshMsgBadge();
+  } catch(e) {
+    listEl.innerHTML = '<div style="color:#f87171;font-family:\'IBM Plex Mono\',monospace;font-size:0.78rem;padding:2rem;text-align:center;">Failed to load messages.</div>';
+  }
+}
+
+function _renderMsgList(msgs) {
+  const listEl = document.getElementById("msgList");
+  if (!msgs || !msgs.length) {
+    listEl.innerHTML = '<div id="msgEmpty" style="color:var(--muted);font-family:\'IBM Plex Mono\',monospace;font-size:0.78rem;padding:2rem;text-align:center;">[ NO MESSAGES ]</div>';
+    return;
+  }
+  listEl.innerHTML = msgs.map(m => {
+    const isUnread = !m.is_read && _msgCurrentTab === "inbox";
+    const isBcast  = m.is_broadcast;
+    const from     = _msgCurrentTab === "sent" ? (m.recipient_name || "Broadcast") : m.sender_name;
+    const badge    = isBcast ? `<span style="font-size:0.62rem;background:rgba(226,124,0,0.15);color:var(--orange);border:1px solid rgba(226,124,0,0.3);border-radius:3px;padding:1px 5px;margin-left:4px;">BROADCAST</span>` : "";
+    const dot      = isUnread ? `<span style="width:7px;height:7px;border-radius:50%;background:var(--orange);display:inline-block;margin-right:6px;flex-shrink:0;"></span>` : `<span style="width:7px;height:7px;display:inline-block;margin-right:6px;flex-shrink:0;"></span>`;
+    return `
+      <div onclick="_openMsg(${m.message_id})"
+           style="display:flex;align-items:center;gap:0.5rem;padding:0.65rem 0.9rem;
+                  background:var(--bg2);border:1px solid var(--border);border-radius:7px;
+                  cursor:pointer;transition:background 0.15s;
+                  ${isUnread ? 'border-left:3px solid var(--orange);' : ''}">
+        ${dot}
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:center;gap:0.4rem;flex-wrap:wrap;">
+            <span style="font-size:0.82rem;font-weight:${isUnread?'700':'400'};color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px;">${_esc(from)}</span>
+            ${badge}
+            <span style="margin-left:auto;font-size:0.7rem;color:var(--muted);white-space:nowrap;">${_fmtMsgDate(m.created_at)}</span>
+          </div>
+          <div style="font-size:0.78rem;color:var(--muted2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_esc(m.subject)}</div>
+        </div>
+      </div>`;
+  }).join("");
+}
+
+async function _openMsg(msgId) {
+  _msgCurrentId = msgId;
+  // Find in cache (we re-fetch to be safe)
+  const base     = (_msgCurrentTab === "sent") ? "/api/messages/sent" : "/api/messages";
+  const endpoint = `${base}?${_msgParams()}`;
+  let msgs;
+  try { msgs = await fetch(endpoint).then(r=>r.json()); } catch(e){ return; }
+  const m = msgs.find(x => x.message_id === msgId);
+  if (!m) return;
+
+  // Mark read
+  if (!m.is_read && _msgCurrentTab === "inbox") {
+    fetch(`/api/messages/${msgId}/read`, { method:"PUT", headers:{"Content-Type":"application/json"}, body: JSON.stringify(_msgBody()) }).then(() => _refreshMsgBadge());
+    m.is_read = 1;
+  }
+
+  const isSent = _msgCurrentTab === "sent";
+  const metaParts = [];
+  if (isSent) {
+    metaParts.push(m.is_broadcast ? `To: Broadcast (${m.broadcast_role || "All"})` : `To: ${_esc(m.recipient_name || "")} &lt;${_esc(m.recipient_email || "")}&gt;`);
+  } else {
+    metaParts.push(`From: ${_esc(m.sender_name)} &lt;${_esc(m.sender_email)}&gt;`);
+  }
+  metaParts.push(_fmtMsgDate(m.created_at));
+
+  document.getElementById("msgDetailSubject").textContent = m.subject;
+  document.getElementById("msgDetailMeta").innerHTML      = metaParts.join(" · ");
+  document.getElementById("msgDetailBody").textContent    = m.body;
+  document.getElementById("msgDetail").style.display      = "";
+  document.getElementById("msgDetail").scrollIntoView({ behavior:"smooth", block:"nearest" });
+
+  // Show Reply only for inbox DMs (can't reply to broadcasts or your own sent messages)
+  const replyBtn = document.getElementById("msgDetailReplyBtn");
+  if (replyBtn) replyBtn.style.display = (!isSent && !m.is_broadcast) ? "" : "none";
+
+  // Cache current message for reply
+  _msgCurrentMessage = m;
+
+  // Refresh list to clear unread indicator
+  _renderMsgList(msgs);
+}
+
+async function _deleteMsgDetail() {
+  if (!_msgCurrentId) return;
+  if (!confirm("Delete this message?")) return;
+  await fetch(`/api/messages/${_msgCurrentId}`, { method:"DELETE", headers:{"Content-Type":"application/json"}, body: JSON.stringify(_msgBody()) });
+  document.getElementById("msgDetail").style.display = "none";
+  _msgCurrentId      = null;
+  _msgCurrentMessage = null;
+  loadMessages();
+}
+
+async function _replyToMsg() {
+  const m = _msgCurrentMessage;
+  if (!m) return;
+  // Open compose modal pre-filled
+  await openComposeModal();
+  // Pre-select the sender as recipient
+  const sel = document.getElementById("cmpRecipient");
+  if (sel) {
+    // Find the option whose value matches sender_id
+    const opt = [...sel.options].find(o => parseInt(o.value) === m.sender_id);
+    if (opt) sel.value = opt.value;
+  }
+  // Pre-fill subject with Re: prefix (avoid stacking "Re: Re:")
+  const subj = document.getElementById("cmpSubject");
+  const prefix = "Re: ";
+  const base   = m.subject.startsWith(prefix) ? m.subject : prefix + m.subject;
+  if (subj) subj.value = base;
+  // Focus the body
+  const body = document.getElementById("cmpBody");
+  if (body) { body.focus(); body.value = ""; }
+}
+
+function switchMsgTab(tab) {
+  _msgCurrentTab = tab;
+  const inbox = document.getElementById("msgTabInbox");
+  const sent  = document.getElementById("msgTabSent");
+  if (tab === "inbox") {
+    inbox.style.borderBottomColor = "var(--orange)"; inbox.style.color = "var(--orange)";
+    sent.style.borderBottomColor  = "transparent";   sent.style.color  = "var(--muted)";
+  } else {
+    sent.style.borderBottomColor  = "var(--orange)"; sent.style.color  = "var(--orange)";
+    inbox.style.borderBottomColor = "transparent";   inbox.style.color = "var(--muted)";
+  }
+  loadMessages(tab);
+}
+
+async function _refreshMsgBadge() {
+  try {
+    const data = await fetch(`/api/messages/unread?${_msgParams()}`).then(r=>r.json());
+    const badge = document.getElementById("sidebarMsgBadge");
+    if (!badge) return;
+    if (data.unread > 0) {
+      badge.textContent = data.unread > 99 ? "99+" : data.unread;
+      badge.classList.remove("hidden");
+    } else {
+      badge.classList.add("hidden");
+    }
+  } catch(e) {}
+}
+
+// Poll for new messages every 30 seconds while logged in
+function _startMsgPolling() {
+  if (_msgPollTimer) clearInterval(_msgPollTimer);
+  _refreshMsgBadge();
+  _msgPollTimer = setInterval(() => {
+    _refreshMsgBadge();
+    if (window._currentView === "messages") loadMessages();
+  }, 30000);
+}
+function _stopMsgPolling() {
+  if (_msgPollTimer) { clearInterval(_msgPollTimer); _msgPollTimer = null; }
+}
+
+// ── Compose Modal ─────────────────────────────────────────────────────────────
+async function openComposeModal() {
+  const modal = document.getElementById("composeModal");
+  document.getElementById("cmpSubject").value = "";
+  document.getElementById("cmpBody").value    = "";
+  document.getElementById("cmpError").style.display = "none";
+  document.getElementById("cmpSendBtn").disabled = false;
+  document.getElementById("cmpSendBtn").textContent = "Send ✉";
+  // Load recipient list
+  try {
+    const users = await fetch(`/api/messages/users?${_msgParams()}`).then(r=>r.json());
+    const sel   = document.getElementById("cmpRecipient");
+    sel.innerHTML = '<option value="">— Select recipient —</option>' +
+      users.map(u => `<option value="${u.user_id}">${_esc(u.full_name)} (${_esc(u.role)})</option>`).join("");
+  } catch(e) {
+    document.getElementById("cmpRecipient").innerHTML = '<option value="">Failed to load users</option>';
+  }
+  modal.classList.remove("hidden");
+}
+function closeComposeModal() {
+  document.getElementById("composeModal").classList.add("hidden");
+}
+async function _sendCompose() {
+  const recipientId = parseInt(document.getElementById("cmpRecipient").value);
+  const subject     = document.getElementById("cmpSubject").value.trim();
+  const body        = document.getElementById("cmpBody").value.trim();
+  const errEl       = document.getElementById("cmpError");
+  const btn         = document.getElementById("cmpSendBtn");
+  errEl.style.display = "none";
+  if (!recipientId) { errEl.textContent = "Please select a recipient."; errEl.style.display=""; return; }
+  if (!subject)     { errEl.textContent = "Subject is required.";       errEl.style.display=""; return; }
+  if (!body)        { errEl.textContent = "Message body is required.";  errEl.style.display=""; return; }
+  btn.disabled = true; btn.textContent = "Sending…";
+  try {
+    const res = await fetch("/api/messages", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ ..._msgBody(), recipient_id: recipientId, subject, body, is_broadcast: false })
+    });
+    const data = await res.json();
+    if (res.ok) { closeComposeModal(); loadMessages("sent"); }
+    else { errEl.textContent = data.error || "Failed to send."; errEl.style.display=""; }
+  } catch(e) {
+    errEl.textContent = "Network error."; errEl.style.display="";
+  } finally {
+    btn.disabled = false; btn.textContent = "Send ✉";
+  }
+}
+
+// ── Broadcast Modal ────────────────────────────────────────────────────────────
+function openBroadcastModal() {
+  document.getElementById("bcSubject").value  = "";
+  document.getElementById("bcBody").value     = "";
+  document.getElementById("bcRole").value     = "";
+  document.getElementById("bcError").style.display  = "none";
+  document.getElementById("bcSendBtn").disabled     = false;
+  document.getElementById("bcSendBtn").textContent  = "Broadcast 📢";
+  document.getElementById("broadcastModal").classList.remove("hidden");
+}
+function closeBroadcastModal() {
+  document.getElementById("broadcastModal").classList.add("hidden");
+}
+async function _sendBroadcast() {
+  const subject = document.getElementById("bcSubject").value.trim();
+  const body    = document.getElementById("bcBody").value.trim();
+  const role    = document.getElementById("bcRole").value;
+  const errEl   = document.getElementById("bcError");
+  const btn     = document.getElementById("bcSendBtn");
+  errEl.style.display = "none";
+  if (!subject) { errEl.textContent = "Subject is required."; errEl.style.display=""; return; }
+  if (!body)    { errEl.textContent = "Message body is required."; errEl.style.display=""; return; }
+  btn.disabled = true; btn.textContent = "Sending…";
+  try {
+    const res = await fetch("/api/messages", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ ..._msgBody(), subject, body, is_broadcast: true, broadcast_role: role })
+    });
+    const data = await res.json();
+    if (res.ok) { closeBroadcastModal(); loadMessages("sent"); }
+    else { errEl.textContent = data.error || "Failed to broadcast."; errEl.style.display=""; }
+  } catch(e) {
+    errEl.textContent = "Network error."; errEl.style.display="";
+  } finally {
+    btn.disabled = false; btn.textContent = "Broadcast 📢";
+  }
+}
+
+// ── Email Compose Modal ────────────────────────────────────────────────────────
+function openEmailComposeModal() {
+  document.getElementById("ecTo").value      = "";
+  document.getElementById("ecSubject").value = "";
+  document.getElementById("ecBody").value    = "";
+  document.getElementById("ecError").style.display   = "none";
+  document.getElementById("ecSuccess").style.display = "none";
+  document.getElementById("ecSendBtn").disabled      = false;
+  document.getElementById("ecSendBtn").textContent   = "Send 📧";
+  document.getElementById("emailComposeModal").classList.remove("hidden");
+}
+function closeEmailComposeModal() {
+  document.getElementById("emailComposeModal").classList.add("hidden");
+}
+async function _sendEmailCompose() {
+  const to      = document.getElementById("ecTo").value.trim();
+  const subject = document.getElementById("ecSubject").value.trim();
+  const body    = document.getElementById("ecBody").value.trim();
+  const errEl   = document.getElementById("ecError");
+  const sucEl   = document.getElementById("ecSuccess");
+  const btn     = document.getElementById("ecSendBtn");
+  errEl.style.display = sucEl.style.display = "none";
+  if (!to)      { errEl.textContent = "Recipient email is required."; errEl.style.display=""; return; }
+  if (!subject) { errEl.textContent = "Subject is required.";         errEl.style.display=""; return; }
+  if (!body)    { errEl.textContent = "Body is required.";            errEl.style.display=""; return; }
+  btn.disabled = true; btn.textContent = "Sending…";
+  try {
+    const res  = await fetch("/api/email/send", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ to, subject, body, role: (currentUser && currentUser.role) || "" })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      sucEl.textContent   = "Email sent successfully!";
+      sucEl.style.display = "";
+      setTimeout(closeEmailComposeModal, 1800);
+    } else {
+      errEl.textContent = data.error || "Failed to send email."; errEl.style.display="";
+    }
+  } catch(e) {
+    errEl.textContent = "Network error."; errEl.style.display="";
+  } finally {
+    btn.disabled = false; btn.textContent = "Send 📧";
+  }
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+function _esc(str) {
+  if (!str) return "";
+  return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+function _fmtMsgDate(iso) {
+  if (!iso) return "";
+  const d = new Date(iso + (iso.endsWith("Z") ? "" : "Z"));
+  const now = new Date();
+  const diffMs = now - d;
+  const diffH  = diffMs / 3600000;
+  if (diffH < 1)   return "Just now";
+  if (diffH < 24)  return `${Math.floor(diffH)}h ago`;
+  if (diffH < 168) return `${Math.floor(diffH/24)}d ago`;
+  return d.toLocaleDateString(undefined, { month:"short", day:"numeric" });
 }
 </script>
 </body>
