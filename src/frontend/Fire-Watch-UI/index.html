@@ -2432,7 +2432,7 @@
 </div>
 
 <!-- STAT DRILL-DOWN MODAL -->
-<div class="modal-overlay hidden" id="statDrillModal" onclick="if(event.target===this)closeStatDrill()">
+<div class="modal-overlay hidden" id="statDrillModal" style="z-index:290;" onclick="if(event.target===this)closeStatDrill()">
   <div class="modal-box" style="width:min(96vw,900px);max-height:88vh;display:flex;flex-direction:column;padding:0;overflow:hidden;">
     <!-- Header -->
     <div style="display:flex;align-items:center;gap:0.75rem;padding:1rem 1.2rem 0.75rem;border-bottom:1px solid var(--border);flex-shrink:0;">
@@ -4179,7 +4179,7 @@ const _drillConfig = {
       { key: "next_due_date",        label: "Next Due"      },
     ],
     defaultSort: "company_name",
-    click: row => { closeStatDrill(); openExtDetail(row); }
+    click: row => { openExtDetail(row); }
   },
   assign: {
     icon: "📋",
@@ -4193,8 +4193,6 @@ const _drillConfig = {
     ],
     defaultSort: "due_date",
     click: row => {
-      closeStatDrill();
-      // Select the row and open assignment detail
       selectedAssignId = row.assignment_id;
       openAssignDetail(row);
     }
@@ -4212,7 +4210,7 @@ const _drillConfig = {
     ],
     defaultSort: "inspection_date",
     defaultDir: -1,
-    click: row => { closeStatDrill(); openReportDetail(row); }
+    click: row => { openReportDetail(row); }
   },
   users: {
     icon: "👥",
@@ -4226,7 +4224,6 @@ const _drillConfig = {
     ],
     defaultSort: "_full_name",
     click: row => {
-      closeStatDrill();
       selectedUserId = row.user_id;
       // If _lastUserRows doesn't contain this user (e.g. platform admin context),
       // seed it with the current drill data so btnEditUser handler can find the row
@@ -10937,15 +10934,27 @@ async function loadPlatformDashboardOverview() {
 
   // Also get company/building counts per org
   let totalCompanies = 0, totalBuildings = 0;
+  window._platformCompanies = [];
+  window._platformBuildings = [];
   for (const o of orgs) {
     try {
       const companies = await fetch(`/api/companies?org_id=${o.org_id}`).then(r => r.json());
       o.company_count = companies.length;
       let bCount = 0;
-      companies.forEach(c => bCount += c.building_count || 0);
+      // Tag each company with its org name for cross-org drill-down display
+      companies.forEach(c => {
+        c.org_name = o.name;
+        bCount += c.building_count || 0;
+        window._platformCompanies.push(c);
+      });
       o.building_count = bCount;
       totalCompanies += o.company_count;
       totalBuildings += o.building_count;
+      // Also fetch buildings for this org and cache them
+      try {
+        const buildings = await fetch(`/api/buildings?org_id=${o.org_id}`).then(r => r.json());
+        buildings.forEach(b => { b.org_name = o.name; window._platformBuildings.push(b); });
+      } catch {}
     } catch { o.company_count = 0; o.building_count = 0; }
   }
 
@@ -11177,9 +11186,14 @@ async function _platformStatClick(type) {
     } else if (type === "ext") {
       data = await fetch("/api/extinguishers").then(r => r.json());
     } else if (type === "companies") {
-      data = await fetch("/api/companies").then(r => r.json());
+      // Use pre-cached data from dashboard load (avoids need for platform-wide API branch)
+      data = window._platformCompanies && window._platformCompanies.length
+        ? window._platformCompanies
+        : await fetch("/api/companies").then(r => r.json());
     } else if (type === "buildings") {
-      data = await fetch("/api/buildings").then(r => r.json());
+      data = window._platformBuildings && window._platformBuildings.length
+        ? window._platformBuildings
+        : await fetch("/api/buildings").then(r => r.json());
     } else if (type === "assign") {
       data = await fetch("/api/assignments").then(r => r.json());
     } else if (type === "reports") {
