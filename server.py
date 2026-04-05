@@ -336,6 +336,8 @@ def run_migrations():
             "dot_cert_no":         "TEXT DEFAULT ''",           # DOT certification number (e.g. A739)
             "condemned_date":      "DATE",                     # set when ext is condemned/removed
             "replaced_by_id":      "INTEGER",                  # FK to replacement extinguisher record
+            "is_loaner":           "INTEGER DEFAULT 0",        # 1 = this unit is a loaner currently on-site
+            "loaner_for_id":       "INTEGER",                  # FK to the original ext this unit is standing in for
         }
         for col, col_type in nfpa_cols.items():
             if col not in ext_cols:
@@ -1403,6 +1405,31 @@ def create_report():
                 elif service_type == "Hydrostatic Test":
                     conn.execute("UPDATE Extinguishers SET last_hydro_date=? WHERE extinguisher_id=?",
                                  (insp_date, ext_id))
+            # ── NFPA 10 Automated Interval Calculation ────────────────────────
+            # When a report is submitted, automatically set next_due_date based
+            # on the NFPA 10 service interval for the type of work performed.
+            # This overrides any manually-set interval so the app stays compliant.
+            NFPA_INTERVALS = {
+                "Routine Inspection":  30,       # Monthly visual check
+                "Annual Maintenance":  365,      # Annual internal maintenance
+                "6-Year Service":      365 * 6,  # 6-year internal exam (2190 days)
+                "Hydrostatic Test":    365 * 12, # 12-year hydrostatic test (4380 days)
+                "Recharge":            365,      # Post-discharge recharge = treat as annual
+                "Condemn":             None,     # No future due date for condemned units
+            }
+            if insp_date and ext_id and service_type in NFPA_INTERVALS:
+                interval_days = NFPA_INTERVALS[service_type]
+                if interval_days is not None:
+                    try:
+                        base = datetime.strptime(insp_date, "%Y-%m-%d")
+                        next_due = (base + timedelta(days=interval_days)).strftime("%Y-%m-%d")
+                        conn.execute(
+                            "UPDATE Extinguishers SET next_due_date=?, inspection_interval_days=? WHERE extinguisher_id=?",
+                            (next_due, interval_days, ext_id)
+                        )
+                    except ValueError:
+                        pass  # malformed date — skip silently
+
             # Update extinguisher's last_report_id and last inspection date
             report_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
             conn.execute(
@@ -2885,6 +2912,39 @@ def condemn_extinguisher(ext_id):
         return jsonify({"success": True, "new_extinguisher_id": new_id}), 201
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+# ── LOANER / SWAP TRACKING ────────────────────────────────────────────────────
+@app.route("/api/extinguishers/<int:ext_id>/loaner", methods=["POST"])
+def set_loaner(ext_id):
+    """Mark an extinguisher as a loaner deployed at a site while another unit
+    is being serviced.  Body: { loaner_for_id (optional), clear: bool }
+    - clear=true  → removes loaner status from this unit
+    - clear=false → marks this unit as a loaner (optionally linked to original)"""
+    d        = request.get_json() or {}
+    clearing = bool(d.get("clear", False))
+    with get_db() as conn:
+        ext = conn.execute(
+            "SELECT * FROM Extinguishers WHERE extinguisher_id=?", (ext_id,)
+        ).fetchone()
+        if not ext:
+            return jsonify({"error": "Extinguisher not found"}), 404
+        if clearing:
+            conn.execute(
+                "UPDATE Extinguishers SET is_loaner=0, loaner_for_id=NULL WHERE extinguisher_id=?",
+                (ext_id,)
+            )
+            platform_log("inspector", "loaner_cleared", str(ext_id), "Loaner status removed")
+            return jsonify({"success": True, "is_loaner": False}), 200
+        else:
+            loaner_for_id = d.get("loaner_for_id")
+            conn.execute(
+                "UPDATE Extinguishers SET is_loaner=1, loaner_for_id=? WHERE extinguisher_id=?",
+                (loaner_for_id, ext_id)
+            )
+            platform_log("inspector", "loaner_set", str(ext_id),
+                         f"Loaner deployed for ext_id={loaner_for_id}")
+            return jsonify({"success": True, "is_loaner": True}), 200
+
 
 # ── AHJ / FIRE MARSHAL AUDITOR TOKEN ─────────────────────────────────────────
 @app.route("/api/auditor/tokens", methods=["POST"])
