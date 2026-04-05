@@ -64,11 +64,15 @@ app = Flask(__name__)
 BASE_DIR    = os.path.dirname(os.path.abspath(__file__))
 DB_PATH     = os.path.join(BASE_DIR, "src", "database", "FireWatch.db")
 UI_DIR      = os.path.join(BASE_DIR, "src", "frontend", "Fire-Watch-UI")
-UPLOAD_DIR  = os.path.join(BASE_DIR, "src", "uploads")
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+UPLOAD_DIR      = os.path.join(BASE_DIR, "src", "uploads")
+BACKGROUND_DIR  = os.path.join(BASE_DIR, "src", "backgrounds")
+os.makedirs(UPLOAD_DIR,     exist_ok=True)
+os.makedirs(BACKGROUND_DIR, exist_ok=True)
 
 # Allowed file extensions for photo uploads (validated on upload)
 ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "gif", "webp", "heic", "heif"}
+# Allowed extensions for platform background images
+BACKGROUND_EXTENSIONS = {"jpg", "jpeg", "png", "webp", "svg", "gif"}
 
 # ── Platform Super Admin ──────────────────────────────────────────────────────
 # The platform password is separate from org-level user accounts.
@@ -476,6 +480,11 @@ def static_files(filename):
 @app.route("/uploads/<path:filename>")
 def serve_upload(filename):
     return send_from_directory(UPLOAD_DIR, filename)
+
+@app.route("/backgrounds/<path:filename>")
+def serve_background(filename):
+    """Serve platform background images."""
+    return send_from_directory(BACKGROUND_DIR, filename)
 
 # ── PHOTO UPLOAD ───────────────────────────────────────────────────────────────
 @app.route("/api/upload", methods=["POST"])
@@ -1991,6 +2000,122 @@ def platform_update_settings():
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+# ── PLATFORM BACKGROUND ────────────────────────────────────────────────────────
+# Background image settings are stored in PlatformSettings under three keys:
+#   platform_bg_url      — filename of the uploaded image (served from /backgrounds/)
+#   platform_bg_opacity  — integer 5–40 (percent)
+#   platform_bg_enabled  — "true" / "false"
+
+def _get_bg_setting(conn, key, default=""):
+    row = conn.execute("SELECT value FROM PlatformSettings WHERE key=?", (key,)).fetchone()
+    return row["value"] if row else default
+
+def _set_bg_setting(conn, key, value):
+    exists = conn.execute("SELECT key FROM PlatformSettings WHERE key=?", (key,)).fetchone()
+    if exists:
+        conn.execute("UPDATE PlatformSettings SET value=? WHERE key=?", (str(value), key))
+    else:
+        conn.execute("INSERT INTO PlatformSettings (key, value) VALUES (?,?)", (key, str(value)))
+
+@app.route("/api/platform/background", methods=["GET"])
+def platform_get_background():
+    """Return current platform background settings (public — called by all clients on load)."""
+    with get_db() as conn:
+        url     = _get_bg_setting(conn, "platform_bg_url",     "")
+        opacity = _get_bg_setting(conn, "platform_bg_opacity", "10")
+        enabled = _get_bg_setting(conn, "platform_bg_enabled", "false")
+    return jsonify({
+        "url":     f"/backgrounds/{url}" if url else "",
+        "opacity": int(opacity),
+        "enabled": enabled == "true"
+    })
+
+@app.route("/api/platform/background", methods=["POST"])
+def platform_upload_background():
+    """Upload a new platform background image.
+    Accepts multipart/form-data with fields:
+      - image  : the image file
+      - opacity: integer 5–40 (optional, defaults to 10)
+      - enabled: 'true'/'false' (optional, defaults to 'true')
+    Deletes any previously stored background file to avoid orphans."""
+    if "image" not in request.files:
+        return jsonify({"error": "No image file provided"}), 400
+    file = request.files["image"]
+    if not file.filename:
+        return jsonify({"error": "Empty filename"}), 400
+    ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
+    if ext not in BACKGROUND_EXTENSIONS:
+        return jsonify({"error": f"File type .{ext} not allowed. Use: jpg, png, webp, svg, gif"}), 400
+
+    opacity = request.form.get("opacity", "10")
+    enabled = request.form.get("enabled", "true")
+
+    try:
+        opacity = max(5, min(40, int(opacity)))
+    except (ValueError, TypeError):
+        opacity = 10
+
+    # Delete old background file if one exists
+    with get_db() as conn:
+        old_file = _get_bg_setting(conn, "platform_bg_url", "")
+    if old_file:
+        old_path = os.path.join(BACKGROUND_DIR, old_file)
+        if os.path.exists(old_path):
+            try:
+                os.remove(old_path)
+            except Exception:
+                pass
+
+    # Save new file with UUID name
+    unique_name = f"bg_{uuid.uuid4().hex}.{ext}"
+    file.save(os.path.join(BACKGROUND_DIR, unique_name))
+
+    with get_db() as conn:
+        _set_bg_setting(conn, "platform_bg_url",     unique_name)
+        _set_bg_setting(conn, "platform_bg_opacity", str(opacity))
+        _set_bg_setting(conn, "platform_bg_enabled", enabled)
+
+    platform_log("SuperAdmin", "background_updated", "platform_bg", f"Uploaded {unique_name}, opacity={opacity}")
+    return jsonify({
+        "success": True,
+        "url":     f"/backgrounds/{unique_name}",
+        "opacity": opacity,
+        "enabled": enabled == "true"
+    }), 201
+
+@app.route("/api/platform/background", methods=["PUT"])
+def platform_update_background_settings():
+    """Update opacity and/or enabled flag without re-uploading the image."""
+    d = request.get_json() or {}
+    with get_db() as conn:
+        if "opacity" in d:
+            opacity = max(5, min(40, int(d["opacity"])))
+            _set_bg_setting(conn, "platform_bg_opacity", str(opacity))
+        if "enabled" in d:
+            _set_bg_setting(conn, "platform_bg_enabled", "true" if d["enabled"] else "false")
+        url     = _get_bg_setting(conn, "platform_bg_url",     "")
+        opacity = int(_get_bg_setting(conn, "platform_bg_opacity", "10"))
+        enabled = _get_bg_setting(conn, "platform_bg_enabled", "false") == "true"
+    platform_log("SuperAdmin", "background_settings_changed", "platform_bg", str(d))
+    return jsonify({"success": True, "url": f"/backgrounds/{url}" if url else "", "opacity": opacity, "enabled": enabled})
+
+@app.route("/api/platform/background", methods=["DELETE"])
+def platform_delete_background():
+    """Remove the platform background image and clear all settings."""
+    with get_db() as conn:
+        old_file = _get_bg_setting(conn, "platform_bg_url", "")
+        _set_bg_setting(conn, "platform_bg_url",     "")
+        _set_bg_setting(conn, "platform_bg_enabled", "false")
+    if old_file:
+        old_path = os.path.join(BACKGROUND_DIR, old_file)
+        if os.path.exists(old_path):
+            try:
+                os.remove(old_path)
+            except Exception:
+                pass
+    platform_log("SuperAdmin", "background_removed", "platform_bg", "Background cleared")
+    return jsonify({"success": True})
 
 # ── Audit log helper ──────────────────────────────────────────────────────────
 def platform_log(actor, action, target=None, details=None):

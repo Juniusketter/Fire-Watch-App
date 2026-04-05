@@ -36,6 +36,41 @@
       --green:#00ff80;--blue:#4499ff;--purple:#cc88ff;
       --text:#ffffff;--muted:#cccccc;--muted2:#aaaaaa;
     }
+    /* ── THEME: Red ─────────────────────────────────────────── */
+    body.theme-red {
+      --bg:#120707;--bg2:#1c0c0c;--bg3:#261212;--border:#3d1818;
+      --orange:#dc2626;--orange2:#ef4444;--red:#ff6b6b;--teal:#0d9488;
+      --green:#16a34a;--blue:#3b82f6;--purple:#a855f7;
+      --text:#fdeaea;--muted:#7a4a4a;--muted2:#a07070;
+    }
+    /* ── THEME: Orange ──────────────────────────────────────── */
+    body.theme-orange {
+      --bg:#100a02;--bg2:#1a1004;--bg3:#251806;--border:#3d2a08;
+      --orange:#f97316;--orange2:#fb923c;--red:#ef4444;--teal:#0d9488;
+      --green:#16a34a;--blue:#3b82f6;--purple:#a855f7;
+      --text:#fff5e8;--muted:#7a5a30;--muted2:#a07848;
+    }
+    /* ── THEME: Green ───────────────────────────────────────── */
+    body.theme-green {
+      --bg:#020d06;--bg2:#06140c;--bg3:#0b1e14;--border:#122e1e;
+      --orange:#10b981;--orange2:#34d399;--red:#ef4444;--teal:#06d6a0;
+      --green:#22c55e;--blue:#38bdf8;--purple:#a855f7;
+      --text:#e0fff0;--muted:#3a7055;--muted2:#5a9070;
+    }
+    /* ── THEME: Slate ───────────────────────────────────────── */
+    body.theme-slate {
+      --bg:#080c12;--bg2:#0d1420;--bg3:#141e2e;--border:#1c2d44;
+      --orange:#38bdf8;--orange2:#7dd3fc;--red:#f87171;--teal:#2dd4bf;
+      --green:#4ade80;--blue:#818cf8;--purple:#c084fc;
+      --text:#e2eeff;--muted:#4a6080;--muted2:#6a85a8;
+    }
+    /* ── THEME: White ───────────────────────────────────────── */
+    body.theme-white {
+      --bg:#ffffff;--bg2:#f4f4f6;--bg3:#e8e8ee;--border:#d0d0da;
+      --orange:#e85d04;--orange2:#f48c06;--red:#c1121f;--teal:#0d7a72;
+      --green:#166534;--blue:#1e40af;--purple:#6d28d9;
+      --text:#111118;--muted:#6b6b80;--muted2:#4a4a60;
+    }
 
     /* ── SIDEBAR ────────────────────────────────────────────── */
     #appPage{display:flex;flex-direction:column;min-height:100vh;}
@@ -404,6 +439,254 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <!-- QR Code scanning via camera — ZXing library (unpkg UMD bundle) -->
   <script src="https://unpkg.com/@zxing/library@0.18.6/umd/index.min.js"></script>
+
+  <style>
+    /* ══════════════════════════════════════════════════════════════
+       FIREWATCH UI POLISH — Sprint 5
+       Landing-page aesthetic: deep navy, glassmorphism, feature-card
+       hover FX, gradient accents. Additive only — nothing breaks.
+       ══════════════════════════════════════════════════════════════ */
+
+    /* ── 1. Default dark theme → deep navy (matches landing page bg) */
+    body:not(.theme-light):not(.theme-navy):not(.theme-contrast):not(.theme-red):not(.theme-orange):not(.theme-green):not(.theme-slate):not(.theme-white) {
+      --bg:     #09101f;
+      --bg2:    #0e1829;
+      --bg3:    #152035;
+      --border: #1c2d46;
+    }
+
+    /* ── 2. Topbar: glassmorphism nav exactly like landing page nav */
+    .topbar {
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      box-shadow: 0 1px 0 rgba(255,255,255,0.06), 0 4px 24px rgba(0,0,0,0.4);
+    }
+    body:not(.theme-light):not(.theme-navy):not(.theme-contrast):not(.theme-red):not(.theme-orange):not(.theme-green):not(.theme-slate):not(.theme-white) .topbar {
+      background: rgba(9,16,31,0.9);
+    }
+    body.theme-navy .topbar    { background: rgba(8,18,36,0.9);   backdrop-filter: blur(16px); }
+    body.theme-red .topbar     { background: rgba(18,7,7,0.9);    backdrop-filter: blur(16px); }
+    body.theme-orange .topbar  { background: rgba(16,10,2,0.9);   backdrop-filter: blur(16px); }
+    body.theme-green .topbar   { background: rgba(2,13,6,0.9);    backdrop-filter: blur(16px); }
+    body.theme-slate .topbar   { background: rgba(8,12,18,0.9);   backdrop-filter: blur(16px); }
+    body.theme-light .topbar   { background: rgba(237,229,216,0.9); backdrop-filter: blur(16px); box-shadow: 0 1px 0 rgba(0,0,0,0.08), 0 4px 24px rgba(0,0,0,0.1); }
+    body.theme-white .topbar   { background: rgba(244,244,246,0.92); backdrop-filter: blur(16px); box-shadow: 0 1px 0 rgba(0,0,0,0.08), 0 4px 24px rgba(0,0,0,0.08); }
+
+    /* ── 3. Tab bar: same glassy treatment */
+    .tab-bar {
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+    }
+    body:not(.theme-light):not(.theme-navy):not(.theme-contrast):not(.theme-red):not(.theme-orange):not(.theme-green):not(.theme-slate):not(.theme-white) .tab-bar {
+      background: rgba(9,16,31,0.96);
+    }
+    body.theme-navy .tab-bar    { background: rgba(8,18,36,0.96);    backdrop-filter: blur(12px); }
+    body.theme-red .tab-bar     { background: rgba(18,7,7,0.96);     backdrop-filter: blur(12px); }
+    body.theme-orange .tab-bar  { background: rgba(16,10,2,0.96);    backdrop-filter: blur(12px); }
+    body.theme-green .tab-bar   { background: rgba(2,13,6,0.96);     backdrop-filter: blur(12px); }
+    body.theme-slate .tab-bar   { background: rgba(8,12,18,0.96);    backdrop-filter: blur(12px); }
+    body.theme-light .tab-bar   { background: rgba(237,229,216,0.96); backdrop-filter: blur(12px); }
+    body.theme-white .tab-bar   { background: rgba(244,244,246,0.96); backdrop-filter: blur(12px); }
+
+    /* ── 4. Sidebar: landing-nav depth */
+    body:not(.theme-light):not(.theme-navy):not(.theme-contrast):not(.theme-white):not(.theme-red):not(.theme-orange):not(.theme-green):not(.theme-slate) .sidebar {
+      background: #080e1c;
+      border-right-color: rgba(255,255,255,0.05);
+    }
+    body.theme-red .sidebar    { background: #0e0505; border-right-color: rgba(255,255,255,0.05); }
+    body.theme-orange .sidebar { background: #0c0802; border-right-color: rgba(255,255,255,0.05); }
+    body.theme-green .sidebar  { background: #020b05; border-right-color: rgba(255,255,255,0.05); }
+    body.theme-slate .sidebar  { background: #060a10; border-right-color: rgba(255,255,255,0.05); }
+    body.theme-white .sidebar  { background: #f4f4f6; border-right-color: rgba(0,0,0,0.1); }
+    body.theme-light .sidebar  { border-right-color: rgba(0,0,0,0.1); }
+    .sidebar-item {
+      border-left: 2px solid transparent;
+      transition: background 0.15s, color 0.15s, border-left-color 0.15s, padding-left 0.15s;
+    }
+    .sidebar-item:hover {
+      border-left-color: rgba(232,93,4,0.4);
+      padding-left: 1.15rem;
+    }
+    .sidebar-item.active { border-left-color: var(--orange); }
+
+    /* ── 5. Stats row: feature-card grid (separator lines like landing) */
+    body:not(.theme-light):not(.theme-white) .stats-row { background: rgba(255,255,255,0.05); gap: 1px; }
+    body.theme-light .stats-row, body.theme-white .stats-row { background: rgba(0,0,0,0.08); gap: 1px; }
+
+    .stat-box {
+      position: relative;
+      overflow: hidden;
+      transition: background 0.3s, box-shadow 0.3s, transform 0.2s;
+    }
+    /* Landing-style gradient top sweep that reveals on hover */
+    .stat-box::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 2px;
+      opacity: 0;
+      transition: opacity 0.35s;
+      pointer-events: none;
+    }
+    .stat-box.color-orange::after { background: linear-gradient(90deg, var(--orange) 0%, transparent 80%); }
+    .stat-box.color-teal::after   { background: linear-gradient(90deg, var(--teal)   0%, transparent 80%); }
+    .stat-box.color-blue::after   { background: linear-gradient(90deg, var(--blue)   0%, transparent 80%); }
+    .stat-box.color-purple::after { background: linear-gradient(90deg, var(--purple) 0%, transparent 80%); }
+    .stat-box:hover::after { opacity: 1; }
+
+    body:not(.theme-light):not(.theme-white) .stat-box:hover { background: rgba(26,50,96,0.35); transform: translateY(-1px); }
+    body.theme-light .stat-box:hover, body.theme-white .stat-box:hover { background: rgba(0,0,0,0.05); transform: translateY(-1px); }
+
+    .stat-box.color-orange .stat-val { color: var(--orange); transition: text-shadow 0.3s; }
+    .stat-box.color-teal   .stat-val { color: var(--teal);   transition: text-shadow 0.3s; }
+    .stat-box.color-blue   .stat-val { color: var(--blue);   transition: text-shadow 0.3s; }
+    .stat-box.color-purple .stat-val { color: var(--purple); transition: text-shadow 0.3s; }
+    .stat-box.color-orange:hover .stat-val { text-shadow: 0 0 20px rgba(232,93,4,0.45); }
+    .stat-box.color-teal:hover   .stat-val { text-shadow: 0 0 20px rgba(13,148,136,0.45); }
+    .stat-box.color-blue:hover   .stat-val { text-shadow: 0 0 20px rgba(29,78,216,0.45); }
+    .stat-box.color-purple:hover .stat-val { text-shadow: 0 0 20px rgba(124,58,237,0.45); }
+
+    /* ── 6. Company/building cards: landing feature-card hover */
+    .company-card, .building-card {
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.3s, background 0.3s, transform 0.2s, box-shadow 0.2s;
+    }
+    .company-card::before, .building-card::before {
+      content: '';
+      position: absolute;
+      top: -1px; left: 0; right: 0; height: 2px;
+      opacity: 0;
+      transition: opacity 0.35s;
+      pointer-events: none;
+      z-index: 1;
+    }
+    .company-card::before  { background: linear-gradient(90deg, var(--orange) 0%, transparent 70%); }
+    .building-card::before { background: linear-gradient(90deg, var(--teal)   0%, transparent 70%); }
+    .company-card:hover::before, .building-card:hover::before { opacity: 1; }
+    body:not(.theme-light):not(.theme-white) .company-card:hover  { background: rgba(26,50,96,0.45); box-shadow: 0 8px 28px rgba(232,93,4,0.12), 0 2px 8px rgba(0,0,0,0.4); }
+    body:not(.theme-light):not(.theme-white) .building-card:hover { background: rgba(26,50,96,0.45); box-shadow: 0 8px 28px rgba(13,148,136,0.12), 0 2px 8px rgba(0,0,0,0.4); }
+    body.theme-light .company-card:hover, body.theme-white .company-card:hover   { box-shadow: 0 6px 20px rgba(232,93,4,0.12); }
+    body.theme-light .building-card:hover, body.theme-white .building-card:hover { box-shadow: 0 6px 20px rgba(13,148,136,0.12); }
+
+    /* ── 7. Table rows: smooth transition */
+    .data-table tbody tr,
+    .data-table tbody tr td { transition: background 0.12s; }
+
+    /* ── 8. Table row staggered fade-in */
+    @keyframes rowFadeIn {
+      from { opacity:0; transform:translateX(-5px); }
+      to   { opacity:1; transform:translateX(0); }
+    }
+    .fw-row-ready { animation: rowFadeIn 0.18s ease-out both; }
+
+    /* ── 9. Buttons: landing-style lift + glow */
+    .btn-login {
+      transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+      box-shadow: 0 4px 20px rgba(232,93,4,0.3);
+    }
+    .btn-login:hover  { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(232,93,4,0.45); }
+    .btn-login:active { transform: translateY(0); }
+
+    .btn-save {
+      transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+    }
+    .btn-save:hover  { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(232,93,4,0.3); }
+    .btn-save:active { transform: translateY(0); }
+
+    .btn-crud { transition: opacity 0.15s, transform 0.12s, box-shadow 0.15s; }
+    .btn-crud:hover  { opacity:0.9; transform: translateY(-1px); box-shadow: 0 3px 10px rgba(0,0,0,0.3); }
+    .btn-crud:active { transform: translateY(0); }
+
+    .btn-bar { transition: background 0.15s, color 0.15s, transform 0.12s, box-shadow 0.15s; }
+    .btn-refresh:hover { transform: translateY(-1px); }
+    .btn-logout:hover  { transform: translateY(-1px); box-shadow: 0 2px 10px rgba(193,18,31,0.25); }
+
+    /* ── 10. Input focus glow */
+    .field input:focus,
+    .form-row input:focus,
+    .form-row select:focus,
+    .form-row textarea:focus,
+    .filter-input:focus {
+      box-shadow: 0 0 0 3px rgba(232,93,4,0.18);
+    }
+
+    /* ── 11. Notification items */
+    .notif-item { transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s; }
+    .notif-item:hover { transform: translateX(3px); box-shadow: 0 2px 12px rgba(0,0,0,0.3); }
+
+    /* ── 12. Notification badge pulse */
+    @keyframes pulseBadge {
+      0%,100% { box-shadow: 0 0 0 0 rgba(193,18,31,0.5); }
+      50%      { box-shadow: 0 0 0 4px rgba(193,18,31,0); }
+    }
+    .notif-badge:not(.hidden) { animation: pulseBadge 2.2s ease-in-out infinite; }
+
+    /* ── 13. Data cards (mobile) */
+    .data-card { transition: border-color 0.15s, background 0.15s, transform 0.12s, box-shadow 0.15s; }
+    .data-card:hover { transform: translateX(3px); box-shadow: 0 2px 12px rgba(0,0,0,0.25); }
+
+    /* ── 14. Theme cards */
+    .theme-card { transition: border-color 0.2s, transform 0.15s, box-shadow 0.15s; }
+    .theme-card:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,0,0,0.3); }
+    .theme-card.selected { box-shadow: 0 0 0 1px var(--orange), 0 4px 14px rgba(232,93,4,0.18); }
+
+    /* ── 15. Breadcrumbs */
+    .drill-crumb { transition: color 0.15s, background 0.15s, transform 0.12s; }
+    .drill-crumb:hover { transform: translateY(-1px); }
+
+    /* ── 16. Announcement banners: color-coded left border */
+    .ann-banner.priority-critical { border-left: 3px solid #ff4444; }
+    .ann-banner.priority-warning  { border-left: 3px solid #f59e0b; }
+    .ann-banner.priority-info     { border-left: 3px solid #60a5fa; }
+
+    /* ── 17. Panel entrance on tab switch */
+    @keyframes panelSlideIn {
+      from { opacity:0; transform:translateY(8px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+    .panel.active { animation: panelSlideIn 0.22s ease-out both; }
+
+    /* ── 18. Modal overlay fade */
+    @keyframes modalOverlayIn { from { opacity:0; } to { opacity:1; } }
+    .modal-overlay { animation: modalOverlayIn 0.18s ease-out; }
+
+    /* ── 19. Login brand side: navy gradient like landing hero */
+    body:not(.theme-light):not(.theme-navy):not(.theme-contrast):not(.theme-red):not(.theme-orange):not(.theme-green):not(.theme-slate):not(.theme-white) .brand-side {
+      background: linear-gradient(135deg, #0e1829 0%, #09101f 65%, rgba(232,93,4,0.04) 100%);
+    }
+
+    /* ── 20. Photo upload */
+    .photo-upload-area { transition: border-color 0.2s, background 0.2s, box-shadow 0.2s; }
+    .photo-upload-area:hover { box-shadow: 0 0 0 3px rgba(232,93,4,0.1); }
+    .report-thumb:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.5); }
+
+    /* ── 21. Filter inputs */
+    .filter-input { transition: border-color 0.15s, box-shadow 0.15s; }
+    .filter-input:hover { border-color: var(--muted); }
+
+    /* ── 22. Settings save bar */
+    .settings-save-bar .btn-save { min-height:auto; padding:8px 20px; font-size:0.78rem; }
+
+    /* ── 23. Platform background — ensure bg layer stays behind everything */
+    #platformBgLayer { z-index: 0; }
+    .app-body, .topbar, .sidebar, .main-content { position: relative; z-index: 1; }
+
+    /* ── 24. Background drop zone hover */
+    #bgDropZone:hover { border-color: var(--orange); background: var(--bg3); }
+
+    /* ── 25. Background toggle track active state */
+    #bgEnabledToggle:checked ~ #bgToggleTrack { background: var(--orange); }
+    #bgEnabledToggle:checked ~ #bgToggleTrack #bgToggleThumb { transform: translateX(18px); }
+
+    /* ── Reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.1ms !important;
+      }
+    }
+  </style>
 </head>
 <body>
 
@@ -604,6 +887,15 @@
 
 <!-- PLATFORM ADMIN DASHBOARD — shown after Super Admin login -->
 <div id="platformPage" class="hidden">
+  <!-- Shared platform background layer — same image/opacity as app users see -->
+  <div id="platformBgLayerAdmin" style="
+    display:none;
+    position:fixed;inset:0;z-index:0;
+    pointer-events:none;
+    background-size:cover;background-position:center;background-repeat:no-repeat;
+    background-attachment:fixed;
+    transition:opacity 0.6s ease;
+  "></div>
   <div class="topbar" style="background:var(--bg2);border-bottom:1px solid var(--border);">
     <button class="sidebar-toggle" id="platformSidebarToggle" title="Menu" onclick="document.getElementById('platformSidebar').classList.toggle('open');document.getElementById('platformSidebarOverlay').style.display=document.getElementById('platformSidebar').classList.contains('open')?'block':'none';">☰</button>
     <span style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:0.08em;color:var(--orange);">🔥 FIREWATCH</span>
@@ -744,6 +1036,46 @@
                 </div>
                 <div class="theme-card-name">High Contrast</div>
               </div>
+              <div class="theme-card" data-theme="red" onclick="selectTheme('red')">
+                <div class="theme-card-preview">
+                  <div class="theme-swatch" style="background:#120707"></div>
+                  <div class="theme-swatch" style="background:#dc2626"></div>
+                  <div class="theme-swatch" style="background:#fdeaea"></div>
+                </div>
+                <div class="theme-card-name">Red</div>
+              </div>
+              <div class="theme-card" data-theme="orange" onclick="selectTheme('orange')">
+                <div class="theme-card-preview">
+                  <div class="theme-swatch" style="background:#100a02"></div>
+                  <div class="theme-swatch" style="background:#f97316"></div>
+                  <div class="theme-swatch" style="background:#fff5e8"></div>
+                </div>
+                <div class="theme-card-name">Orange</div>
+              </div>
+              <div class="theme-card" data-theme="green" onclick="selectTheme('green')">
+                <div class="theme-card-preview">
+                  <div class="theme-swatch" style="background:#020d06"></div>
+                  <div class="theme-swatch" style="background:#10b981"></div>
+                  <div class="theme-swatch" style="background:#e0fff0"></div>
+                </div>
+                <div class="theme-card-name">Green</div>
+              </div>
+              <div class="theme-card" data-theme="slate" onclick="selectTheme('slate')">
+                <div class="theme-card-preview">
+                  <div class="theme-swatch" style="background:#080c12"></div>
+                  <div class="theme-swatch" style="background:#38bdf8"></div>
+                  <div class="theme-swatch" style="background:#e2eeff"></div>
+                </div>
+                <div class="theme-card-name">Slate</div>
+              </div>
+              <div class="theme-card" data-theme="white" onclick="selectTheme('white')">
+                <div class="theme-card-preview">
+                  <div class="theme-swatch" style="background:#ffffff"></div>
+                  <div class="theme-swatch" style="background:#e85d04"></div>
+                  <div class="theme-swatch" style="background:#111118"></div>
+                </div>
+                <div class="theme-card-name">White</div>
+              </div>
             </div>
           </div>
           <div class="settings-section" style="margin-top:1rem;">
@@ -755,6 +1087,93 @@
               </div>
               <div id="platformApprovalToggleSettings"></div>
             </div>
+          </div>
+
+          <!-- ── PLATFORM BACKGROUND ─────────────────────────────────── -->
+          <div class="settings-section" style="margin-top:1rem;">
+            <div class="settings-section-title">Platform Background</div>
+            <div class="settings-desc" style="margin-bottom:1rem;">
+              Upload an image that appears as a faded full-screen background across the entire platform.
+              All users will see it regardless of their theme.
+            </div>
+
+            <!-- Upload drop zone -->
+            <label id="bgDropZone" for="bgFileInput" style="
+              display:flex;flex-direction:column;align-items:center;justify-content:center;
+              gap:0.5rem;border:2px dashed var(--border);border-radius:8px;
+              padding:1.5rem;cursor:pointer;transition:border-color 0.2s,background 0.2s;
+              background:var(--bg2);min-height:90px;text-align:center;
+              font-family:'IBM Plex Mono',monospace;">
+              <span style="font-size:1.6rem;">🖼️</span>
+              <span style="font-size:0.75rem;color:var(--muted);">Click or drag an image here</span>
+              <span style="font-size:0.65rem;color:var(--muted2);">JPG · PNG · WebP · SVG · GIF — max 8 MB</span>
+              <input type="file" id="bgFileInput" accept=".jpg,.jpeg,.png,.webp,.svg,.gif" style="display:none;"
+                     onchange="_onBgFileSelected(this)">
+            </label>
+
+            <!-- Current background preview -->
+            <div id="bgPreviewWrap" style="display:none;margin-top:1rem;position:relative;border-radius:8px;overflow:hidden;border:1px solid var(--border);">
+              <img id="bgPreviewImg" src="" alt="Background preview"
+                   style="width:100%;height:140px;object-fit:cover;display:block;opacity:0.5;">
+              <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;">
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:0.65rem;color:rgba(255,255,255,0.7);
+                             background:rgba(0,0,0,0.5);padding:3px 10px;border-radius:4px;letter-spacing:0.1em;text-transform:uppercase;">
+                  Preview at current opacity
+                </span>
+              </div>
+            </div>
+
+            <!-- Controls (shown once an image is set) -->
+            <div id="bgControlsWrap" style="display:none;margin-top:1rem;display:none;flex-direction:column;gap:0.75rem;">
+
+              <!-- Enable / disable toggle -->
+              <div style="display:flex;align-items:center;justify-content:space-between;">
+                <div>
+                  <div class="settings-label" style="font-weight:700;">Show Background</div>
+                  <div class="settings-desc">Toggle the background on or off platform-wide.</div>
+                </div>
+                <label style="position:relative;display:inline-block;width:42px;height:24px;cursor:pointer;">
+                  <input type="checkbox" id="bgEnabledToggle" style="opacity:0;width:0;height:0;"
+                         onchange="_onBgToggle(this.checked)">
+                  <span id="bgToggleTrack" style="
+                    position:absolute;inset:0;background:var(--border);border-radius:12px;
+                    transition:background 0.2s;">
+                    <span id="bgToggleThumb" style="
+                      position:absolute;left:3px;top:3px;width:18px;height:18px;
+                      background:#fff;border-radius:50%;transition:transform 0.2s;"></span>
+                  </span>
+                </label>
+              </div>
+
+              <!-- Opacity slider -->
+              <div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                  <span class="settings-label">Opacity</span>
+                  <span id="bgOpacityLabel" style="font-family:'IBM Plex Mono',monospace;font-size:0.75rem;color:var(--orange);">10%</span>
+                </div>
+                <input type="range" id="bgOpacitySlider" min="3" max="40" value="10"
+                       style="width:100%;accent-color:var(--orange);cursor:pointer;"
+                       oninput="_onBgOpacityChange(this.value)"
+                       onchange="_saveBgSettings()">
+                <div style="display:flex;justify-content:space-between;margin-top:2px;">
+                  <span style="font-family:'IBM Plex Mono',monospace;font-size:0.6rem;color:var(--muted2);">Subtle (3%)</span>
+                  <span style="font-family:'IBM Plex Mono',monospace;font-size:0.6rem;color:var(--muted2);">Bold (40%)</span>
+                </div>
+              </div>
+
+              <!-- Remove button -->
+              <div style="display:flex;justify-content:flex-end;">
+                <button onclick="_removePlatformBackground()" class="btn-crud"
+                        style="font-size:0.72rem;padding:5px 14px;min-height:30px;
+                               color:var(--red);border-color:var(--red);background:transparent;">
+                  ✕ Remove Background
+                </button>
+              </div>
+            </div>
+
+            <!-- Status message -->
+            <div id="bgStatusMsg" style="display:none;margin-top:0.6rem;font-family:'IBM Plex Mono',monospace;
+                                          font-size:0.72rem;color:var(--teal);"></div>
           </div>
         </div>
 
@@ -918,6 +1337,16 @@
 
 <!-- DASHBOARD -->
 <div id="appPage" class="hidden">
+  <!-- Platform background layer — fixed, full-screen, pointer-events:none so it never blocks clicks.
+       Populated by applyPlatformBackground() after the background API is fetched. -->
+  <div id="platformBgLayer" style="
+    display:none;
+    position:fixed;inset:0;z-index:0;
+    pointer-events:none;
+    background-size:cover;background-position:center;background-repeat:no-repeat;
+    background-attachment:fixed;
+    transition:opacity 0.6s ease;
+  "></div>
   <div class="topbar">
     <button class="sidebar-toggle" id="sidebarToggle" title="Menu">☰</button>
     <span class="topbar-logo">🔥 FireWatch</span>
@@ -1313,6 +1742,46 @@
                     <div class="theme-swatch" style="background:#ffffff"></div>
                   </div>
                   <div class="theme-card-name">High Contrast</div>
+                </div>
+                <div class="theme-card" data-theme="red" onclick="selectTheme('red')">
+                  <div class="theme-card-preview">
+                    <div class="theme-swatch" style="background:#120707"></div>
+                    <div class="theme-swatch" style="background:#dc2626"></div>
+                    <div class="theme-swatch" style="background:#fdeaea"></div>
+                  </div>
+                  <div class="theme-card-name">Red</div>
+                </div>
+                <div class="theme-card" data-theme="orange" onclick="selectTheme('orange')">
+                  <div class="theme-card-preview">
+                    <div class="theme-swatch" style="background:#100a02"></div>
+                    <div class="theme-swatch" style="background:#f97316"></div>
+                    <div class="theme-swatch" style="background:#fff5e8"></div>
+                  </div>
+                  <div class="theme-card-name">Orange</div>
+                </div>
+                <div class="theme-card" data-theme="green" onclick="selectTheme('green')">
+                  <div class="theme-card-preview">
+                    <div class="theme-swatch" style="background:#020d06"></div>
+                    <div class="theme-swatch" style="background:#10b981"></div>
+                    <div class="theme-swatch" style="background:#e0fff0"></div>
+                  </div>
+                  <div class="theme-card-name">Green</div>
+                </div>
+                <div class="theme-card" data-theme="slate" onclick="selectTheme('slate')">
+                  <div class="theme-card-preview">
+                    <div class="theme-swatch" style="background:#080c12"></div>
+                    <div class="theme-swatch" style="background:#38bdf8"></div>
+                    <div class="theme-swatch" style="background:#e2eeff"></div>
+                  </div>
+                  <div class="theme-card-name">Slate</div>
+                </div>
+                <div class="theme-card" data-theme="white" onclick="selectTheme('white')">
+                  <div class="theme-card-preview">
+                    <div class="theme-swatch" style="background:#ffffff"></div>
+                    <div class="theme-swatch" style="background:#e85d04"></div>
+                    <div class="theme-swatch" style="background:#111118"></div>
+                  </div>
+                  <div class="theme-card-name">White</div>
                 </div>
               </div>
             </div>
@@ -1939,8 +2408,8 @@
     <!-- Header -->
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
       <div>
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:0.62rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted);margin-bottom:3px;">QR Scanner</div>
-        <div style="font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:1rem;color:var(--orange);">Scan Extinguisher QR Code</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:0.62rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted);margin-bottom:3px;">QR / Barcode Scanner</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:1rem;color:var(--orange);">Scan Extinguisher</div>
       </div>
       <button onclick="closeQRScanner()" style="background:none;border:none;color:var(--muted2);font-size:1.3rem;cursor:pointer;padding:4px 8px;line-height:1;">✕</button>
     </div>
@@ -1954,7 +2423,7 @@
       </div>
       <!-- Status overlay shown while scanning -->
       <div id="qrScanStatus" style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.65);color:var(--muted2);font-family:'IBM Plex Mono',monospace;font-size:0.7rem;text-align:center;padding:6px;">
-        Point camera at a FireWatch QR code…
+        Point camera at a QR code or barcode…
       </div>
     </div>
 
@@ -1971,6 +2440,119 @@
     <div style="display:flex;gap:0.5rem;justify-content:center;">
       <button onclick="closeQRScanner()" class="btn-crud" style="font-size:0.75rem;padding:7px 18px;min-height:36px;background:var(--bg3);border-color:var(--border);color:var(--muted);">
         Cancel
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- BARCODE QUICK ADD MODAL -->
+<!-- Shown when inspector scans a barcode that isn't a FireWatch QR code.   -->
+<!-- Pre-fills serial number with the raw scanned value; inspector fills in  -->
+<!-- location details, then taps "Add & Inspect" to create the record and   -->
+<!-- immediately open the inspection report form.                            -->
+<div class="modal-overlay hidden" id="barcodeAddModal" onclick="if(event.target===this)closeBarcodeAddModal()">
+  <div class="modal-box" style="max-width:480px;width:92%;max-height:90vh;overflow-y:auto;">
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+      <div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:0.62rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted);margin-bottom:3px;">New Extinguisher Detected</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:1rem;color:var(--orange);">Quick Add &amp; Inspect</div>
+      </div>
+      <button onclick="closeBarcodeAddModal()" style="background:none;border:none;color:var(--muted2);font-size:1.3rem;cursor:pointer;padding:4px 8px;line-height:1;">✕</button>
+    </div>
+
+    <!-- Scanned barcode display -->
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:0.6rem 0.9rem;margin-bottom:1rem;display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:0.68rem;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;">Scanned:</span>
+      <span id="bqBarcodeDisplay" style="font-family:'IBM Plex Mono',monospace;font-size:0.82rem;color:var(--orange);word-break:break-all;"></span>
+    </div>
+
+    <!-- Form -->
+    <div style="display:flex;flex-direction:column;gap:0.55rem;">
+      <!-- Serial Number (pre-filled, editable) -->
+      <div class="form-row">
+        <label>Serial Number</label>
+        <input type="text" id="bqSerial" placeholder="e.g. SN-2024-00123" style="font-family:'IBM Plex Mono',monospace;" />
+      </div>
+
+      <!-- Company -->
+      <div class="form-row">
+        <label>Company <span style="color:var(--red);">*</span></label>
+        <select id="bqCompany">
+          <option value="">— Select company —</option>
+        </select>
+      </div>
+
+      <!-- Building (populated when company changes) -->
+      <div class="form-row">
+        <label>Building <span style="color:var(--red);">*</span></label>
+        <select id="bqBuilding">
+          <option value="">— Select building —</option>
+        </select>
+      </div>
+
+      <!-- Floor + Room side by side -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.55rem;">
+        <div class="form-row" style="margin:0;">
+          <label>Floor</label>
+          <input type="number" id="bqFloor" value="1" min="1" />
+        </div>
+        <div class="form-row" style="margin:0;">
+          <label>Room</label>
+          <input type="text" id="bqRoom" placeholder="e.g. 101" />
+        </div>
+      </div>
+
+      <!-- Location description -->
+      <div class="form-row">
+        <label>Location Description</label>
+        <input type="text" id="bqLocDesc" placeholder="e.g. Near the elevator" />
+      </div>
+
+      <!-- Type + Size side by side -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.55rem;">
+        <div class="form-row" style="margin:0;">
+          <label>Type</label>
+          <select id="bqExtType">
+            <option value="">— Select —</option>
+            <option value="ABC">ABC — Multi-Purpose</option>
+            <option value="A">Class A — Ordinary</option>
+            <option value="B">Class B — Flammable</option>
+            <option value="C">Class C — Electrical</option>
+            <option value="BC">BC — Gas/Electrical</option>
+            <option value="D">Class D — Metals</option>
+            <option value="K">Class K — Kitchen</option>
+          </select>
+        </div>
+        <div class="form-row" style="margin:0;">
+          <label>Size (lbs)</label>
+          <input type="number" id="bqExtSize" min="1" max="350" step="0.5" placeholder="e.g. 5" />
+        </div>
+      </div>
+
+      <!-- Inspect interval + due date (collapsed, sensible defaults) -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.55rem;">
+        <div class="form-row" style="margin:0;">
+          <label>Interval (days)</label>
+          <input type="number" id="bqInterval" value="365" min="1" />
+        </div>
+        <div class="form-row" style="margin:0;">
+          <label>Next Due</label>
+          <input type="date" id="bqDueDate" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Error -->
+    <div id="bqError" style="display:none;background:rgba(193,18,31,0.12);border:1px solid rgba(193,18,31,0.3);border-radius:6px;padding:0.6rem 0.9rem;font-size:0.78rem;color:#f87171;margin-top:0.75rem;"></div>
+
+    <!-- Actions -->
+    <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem;">
+      <button onclick="closeBarcodeAddModal()" class="btn-crud" style="font-size:0.75rem;padding:7px 18px;min-height:36px;background:var(--bg3);border-color:var(--border);color:var(--muted);">
+        Cancel
+      </button>
+      <button id="bqSaveBtn" onclick="_submitBarcodeAdd()" class="btn-save" style="font-size:0.78rem;padding:7px 22px;min-height:36px;">
+        Add &amp; Inspect →
       </button>
     </div>
   </div>
@@ -2966,6 +3548,8 @@ function showDashboard() {
   document.getElementById("sidebarRole").textContent = currentUser.role.replace(/_/g," ");
   // Load saved preferences
   loadUserPreferences();
+  // Apply platform background (non-blocking — fires in background)
+  loadPlatformBackground();
 }
 
 // ── Build tabs by role ────────────────────────────────────────────────────────
@@ -3119,6 +3703,12 @@ function switchTab(panelId, clickedBtn, tabBar) {
   clickedBtn.classList.add("active");
   ["panelExtinguishers","panelAssignments","panelReports","panelUsers"].forEach(id => document.getElementById(id).classList.remove("active"));
   document.getElementById(panelId).classList.add("active");
+  // Stagger table row fade-in on panel reveal
+  const panel = document.getElementById(panelId);
+  panel.querySelectorAll("tbody tr").forEach((tr, i) => {
+    tr.classList.remove("fw-row-ready");
+    setTimeout(() => tr.classList.add("fw-row-ready"), i * 18);
+  });
 }
 
 // ── Stats ─────────────────────────────────────────────────────────────────────
@@ -5821,10 +6411,18 @@ document.getElementById("reportModalSave").addEventListener("click",async()=>{
 // ══════════════════════════════════════════════════════════════════════════════
 
 function showView(view) {
-  document.getElementById("viewDashboard").classList.toggle("hidden", view !== "dashboard");
-  document.getElementById("viewSettings").classList.toggle("hidden", view !== "settings");
-  document.getElementById("viewProfile").classList.toggle("hidden", view !== "profile");
-  document.getElementById("viewNotifications").classList.toggle("hidden", view !== "notifications");
+  const _views = {
+    dashboard:     document.getElementById("viewDashboard"),
+    settings:      document.getElementById("viewSettings"),
+    profile:       document.getElementById("viewProfile"),
+    notifications: document.getElementById("viewNotifications")
+  };
+  Object.entries(_views).forEach(([name, el]) => {
+    if (!el) return;
+    const isActive = name === view;
+    el.classList.toggle("hidden", !isActive);
+    el.style.display = isActive ? "" : "none";
+  });
   document.querySelectorAll(".sidebar-item[data-view]").forEach(btn => {
     btn.classList.toggle("active", btn.dataset.view === view);
   });
@@ -6445,7 +7043,7 @@ function closeSidebar() {
 //  THEME SYSTEM
 // ══════════════════════════════════════════════════════════════════════════════
 
-const THEMES = ["dark", "light", "navy", "contrast"];
+const THEMES = ["dark", "light", "navy", "contrast", "red", "orange", "green", "slate", "white"];
 
 function applyTheme(theme) {
   THEMES.forEach(t => document.body.classList.remove("theme-" + t));
@@ -6518,7 +7116,7 @@ function updateThemeCards() {
 // ── User Preferences ───────────────────────────────────────────────────────────
 // Theme and other settings are stored in the Users.preferences JSON column.
 // On login, preferences are loaded and applied. On change, they're saved
-// via PUT /api/users/:id/preferences. Four themes: dark, light, navy, contrast.
+// via PUT /api/users/:id/preferences. Themes: dark, light, navy, contrast, red, orange, green, slate, white.
 //  SAVE / LOAD PREFERENCES (synced to DB via Users.preferences column)
 // ══════════════════════════════════════════════════════════════════════════════
 
@@ -9240,6 +9838,7 @@ function showPlatformSettingsPage(page) {
   if (activeBtn) activeBtn.classList.add("active");
   // Always load settings data when showing theme or platform pages
   if (page === "theme" || page === "platform") loadPlatformSettingsView();
+  if (page === "theme") loadPlatformBgAdmin();
   // Close mobile sidebar
   document.getElementById("platformSidebar").classList.remove("open");
   document.getElementById("platformSidebarOverlay").style.display = "none";
@@ -9282,6 +9881,151 @@ async function loadPlatformSettingsView() {
   }
 }
 
+// ── PLATFORM BACKGROUND — Admin Panel ────────────────────────────────────────
+// loadPlatformBgAdmin: populate the background section in pSettingsPageTheme
+// _onBgFileSelected:   handle file picker selection → upload immediately
+// _onBgOpacityChange:  live preview while dragging the slider
+// _onBgToggle:         enable/disable without re-uploading
+// _saveBgSettings:     persist opacity+enabled via PUT (called on slider mouseup)
+// _removePlatformBackground: clear image + settings
+
+async function loadPlatformBgAdmin() {
+  const res = await fetch("/api/platform/background").then(r => r.json()).catch(() => null);
+  if (!res) return;
+  _syncBgAdminUI(res.url, res.opacity, res.enabled);
+}
+
+function _syncBgAdminUI(url, opacity, enabled) {
+  const previewWrap   = document.getElementById("bgPreviewWrap");
+  const controlsWrap  = document.getElementById("bgControlsWrap");
+  const previewImg    = document.getElementById("bgPreviewImg");
+  const slider        = document.getElementById("bgOpacitySlider");
+  const opacityLabel  = document.getElementById("bgOpacityLabel");
+  const toggle        = document.getElementById("bgEnabledToggle");
+  const track         = document.getElementById("bgToggleTrack");
+  const thumb         = document.getElementById("bgToggleThumb");
+
+  if (url) {
+    previewImg.src               = url;
+    previewImg.style.opacity     = opacity / 100;
+    previewWrap.style.display    = "block";
+    controlsWrap.style.display   = "flex";
+  } else {
+    previewWrap.style.display    = "none";
+    controlsWrap.style.display   = "none";
+  }
+  slider.value         = opacity;
+  opacityLabel.textContent = opacity + "%";
+  toggle.checked       = enabled;
+  track.style.background = enabled ? "var(--orange)" : "var(--border)";
+  thumb.style.transform  = enabled ? "translateX(18px)" : "translateX(0)";
+
+  // Also apply to the live platform background layer
+  applyPlatformBackground(url, opacity, enabled);
+}
+
+async function _onBgFileSelected(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 8 * 1024 * 1024) {
+    _bgStatus("File too large — max 8 MB.", "var(--red)"); return;
+  }
+  _bgStatus("Uploading…", "var(--muted)");
+  const form = new FormData();
+  form.append("image",   file);
+  form.append("opacity", document.getElementById("bgOpacitySlider").value);
+  form.append("enabled", document.getElementById("bgEnabledToggle").checked ? "true" : "false");
+  const res  = await fetch("/api/platform/background", { method: "POST", body: form });
+  const data = await res.json();
+  if (!res.ok) { _bgStatus("Upload failed: " + data.error, "var(--red)"); return; }
+  _bgStatus("✓ Background saved.", "var(--teal)");
+  _syncBgAdminUI(data.url, data.opacity, data.enabled);
+  input.value = ""; // reset so the same file can be re-selected
+}
+
+function _onBgOpacityChange(val) {
+  document.getElementById("bgOpacityLabel").textContent = val + "%";
+  // Live preview: update preview image opacity
+  const img = document.getElementById("bgPreviewImg");
+  if (img) img.style.opacity = val / 100;
+  // Live-update both background layers while dragging
+  ["platformBgLayer", "platformBgLayerAdmin"].forEach(id => {
+    const layer = document.getElementById(id);
+    if (layer && layer.style.display !== "none") layer.style.opacity = val / 100;
+  });
+}
+
+async function _saveBgSettings() {
+  const opacity = parseInt(document.getElementById("bgOpacitySlider").value);
+  const enabled = document.getElementById("bgEnabledToggle").checked;
+  const res = await fetch("/api/platform/background", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ opacity, enabled })
+  });
+  const data = await res.json();
+  if (res.ok) {
+    _bgStatus("✓ Settings saved.", "var(--teal)");
+    applyPlatformBackground(data.url, data.opacity, data.enabled);
+  }
+}
+
+async function _onBgToggle(checked) {
+  const track = document.getElementById("bgToggleTrack");
+  const thumb = document.getElementById("bgToggleThumb");
+  track.style.background = checked ? "var(--orange)" : "var(--border)";
+  thumb.style.transform  = checked ? "translateX(18px)" : "translateX(0)";
+  await _saveBgSettings();
+}
+
+async function _removePlatformBackground() {
+  if (!confirm("Remove the platform background image?")) return;
+  const res = await fetch("/api/platform/background", { method: "DELETE" });
+  if (res.ok) {
+    _bgStatus("Background removed.", "var(--muted)");
+    _syncBgAdminUI("", 10, false);
+  }
+}
+
+function _bgStatus(msg, color) {
+  const el = document.getElementById("bgStatusMsg");
+  if (!el) return;
+  el.textContent    = msg;
+  el.style.color    = color || "var(--muted)";
+  el.style.display  = "block";
+  setTimeout(() => { el.style.display = "none"; }, 3000);
+}
+
+// ── PLATFORM BACKGROUND — App-side apply ─────────────────────────────────────
+// Called on every page load (before and after login) to pull and apply the
+// platform background from the server. Also called after admin changes.
+
+async function loadPlatformBackground() {
+  const res = await fetch("/api/platform/background").then(r => r.json()).catch(() => null);
+  if (!res) return;
+  applyPlatformBackground(res.url, res.opacity, res.enabled);
+}
+
+/**
+ * Apply (or remove) the platform background layer.
+ * @param {string}  url     - Full URL of the image, or "" to clear
+ * @param {number}  opacity - 3–40 (percent)
+ * @param {boolean} enabled - Whether to actually show it
+ */
+function applyPlatformBackground(url, opacity, enabled) {
+  ["platformBgLayer", "platformBgLayerAdmin"].forEach(id => {
+    const layer = document.getElementById(id);
+    if (!layer) return;
+    if (!url || !enabled) {
+      layer.style.display = "none";
+      return;
+    }
+    layer.style.backgroundImage = `url('${url}')`;
+    layer.style.opacity         = opacity / 100;
+    layer.style.display         = "block";
+  });
+}
+
 async function saveNfpaIntervals() {
   const keys = ["nfpa_annual_interval_days","nfpa_6year_interval_days","nfpa_hydro_interval_days"];
   const payload = {};
@@ -9320,6 +10064,7 @@ document.getElementById("platformLoginBtn")?.addEventListener("click", async () 
     document.getElementById("loginPage").classList.add("hidden");
     document.getElementById("platformPage").classList.remove("hidden");
     switchPlatformView("dashboard");
+    loadPlatformBackground(); // apply background for platform admin view
   } else { msgEl.textContent = data.error || "Invalid password."; msgEl.style.color = "var(--red)"; }
 });
 
@@ -10281,29 +11026,49 @@ async function _startZXingScanner(reader, deviceId) {
   const video    = document.getElementById("qrScanVideo");
   const statusEl = document.getElementById("qrScanStatus");
 
-  statusEl.textContent = "Scanning — point camera at a FireWatch QR code…";
+  statusEl.textContent = "Scanning — point camera at a QR code or barcode…";
+
+  // Debounce flag: prevent the callback from firing multiple times on the
+  // same frame burst once a code is detected and we've started acting on it.
+  let _scanHandled = false;
 
   try {
     // decodeFromVideoDevice(deviceId, videoElement, callback)
     // callback fires for every decoded frame (result) or decode failure (err)
-    await reader.decodeFromVideoDevice(deviceId, video, (result, err) => {
-      // err is normal on frames with no QR — ignore it
-      if (!result) return;
+    await reader.decodeFromVideoDevice(deviceId, video, async (result, err) => {
+      // err is normal on frames with no code — ignore it
+      if (!result || _scanHandled) return;
 
       const text = result.getText();
 
-      // Validate: must contain ?ext=<number> (FireWatch deep-link format)
-      const match = text.match(/[?&]ext=(\d+)/);
-      if (!match) {
-        statusEl.textContent = "Not a FireWatch QR code — keep scanning…";
+      // ── Case 1: FireWatch QR code — contains ?ext=<id> deep-link ──────────
+      const qrMatch = text.match(/[?&]ext=(\d+)/);
+      if (qrMatch) {
+        _scanHandled = true;
+        const extId = parseInt(qrMatch[1], 10);
+        statusEl.textContent = `✓ Found EXT-${extId} — opening…`;
+        closeQRScanner();
+        navigateToExtinguisher(extId);
         return;
       }
 
-      // ✅ Valid FireWatch QR — stop scanning and navigate
-      const extId = parseInt(match[1], 10);
-      statusEl.textContent = `✓ Found EXT-${extId} — opening…`;
+      // ── Case 2: Unknown barcode — search in-memory cache by serial ────────
+      const existing = (window._allExtinguishers || [])
+        .find(e => e.serial_number && e.serial_number.trim() === text.trim());
+
+      if (existing) {
+        _scanHandled = true;
+        statusEl.textContent = `✓ Found EXT-${existing.extinguisher_id} — opening…`;
+        closeQRScanner();
+        navigateToExtinguisher(existing.extinguisher_id);
+        return;
+      }
+
+      // ── Case 3: Not in system — offer Quick Add ───────────────────────────
+      _scanHandled = true;
+      statusEl.textContent = `Barcode detected: ${text}`;
       closeQRScanner();
-      navigateToExtinguisher(extId);
+      openQuickAddFromBarcode(text);
     });
 
     // Capture stream reference for clean shutdown
@@ -10339,6 +11104,149 @@ async function _stopZXingScanner() {
 async function closeQRScanner() {
   await _stopZXingScanner();
   document.getElementById("qrScannerModal").classList.add("hidden");
+}
+
+// ── BARCODE QUICK ADD ─────────────────────────────────────────────────────────
+//
+// Flow: unknown barcode scanned → openQuickAddFromBarcode(text)
+//        → inspector fills location details
+//        → _submitBarcodeAdd() POSTs to /api/extinguishers
+//        → navigateToExtinguisher(newId) opens inspection immediately
+
+/**
+ * Open the Quick Add modal pre-filled with the raw scanned barcode value.
+ * @param {string} barcodeText - Raw text decoded from the barcode
+ */
+async function openQuickAddFromBarcode(barcodeText) {
+  const modal  = document.getElementById("barcodeAddModal");
+  const errEl  = document.getElementById("bqError");
+
+  // Show scanned value in the banner and pre-fill serial number field
+  document.getElementById("bqBarcodeDisplay").textContent = barcodeText;
+  document.getElementById("bqSerial").value   = barcodeText;
+  document.getElementById("bqRoom").value     = "";
+  document.getElementById("bqLocDesc").value  = "";
+  document.getElementById("bqFloor").value    = 1;
+  document.getElementById("bqExtType").value  = "";
+  document.getElementById("bqExtSize").value  = "";
+  document.getElementById("bqInterval").value = 365;
+  errEl.style.display = "none";
+
+  // Default due date to one year from today
+  const due = new Date();
+  due.setFullYear(due.getFullYear() + 1);
+  document.getElementById("bqDueDate").value = due.toISOString().split("T")[0];
+
+  // Populate company dropdown
+  const oid = orgId();
+  const companies = await fetch(`/api/companies?org_id=${oid}`).then(r => r.json()).catch(() => []);
+  const compSel = document.getElementById("bqCompany");
+  compSel.innerHTML = '<option value="">— Select company —</option>' +
+    companies.map(c => `<option value="${c.company_id}">${c.name}</option>`).join("");
+
+  // When company changes, reload buildings
+  compSel.onchange = async () => {
+    const cid = compSel.value;
+    const bSel = document.getElementById("bqBuilding");
+    if (!cid) { bSel.innerHTML = '<option value="">— Select building —</option>'; return; }
+    const buildings = await fetch(`/api/buildings?company_id=${cid}&org_id=${oid}`).then(r => r.json()).catch(() => []);
+    bSel.innerHTML = '<option value="">— Select building —</option>' +
+      buildings.map(b => `<option value="${b.building_id}">${b.name}</option>`).join("");
+  };
+
+  // If the inspector is already drilled into a building, pre-select it
+  if (_selectedCompany) {
+    compSel.value = _selectedCompany.company_id;
+    await compSel.onchange();
+    if (_selectedBuilding) {
+      document.getElementById("bqBuilding").value = _selectedBuilding.building_id;
+    }
+  }
+
+  modal.classList.remove("hidden");
+}
+
+/** Close the barcode Quick Add modal. */
+function closeBarcodeAddModal() {
+  document.getElementById("barcodeAddModal").classList.add("hidden");
+}
+
+/**
+ * Save handler for the Quick Add from Barcode modal.
+ * POSTs to /api/extinguishers then immediately navigates to the new record.
+ */
+async function _submitBarcodeAdd() {
+  const errEl   = document.getElementById("bqError");
+  const saveBtn = document.getElementById("bqSaveBtn");
+  errEl.style.display = "none";
+
+  const buildingId = parseInt(document.getElementById("bqBuilding").value);
+  if (!buildingId) {
+    errEl.textContent = "Please select a building.";
+    errEl.style.display = "block";
+    return;
+  }
+
+  // Derive address/building_number from selected building
+  const companyId = document.getElementById("bqCompany").value;
+  const buildings = await fetch(`/api/buildings?company_id=${companyId}`).then(r => r.json()).catch(() => []);
+  const bldg = buildings.find(b => b.building_id === buildingId);
+
+  const due = new Date();
+  due.setFullYear(due.getFullYear() + 1);
+
+  const body = {
+    address:                  bldg?.address || bldg?.name || "",
+    building_number:          bldg?.name    || "",
+    building_id:              buildingId,
+    org_id:                   orgId(),
+    floor_number:             parseInt(document.getElementById("bqFloor").value)    || 1,
+    room_number:              document.getElementById("bqRoom").value.trim(),
+    location_description:     document.getElementById("bqLocDesc").value.trim(),
+    serial_number:            document.getElementById("bqSerial").value.trim(),
+    ext_type:                 document.getElementById("bqExtType").value,
+    ext_size_lbs:             parseFloat(document.getElementById("bqExtSize").value) || null,
+    inspection_interval_days: parseInt(document.getElementById("bqInterval").value) || 365,
+    next_due_date:            document.getElementById("bqDueDate").value || due.toISOString().split("T")[0],
+    ext_status:               "Active",
+  };
+
+  saveBtn.disabled = true;
+  saveBtn.textContent = "Saving…";
+
+  const res = await fetch("/api/extinguishers", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    errEl.textContent = "Error: " + (data.error || res.statusText);
+    errEl.style.display = "block";
+    saveBtn.disabled = false;
+    saveBtn.textContent = "Add & Inspect →";
+    return;
+  }
+
+  const data = await res.json();
+  const newId = data.extinguisher_id || data.id;
+
+  // Update in-memory caches so the table reflects the new record
+  loadStats();
+  if (_selectedBuilding && _selectedBuilding.building_id === buildingId) {
+    renderExtinguisherTable(buildingId);
+  }
+
+  closeBarcodeAddModal();
+  showView("dashboard");
+
+  // Switch to extinguishers tab then open the new record
+  const extTab = [...document.querySelectorAll(".tab-btn")].find(b => b.textContent.includes("Extinguisher"));
+  if (extTab) extTab.click();
+
+  // Brief delay so the tab finishes rendering before we open the detail popup
+  setTimeout(() => navigateToExtinguisher(newId), 400);
 }
 
 // ── DEEP-LINK NAVIGATION ──────────────────────────────────────────────────────
