@@ -4829,7 +4829,6 @@ async function loadAssignments() {
   let url = `/api/assignments?org_id=${oid}`;
   if (isInv()||isThirdInv()) url += `&user_id=${currentUser.user_id}`;
   let allRows = await fetch(url).then(r=>r.json());
-  window._allAssignments = allRows;
 
   // 3rd Party Admin: scope to assignments belonging to their own 3rd Party
   // Inspectors only — they must not see primary org inspector routes.
@@ -4852,6 +4851,8 @@ async function loadAssignments() {
     // Keep only assignments where inspector is one of our 3rd party sub-techs
     allRows = allRows.filter(r => thirdPartyUsernames.has(r.inspector));
   }
+  // Set AFTER role-scoping so drill-down and Priority Queue only see permitted rows
+  window._allAssignments = allRows;
 
   // Apply status filter
   const filter = document.getElementById("assignStatusFilter");
