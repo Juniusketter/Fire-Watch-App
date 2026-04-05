@@ -42,6 +42,12 @@ import os
 import hashlib
 import logging
 import uuid
+import smtplib
+import ssl
+import secrets
+from datetime import datetime, timedelta
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 # Silence Flask's per-request log lines (GET /api/... 200)
 # Errors and startup messages still print normally
@@ -82,6 +88,15 @@ PLATFORM_PASSWORD_HASH = os.environ.get(
     "FW_PLATFORM_HASH",
     hashlib.sha256("FireWatch2026!".encode()).hexdigest()
 )
+
+# ── Email configuration ────────────────────────────────────────────────────────
+# Set these environment variables on Render (or locally in your shell):
+#   GMAIL_USER         — the Gmail address to send from  e.g. firewatch.app@gmail.com
+#   GMAIL_APP_PASSWORD — the 16-char App Password from Google Account → Security
+# If either is missing, email features degrade gracefully (log warning, return error).
+GMAIL_USER     = os.environ.get("GMAIL_USER",         "")
+GMAIL_APP_PASS = os.environ.get("GMAIL_APP_PASSWORD", "")
+APP_BASE_URL   = os.environ.get("APP_BASE_URL",       "http://localhost:5000")
 
 # ── DB helper ──────────────────────────────────────────────────────────────────
 def get_db():
@@ -358,6 +373,40 @@ def run_migrations():
             """)
             conn.commit()
             print("  [Migration] Created PlatformAnnouncements table")
+
+        # ── PasswordResetTokens table ───────────────────────────────────────
+        if "PasswordResetTokens" not in tables:
+            conn.execute("""
+                CREATE TABLE PasswordResetTokens (
+                    token_id   INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id    INTEGER NOT NULL REFERENCES Users(user_id),
+                    token      TEXT NOT NULL UNIQUE,
+                    expires_at TEXT NOT NULL,
+                    used       INTEGER DEFAULT 0,
+                    created_at TEXT DEFAULT (datetime('now'))
+                )
+            """)
+            conn.commit()
+            print("  [Migration] Created PasswordResetTokens table")
+
+        # ── Messages table ──────────────────────────────────────────────────
+        if "Messages" not in tables:
+            conn.execute("""
+                CREATE TABLE Messages (
+                    message_id   INTEGER PRIMARY KEY AUTOINCREMENT,
+                    org_id       INTEGER NOT NULL REFERENCES Organizations(org_id),
+                    sender_id    INTEGER NOT NULL REFERENCES Users(user_id),
+                    recipient_id INTEGER REFERENCES Users(user_id),
+                    subject      TEXT NOT NULL DEFAULT '',
+                    body         TEXT NOT NULL DEFAULT '',
+                    is_read      INTEGER DEFAULT 0,
+                    is_broadcast INTEGER DEFAULT 0,
+                    broadcast_role TEXT DEFAULT '',
+                    created_at   TEXT DEFAULT (datetime('now'))
+                )
+            """)
+            conn.commit()
+            print("  [Migration] Created Messages table")
 
         # ── Organizations.last_active column ────────────────────────────────
         org_cols_v2 = [r[1] for r in conn.execute("PRAGMA table_info(Organizations)").fetchall()]
@@ -2116,6 +2165,319 @@ def platform_delete_background():
                 pass
     platform_log("SuperAdmin", "background_removed", "platform_bg", "Background cleared")
     return jsonify({"success": True})
+
+
+def _req_int(source, key):
+    """Helper: pull an integer from a dict or return None."""
+    try:
+        v = source.get(key)
+        return int(v) if v is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+# ── EMAIL HELPER ──────────────────────────────────────────────────────────────
+def send_email(to_address, subject, html_body, text_body=None):
+    """Send an email via Gmail SMTP. Returns (True, None) on success or (False, error_str) on failure."""
+    if not GMAIL_USER or not GMAIL_APP_PASS:
+        return False, "Email not configured (set GMAIL_USER and GMAIL_APP_PASSWORD env vars)"
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"]    = f"FireWatch <{GMAIL_USER}>"
+        msg["To"]      = to_address
+        if text_body:
+            msg.attach(MIMEText(text_body, "plain"))
+        msg.attach(MIMEText(html_body, "html"))
+        ctx = ssl.create_default_context()
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=ctx) as server:
+            server.login(GMAIL_USER, GMAIL_APP_PASS)
+            server.sendmail(GMAIL_USER, to_address, msg.as_string())
+        return True, None
+    except Exception as e:
+        return False, str(e)
+
+
+# ── PASSWORD RESET ─────────────────────────────────────────────────────────────
+@app.route("/api/auth/forgot-password", methods=["POST"])
+def forgot_password():
+    data  = request.get_json(force=True) or {}
+    email = (data.get("email") or "").strip().lower()
+    if not email:
+        return jsonify({"error": "Email required"}), 400
+    with get_db() as conn:
+        user = conn.execute(
+            "SELECT user_id, full_name FROM Users WHERE LOWER(email)=? AND is_active=1",
+            (email,)
+        ).fetchone()
+        if not user:
+            # Don't reveal whether the email exists
+            return jsonify({"message": "If that email exists, a reset link has been sent."}), 200
+        # Invalidate any existing tokens
+        conn.execute(
+            "UPDATE PasswordResetTokens SET used=1 WHERE user_id=? AND used=0",
+            (user["user_id"],)
+        )
+        token      = secrets.token_urlsafe(32)
+        expires_at = (datetime.utcnow() + timedelta(hours=2)).strftime("%Y-%m-%d %H:%M:%S")
+        conn.execute(
+            "INSERT INTO PasswordResetTokens (user_id, token, expires_at) VALUES (?,?,?)",
+            (user["user_id"], token, expires_at)
+        )
+    reset_url = f"{APP_BASE_URL}/reset-password?token={token}"
+    html_body = f"""
+    <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;">
+      <h2 style="color:#e27c00;">🔥 FireWatch Password Reset</h2>
+      <p>Hi {user['full_name']},</p>
+      <p>We received a request to reset your FireWatch password. Click the button below to set a new password. This link expires in <strong>2 hours</strong>.</p>
+      <p style="text-align:center;margin:32px 0;">
+        <a href="{reset_url}"
+           style="background:#e27c00;color:#fff;padding:14px 28px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:16px;">
+          Reset My Password
+        </a>
+      </p>
+      <p style="color:#888;font-size:13px;">If you didn't request this, you can safely ignore this email. Your password won't change.</p>
+      <hr style="border:none;border-top:1px solid #eee;margin:24px 0;">
+      <p style="color:#aaa;font-size:12px;">FireWatch — NFPA 10 Compliance Platform</p>
+    </div>
+    """
+    ok, err = send_email(email, "Reset your FireWatch password", html_body)
+    if not ok:
+        app.logger.error(f"Password reset email failed: {err}")
+    return jsonify({"message": "If that email exists, a reset link has been sent."}), 200
+
+
+@app.route("/api/auth/reset-password", methods=["POST"])
+def reset_password():
+    data     = request.get_json(force=True) or {}
+    token    = (data.get("token") or "").strip()
+    password = (data.get("password") or "").strip()
+    if not token or not password:
+        return jsonify({"error": "Token and new password required"}), 400
+    if len(password) < 6:
+        return jsonify({"error": "Password must be at least 6 characters"}), 400
+    with get_db() as conn:
+        row = conn.execute(
+            """SELECT t.token_id, t.user_id, t.expires_at, t.used
+               FROM PasswordResetTokens t
+               WHERE t.token=?""",
+            (token,)
+        ).fetchone()
+        if not row:
+            return jsonify({"error": "Invalid or expired reset link"}), 400
+        if row["used"]:
+            return jsonify({"error": "This reset link has already been used"}), 400
+        if datetime.utcnow() > datetime.strptime(row["expires_at"], "%Y-%m-%d %H:%M:%S"):
+            return jsonify({"error": "Reset link has expired. Please request a new one."}), 400
+        hashed = hash_password(password)
+        conn.execute("UPDATE Users SET password_hash=? WHERE user_id=?", (hashed, row["user_id"]))
+        conn.execute("UPDATE PasswordResetTokens SET used=1 WHERE token_id=?", (row["token_id"],))
+    return jsonify({"message": "Password updated successfully"}), 200
+
+
+# ── GENERAL EMAIL SEND (admin/marshal compose) ────────────────────────────────
+@app.route("/api/email/send", methods=["POST"])
+def email_send():
+    data    = request.get_json(force=True) or {}
+    to_addr = (data.get("to") or "").strip()
+    subject = (data.get("subject") or "").strip()
+    body    = (data.get("body") or "").strip()
+    role    = (data.get("role") or "").strip()
+    if not to_addr or not subject or not body:
+        return jsonify({"error": "to, subject, and body are required"}), 400
+    # Only admins, marshals, and platform admins may send
+    allowed_roles = {"Admin", "FireMarshal", "PlatformAdmin"}
+    if role not in allowed_roles:
+        return jsonify({"error": "Insufficient permissions"}), 403
+    html_body = f"""
+    <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;">
+      <h2 style="color:#e27c00;">🔥 FireWatch Message</h2>
+      <div style="white-space:pre-wrap;">{body}</div>
+      <hr style="border:none;border-top:1px solid #eee;margin:24px 0;">
+      <p style="color:#aaa;font-size:12px;">FireWatch — NFPA 10 Compliance Platform</p>
+    </div>
+    """
+    ok, err = send_email(to_addr, subject, html_body, text_body=body)
+    if not ok:
+        return jsonify({"error": f"Failed to send email: {err}"}), 500
+    return jsonify({"message": "Email sent"}), 200
+
+
+# ── MESSAGING ─────────────────────────────────────────────────────────────────
+@app.route("/api/messages", methods=["GET"])
+def get_messages():
+    """Inbox: messages sent to this user (or broadcasts to their role).
+    Requires query params: user_id, org_id, role"""
+    uid  = _req_int(request.args, "user_id")
+    oid  = _req_int(request.args, "org_id")
+    role = (request.args.get("role") or "").strip()
+    if not uid or not oid:
+        return jsonify({"error": "user_id and org_id required"}), 400
+    with get_db() as conn:
+        rows = conn.execute(
+            """SELECT m.message_id, m.subject, m.body, m.is_read, m.is_broadcast,
+                      m.broadcast_role, m.created_at,
+                      (u.first_name || ' ' || u.last_name) AS sender_name, u.email AS sender_email
+               FROM Messages m
+               JOIN Users u ON u.user_id = m.sender_id
+               WHERE m.org_id = ?
+                 AND (
+                   (m.is_broadcast = 0 AND m.recipient_id = ?)
+                   OR
+                   (m.is_broadcast = 1 AND (m.broadcast_role = '' OR m.broadcast_role = ?))
+                 )
+               ORDER BY m.created_at DESC
+               LIMIT 200""",
+            (oid, uid, role)
+        ).fetchall()
+    return jsonify([dict(r) for r in rows]), 200
+
+
+@app.route("/api/messages/sent", methods=["GET"])
+def get_sent_messages():
+    """Messages sent by this user. Requires query params: user_id, org_id"""
+    uid = _req_int(request.args, "user_id")
+    oid = _req_int(request.args, "org_id")
+    if not uid or not oid:
+        return jsonify({"error": "user_id and org_id required"}), 400
+    with get_db() as conn:
+        rows = conn.execute(
+            """SELECT m.message_id, m.subject, m.body, m.is_read, m.is_broadcast,
+                      m.broadcast_role, m.created_at,
+                      (u.first_name || ' ' || u.last_name) AS recipient_name, u.email AS recipient_email
+               FROM Messages m
+               LEFT JOIN Users u ON u.user_id = m.recipient_id
+               WHERE m.org_id = ? AND m.sender_id = ?
+               ORDER BY m.created_at DESC
+               LIMIT 200""",
+            (oid, uid)
+        ).fetchall()
+    return jsonify([dict(r) for r in rows]), 200
+
+
+@app.route("/api/messages/unread", methods=["GET"])
+def get_unread_count():
+    """Requires query params: user_id, org_id, role"""
+    uid  = _req_int(request.args, "user_id")
+    oid  = _req_int(request.args, "org_id")
+    role = (request.args.get("role") or "").strip()
+    if not uid or not oid:
+        return jsonify({"unread": 0}), 200
+    with get_db() as conn:
+        row = conn.execute(
+            """SELECT COUNT(*) AS cnt FROM Messages m
+               WHERE m.org_id = ?
+                 AND m.is_read = 0
+                 AND (
+                   (m.is_broadcast = 0 AND m.recipient_id = ?)
+                   OR
+                   (m.is_broadcast = 1 AND (m.broadcast_role = '' OR m.broadcast_role = ?))
+                 )""",
+            (oid, uid, role)
+        ).fetchone()
+    return jsonify({"unread": row["cnt"]}), 200
+
+
+@app.route("/api/messages", methods=["POST"])
+def send_message():
+    """Send a DM or broadcast. Body must include: user_id, org_id, role, subject, body.
+    For DM also include: recipient_id. For broadcast: is_broadcast=true, broadcast_role (optional)."""
+    data    = request.get_json(force=True) or {}
+    subject = (data.get("subject") or "").strip()
+    body    = (data.get("body") or "").strip()
+    if not subject or not body:
+        return jsonify({"error": "subject and body required"}), 400
+    uid  = _req_int(data, "user_id")
+    oid  = _req_int(data, "org_id")
+    role = (data.get("role") or "").strip()
+    if not uid or not oid:
+        return jsonify({"error": "user_id and org_id required"}), 400
+    is_broadcast   = int(bool(data.get("is_broadcast")))
+    broadcast_role = (data.get("broadcast_role") or "").strip() if is_broadcast else ""
+    recipient_id   = _req_int(data, "recipient_id") if not is_broadcast else None
+    # Admins/marshals can broadcast; everyone can DM
+    if is_broadcast and role not in {"Admin", "FireMarshal"}:
+        return jsonify({"error": "Only Admins and FireMarshals can broadcast"}), 403
+    with get_db() as conn:
+        if not is_broadcast and recipient_id:
+            r = conn.execute(
+                "SELECT user_id FROM Users WHERE user_id=? AND org_id=?",
+                (recipient_id, oid)
+            ).fetchone()
+            if not r:
+                return jsonify({"error": "Recipient not found in your organization"}), 404
+        conn.execute(
+            """INSERT INTO Messages
+               (org_id, sender_id, recipient_id, subject, body, is_broadcast, broadcast_role)
+               VALUES (?,?,?,?,?,?,?)""",
+            (oid, uid, recipient_id, subject, body, is_broadcast, broadcast_role)
+        )
+        msg_id = conn.execute("SELECT last_insert_rowid() AS id").fetchone()["id"]
+    return jsonify({"message_id": msg_id, "message": "Sent"}), 201
+
+
+@app.route("/api/messages/<int:msg_id>/read", methods=["PUT"])
+def mark_message_read(msg_id):
+    """Mark a message as read. Body must include: user_id, org_id, role"""
+    data = request.get_json(force=True) or {}
+    uid  = _req_int(data, "user_id")
+    oid  = _req_int(data, "org_id")
+    role = (data.get("role") or "").strip()
+    if not uid or not oid:
+        return jsonify({"error": "user_id and org_id required"}), 400
+    with get_db() as conn:
+        row = conn.execute(
+            """SELECT * FROM Messages WHERE message_id=? AND org_id=?
+               AND (
+                 (is_broadcast=0 AND recipient_id=?)
+                 OR (is_broadcast=1 AND (broadcast_role='' OR broadcast_role=?))
+               )""",
+            (msg_id, oid, uid, role)
+        ).fetchone()
+        if not row:
+            return jsonify({"error": "Message not found"}), 404
+        conn.execute("UPDATE Messages SET is_read=1 WHERE message_id=?", (msg_id,))
+    return jsonify({"message": "Marked read"}), 200
+
+
+@app.route("/api/messages/<int:msg_id>", methods=["DELETE"])
+def delete_message(msg_id):
+    """Delete a message. Body must include: user_id, org_id"""
+    data = request.get_json(force=True) or {}
+    uid  = _req_int(data, "user_id")
+    oid  = _req_int(data, "org_id")
+    if not uid or not oid:
+        return jsonify({"error": "user_id and org_id required"}), 400
+    with get_db() as conn:
+        row = conn.execute(
+            "SELECT * FROM Messages WHERE message_id=? AND org_id=? AND (recipient_id=? OR sender_id=?)",
+            (msg_id, oid, uid, uid)
+        ).fetchone()
+        if not row:
+            return jsonify({"error": "Message not found"}), 404
+        conn.execute("DELETE FROM Messages WHERE message_id=?", (msg_id,))
+    return jsonify({"message": "Deleted"}), 200
+
+
+@app.route("/api/messages/users", methods=["GET"])
+def get_messageable_users():
+    """List org users this user can message (excluding themselves).
+    Requires query params: user_id, org_id"""
+    uid = _req_int(request.args, "user_id")
+    oid = _req_int(request.args, "org_id")
+    if not uid or not oid:
+        return jsonify({"error": "user_id and org_id required"}), 400
+    with get_db() as conn:
+        rows = conn.execute(
+            """SELECT user_id,
+                      (first_name || ' ' || last_name) AS full_name,
+                      email, role
+               FROM Users WHERE org_id=? AND user_id!=?
+               ORDER BY first_name, last_name""",
+            (oid, uid)
+        ).fetchall()
+    return jsonify([dict(r) for r in rows]), 200
+
 
 # ── Audit log helper ──────────────────────────────────────────────────────────
 def platform_log(actor, action, target=None, details=None):
