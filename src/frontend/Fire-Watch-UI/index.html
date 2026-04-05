@@ -1441,7 +1441,7 @@
         <button class="sidebar-item hidden" id="btnExitOrgView" onclick="exitPlatformReadOnly()" style="color:var(--purple);font-weight:700;">
           <span class="si-icon">↩️</span> Exit Organization
         </button>
-        <button class="sidebar-item" onclick="document.getElementById('btnLogout').click()">
+        <button class="sidebar-item" onclick="doLogout()">
           <span class="si-icon">🚪</span> Logout
         </button>
       </div>
@@ -4674,7 +4674,7 @@ function statusBadge(val) {
 
 // ── Refresh / Logout ──────────────────────────────────────────────────────────
 document.getElementById("btnRefresh").addEventListener("click",()=>{ clearAllBadges(); loadStats(); loadAllData(); updateTimestamp(); });
-document.getElementById("btnLogout").addEventListener("click",()=>{
+function doLogout() {
   // If in platform read-only mode, return to Platform Admin instead of login
   if (window._platformReadOnly) {
     exitPlatformReadOnly();
@@ -4696,7 +4696,8 @@ document.getElementById("btnLogout").addEventListener("click",()=>{
   document.getElementById("tabBar").innerHTML="";
   ["extToolbar","assignToolbar","reportToolbar","userToolbar"].forEach(id=>document.getElementById(id).classList.add("hidden"));
   window.location.href = "/";
-});
+}
+document.getElementById("btnLogout").addEventListener("click", doLogout);
 
 // ── CRUD: Company ─────────────────────────────────────────────────────────────
 let _editingCompanyId  = null;
@@ -7251,7 +7252,7 @@ function resetInactivityTimer() {
     if (banner) banner.style.display = "none";
     // Show brief message then trigger full logout
     alert("You have been logged out due to inactivity.");
-    document.getElementById("btnLogout").click();
+    doLogout();
   }, INACTIVITY_TIMEOUT_SECS * 1000);
 }
 
