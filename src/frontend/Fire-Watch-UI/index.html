@@ -1405,6 +1405,10 @@
           <span class="si-icon">✉️</span> Messages
           <span class="notif-badge hidden" id="sidebarMsgBadge">0</span>
         </button>
+        <!-- Quick Inspect — single-screen inspection form, inspector roles only -->
+        <button class="sidebar-item hidden" id="sidebarQuickInspect" onclick="openQuickInspect()">
+          <span class="si-icon">⚡</span> Quick Inspect
+        </button>
         <!-- QR Scanner — available to all roles; opens device camera to scan an extinguisher QR code -->
         <button class="sidebar-item" onclick="openQRScanner()">
           <span class="si-icon">📷</span> Scan QR Code
@@ -1441,7 +1445,7 @@
         <button class="sidebar-item hidden" id="btnExitOrgView" onclick="exitPlatformReadOnly()" style="color:var(--purple);font-weight:700;">
           <span class="si-icon">↩️</span> Exit Organization
         </button>
-        <button class="sidebar-item" onclick="doLogout()">
+        <button class="sidebar-item" id="sidebarLogoutBtn" onclick="doLogout()">
           <span class="si-icon">🚪</span> Logout
         </button>
       </div>
@@ -3254,6 +3258,107 @@
 </div>
 
 
+<!-- ══════════════════════════════════════════════════════
+     QUICK INSPECT MODAL
+     Single-screen inspection flow for solo inspectors.
+     No assignment required — inspector selects the extinguisher,
+     fills one form, and submits. NFPA intervals auto-calculated.
+     ══════════════════════════════════════════════════════ -->
+<div class="modal-overlay hidden" id="quickInspectModal" onclick="if(event.target===this)closeQuickInspect()">
+  <div class="modal-box" style="max-width:500px;width:92%;max-height:92vh;overflow-y:auto;">
+
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+      <div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:0.62rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted);margin-bottom:3px;">⚡ Quick Inspect</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:1rem;color:var(--orange);" id="qiExtLabel">Select Extinguisher</div>
+      </div>
+      <button onclick="closeQuickInspect()" style="background:none;border:none;color:var(--muted2);font-size:1.3rem;cursor:pointer;padding:4px 8px;line-height:1;">✕</button>
+    </div>
+
+    <!-- Extinguisher selector (hidden when pre-filled from detail popup) -->
+    <div id="qiExtRow" class="form-row" style="margin-bottom:0.55rem;">
+      <label>Extinguisher <span style="color:var(--red);">*</span></label>
+      <select id="qiExtSelect" onchange="_qiOnExtChange()" style="width:100%;box-sizing:border-box;">
+        <option value="">— Select extinguisher —</option>
+      </select>
+    </div>
+
+    <!-- Service type + Date side by side -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.55rem;margin-bottom:0.55rem;">
+      <div class="form-row" style="margin:0;">
+        <label>Service Type</label>
+        <select id="qiServiceType" onchange="_qiUpdateNextDue()" style="width:100%;box-sizing:border-box;">
+          <option value="Routine Inspection">Routine Inspection</option>
+          <option value="Annual Maintenance">Annual Maintenance</option>
+          <option value="6-Year Service">6-Year Service</option>
+          <option value="Hydrostatic Test">Hydrostatic Test</option>
+          <option value="Recharge">Recharge</option>
+          <option value="New Installation">New Installation</option>
+          <option value="Repair">Repair</option>
+        </select>
+      </div>
+      <div class="form-row" style="margin:0;">
+        <label>Date</label>
+        <input type="date" id="qiDate" onchange="_qiUpdateNextDue()" style="width:100%;box-sizing:border-box;" />
+      </div>
+    </div>
+
+    <!-- NFPA 10 next due preview chip -->
+    <div id="qiNextDueBar" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:0.45rem 0.8rem;margin-bottom:0.75rem;font-family:'IBM Plex Mono',monospace;font-size:0.72rem;color:var(--muted);display:flex;align-items:center;gap:0.5rem;">
+      <span style="color:var(--orange);">📅</span>
+      <span>Next due: <span id="qiNextDueVal" style="color:var(--text);font-weight:600;">—</span></span>
+      <span style="margin-left:auto;font-size:0.65rem;color:var(--muted);">Auto-calculated · NFPA 10</span>
+    </div>
+
+    <!-- NFPA 10 Checklist — compact 2-col -->
+    <div style="border-top:1px solid var(--border);margin-bottom:0.5rem;padding-top:0.6rem;">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);">NFPA 10 Checklist</span>
+      <button type="button" onclick="_qiCheckAll()" style="float:right;background:none;border:none;font-size:0.7rem;color:var(--orange);cursor:pointer;padding:0;font-family:'IBM Plex Mono',monospace;">✓ Check All</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.35rem 1rem;margin-bottom:0.65rem;">
+      <label style="display:flex;align-items:center;gap:0.45rem;font-size:0.76rem;cursor:pointer;"><input type="checkbox" id="qiChkMounted" /> Mounted &amp; visible</label>
+      <label style="display:flex;align-items:center;gap:0.45rem;font-size:0.76rem;cursor:pointer;"><input type="checkbox" id="qiChkAccess" /> Access clear</label>
+      <label style="display:flex;align-items:center;gap:0.45rem;font-size:0.76rem;cursor:pointer;"><input type="checkbox" id="qiChkPressure" /> Pressure in green</label>
+      <label style="display:flex;align-items:center;gap:0.45rem;font-size:0.76rem;cursor:pointer;"><input type="checkbox" id="qiChkSeal" /> Pin &amp; seal intact</label>
+      <label style="display:flex;align-items:center;gap:0.45rem;font-size:0.76rem;cursor:pointer;"><input type="checkbox" id="qiChkDamage" /> No damage/corrosion</label>
+      <label style="display:flex;align-items:center;gap:0.45rem;font-size:0.76rem;cursor:pointer;"><input type="checkbox" id="qiChkNozzle" /> Nozzle unblocked</label>
+      <label style="display:flex;align-items:center;gap:0.45rem;font-size:0.76rem;cursor:pointer;"><input type="checkbox" id="qiChkLabel" /> Label readable</label>
+      <label style="display:flex;align-items:center;gap:0.45rem;font-size:0.76rem;cursor:pointer;"><input type="checkbox" id="qiChkWeight" /> Weight feels correct</label>
+    </div>
+
+    <!-- Result + Notes -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.55rem;margin-bottom:0.55rem;">
+      <div class="form-row" style="margin:0;">
+        <label>Result <span style="color:var(--red);">*</span></label>
+        <select id="qiResult" style="width:100%;box-sizing:border-box;">
+          <option value="">— Select —</option>
+          <option value="Pass">Pass ✓</option>
+          <option value="Fail">Fail ✗</option>
+          <option value="Needs Service">Needs Service</option>
+        </select>
+      </div>
+      <div class="form-row" style="margin:0;">
+        <label>PO # <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+        <input type="text" id="qiPO" placeholder="e.g. PO-2025-001" style="width:100%;box-sizing:border-box;" />
+      </div>
+    </div>
+    <div class="form-row" style="margin-bottom:0.55rem;">
+      <label>Notes <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+      <textarea id="qiNotes" rows="2" placeholder="Observations, findings..." style="width:100%;box-sizing:border-box;resize:vertical;"></textarea>
+    </div>
+
+    <!-- Error -->
+    <div id="qiError" style="display:none;background:rgba(193,18,31,0.12);border:1px solid rgba(193,18,31,0.3);border-radius:6px;padding:0.55rem 0.8rem;font-size:0.78rem;color:#f87171;margin-bottom:0.5rem;"></div>
+
+    <!-- Actions -->
+    <div style="display:flex;gap:0.5rem;justify-content:flex-end;">
+      <button onclick="closeQuickInspect()" class="btn-crud" style="font-size:0.75rem;padding:7px 18px;min-height:36px;background:var(--bg3);border-color:var(--border);color:var(--muted);">Cancel</button>
+      <button id="qiSubmitBtn" onclick="_submitQuickInspect()" class="btn-save" style="font-size:0.78rem;padding:7px 22px;min-height:36px;">⚡ Submit</button>
+    </div>
+  </div>
+</div>
+
 <!-- CONDEMN & REPLACE MODAL -->
 <div class="modal-overlay hidden" id="condemnModal">
   <div class="modal-box">
@@ -3836,6 +3941,9 @@ function buildTabs() {
     document.getElementById("btnAHJLink").style.display = "";
   } else if (isInv()) {
     tabs = [{id:"panelExtinguishers",label:"Extinguishers"},{id:"panelAssignments",label:"My Assignments"},{id:"panelReports",label:"My Reports"}];
+    // Show Quick Inspect sidebar shortcut for inspectors
+    const qiBtn = document.getElementById("sidebarQuickInspect");
+    if (qiBtn) qiBtn.classList.remove("hidden");
     document.getElementById("statBoxUsers").style.display = "none";
     document.getElementById("statLabelAssign").textContent  = "My Assignments";
     document.getElementById("statLabelReports").textContent = "My Reports";
@@ -3888,7 +3996,9 @@ function buildTabs() {
     document.getElementById("statLabelAssign").textContent  = "My Assignments";
     document.getElementById("statLabelReports").textContent = "My Reports";
     document.getElementById("reportToolbar").classList.remove("hidden");
-    // 3rd Party Inspector: show Submit Report button, hide Generate PDF/Export (Admin-only)
+    // 3rd Party Inspector: show Submit Report + Quick Inspect buttons
+    const qiBtn3 = document.getElementById("sidebarQuickInspect");
+    if (qiBtn3) qiBtn3.classList.remove("hidden");
     document.getElementById("btnSubmitReport").style.display  = "";
     document.getElementById("btnGeneratePdfReport").style.display = "none";
     document.getElementById("exportDropdown").style.display   = "none";
@@ -4698,6 +4808,14 @@ function doLogout() {
   window.location.href = "/";
 }
 document.getElementById("btnLogout").addEventListener("click", doLogout);
+// iOS fix: on mobile, position:fixed + CSS transform causes the overlay's click to fire
+// instead of the sidebar button's onclick. Intercept touchend directly on the button
+// so iOS can't misroute the tap to the overlay underneath.
+document.getElementById("sidebarLogoutBtn").addEventListener("touchend", function(e) {
+  e.preventDefault();      // suppress the synthesised click that follows (avoid double-call)
+  e.stopPropagation();     // stop the event reaching the overlay
+  doLogout();
+});
 
 // ── CRUD: Company ─────────────────────────────────────────────────────────────
 let _editingCompanyId  = null;
@@ -6393,6 +6511,7 @@ async function openPriorityQueue() {
 // Fetches the inspector's pending assignments, finds the one for this extinguisher,
 // and opens the report modal with it pre-selected.
 async function openReportForExtinguisher(extId) {
+  _reportModalExtId = extId || null;  // remember so Cancel/✕ can navigate back
   const assignments = await fetch("/api/assignments?user_id=" + currentUser.user_id).then(r => r.json());
   const pending = assignments.filter(a => !String(a.status).toLowerCase().includes("complete"));
   
@@ -6544,8 +6663,14 @@ document.getElementById("btnSubmitReport").addEventListener("click",async()=>{
   document.getElementById("reportModal").classList.remove("hidden");
 });
 
-document.getElementById("reportModalCancel").addEventListener("click",()=>document.getElementById("reportModal").classList.add("hidden"));
-document.getElementById("reportModal").addEventListener("click",e=>{ if(e.target===document.getElementById("reportModal")) document.getElementById("reportModal").classList.add("hidden"); });
+function _closeReportModal() {
+  document.getElementById("reportModal").classList.add("hidden");
+  const returnId = _reportModalExtId;
+  _reportModalExtId = null;
+  if (returnId) navigateToExtinguisher(returnId);
+}
+document.getElementById("reportModalCancel").addEventListener("click", _closeReportModal);
+document.getElementById("reportModal").addEventListener("click", e => { if (e.target === document.getElementById("reportModal")) _closeReportModal(); });
 
 // Open report modal pre-filled for a specific assignment (called from assignment detail popup)
 async function openReportModalForAssignment(assignmentId, extinguisherId) {
@@ -6637,6 +6762,8 @@ document.getElementById("reportModalSave").addEventListener("click",async()=>{
     if(res.ok){
       document.getElementById("reportModal").classList.add("hidden");
       loadReports(); loadAssignments(); loadStats();
+      // If opened from an extinguisher detail popup, navigate back to it
+      if (extId) navigateToExtinguisher(extId);
     } else {
       errEl.textContent="Error: "+(await res.json()).error;
     }
@@ -7888,7 +8015,7 @@ function openExtDetail(row) {
     { label: "Manufacturer",   value: row.manufacturer },
     { label: "Model",          value: row.model },
     { label: "Mfg Date",       value: row.manufacture_date },
-    { label: "Status",         value: row.ext_status, cls: row.ext_status === "Active" ? "ok" : row.ext_status === "Missing" ? "overdue" : "due-soon" },
+    { label: "Status",         value: (row.is_loaner ? "🔄 LOANER UNIT  " : "") + (row.ext_status || "Active"), cls: row.is_loaner ? "due-soon" : row.ext_status === "Active" ? "ok" : row.ext_status === "Missing" ? "overdue" : "due-soon" },
     { label: "Annual Maint.",  value: row.last_annual_date },
     { label: "6-Year Service", value: row.last_6year_date },
     { label: "Hydro Test",     value: row.last_hydro_date },
@@ -8002,6 +8129,7 @@ function openExtDetail(row) {
   // Footer — quick action buttons based on role
   const footer = document.getElementById("detailExtFooter");
   if (isAdmin() && !window._platformReadOnly) {
+    const loanerLbl = row.is_loaner ? "🔄 Clear Loaner" : "🔄 Mark Loaner";
     footer.innerHTML = `
       <button class="btn-crud btn-edit" style="font-size:0.72rem;padding:6px 14px;min-height:34px;"
         onclick="document.getElementById('extDetailModal').classList.add('hidden'); window._returnToPriorityQueue=false; document.getElementById('btnEdit').click();">
@@ -8014,6 +8142,10 @@ function openExtDetail(row) {
       <button class="btn-crud btn-edit" style="font-size:0.72rem;padding:6px 14px;min-height:34px;background:var(--bg3);border-color:var(--teal);color:var(--teal);"
         onclick="openQRModal(${row.extinguisher_id}, ${JSON.stringify(row.location_description || row.building_name || row.address || 'Extinguisher ' + row.extinguisher_id).replace(/"/g,'&quot;')})">
         🔲 QR Code
+      </button>
+      <button class="btn-crud" style="font-size:0.72rem;padding:6px 14px;min-height:34px;background:var(--bg3);border-color:var(--orange);color:var(--orange);"
+        onclick="_toggleLoaner(${row.extinguisher_id}, ${row.is_loaner ? 1 : 0})">
+        ${loanerLbl}
       </button>
     `;
   } else if (isClient()) {
@@ -8031,19 +8163,20 @@ function openExtDetail(row) {
         onclick="document.getElementById('extDetailModal').classList.add('hidden');">Close</button>
     `;
     } else if ((isInv() || isThirdInv()) && !window._platformReadOnly) {
-    // Inspectors: Edit extinguisher details + Submit Report for this extinguisher
+    // Inspectors: Quick Inspect, Submit Report (assignment-based), Loaner toggle, QR
+    const loanerLbl = row.is_loaner ? "🔄 Clear Loaner" : "🔄 Mark Loaner";
     footer.innerHTML = `
-      <button class="btn-crud btn-edit" style="font-size:0.72rem;padding:6px 14px;min-height:34px;"
-        onclick="document.getElementById('extDetailModal').classList.add('hidden'); window._returnToPriorityQueue=false; selectedExtId=${row.extinguisher_id}; document.getElementById('btnEdit').click();">
-        ✎ Edit Details
+      <button class="btn-save" style="font-size:0.72rem;padding:6px 14px;min-height:34px;"
+        onclick="document.getElementById('extDetailModal').classList.add('hidden'); openQuickInspect(${row.extinguisher_id});">
+        ⚡ Quick Inspect
       </button>
       <button class="btn-crud btn-add" style="font-size:0.72rem;padding:6px 14px;min-height:34px;"
         onclick="document.getElementById('extDetailModal').classList.add('hidden'); window._returnToPriorityQueue=false; openReportForExtinguisher(${row.extinguisher_id});">
         📋 Submit Report
       </button>
-      <button class="btn-crud btn-edit" style="font-size:0.72rem;padding:6px 14px;min-height:34px;background:var(--bg3);border-color:var(--teal);color:var(--teal);"
-        onclick="openQRModal(${row.extinguisher_id}, ${JSON.stringify(row.location_description || row.building_name || row.address || 'Extinguisher ' + row.extinguisher_id).replace(/"/g,'&quot;')})">
-        🔲 QR Code
+      <button class="btn-crud" style="font-size:0.72rem;padding:6px 14px;min-height:34px;background:var(--bg3);border-color:var(--orange);color:var(--orange);"
+        onclick="_toggleLoaner(${row.extinguisher_id}, ${row.is_loaner ? 1 : 0})">
+        ${loanerLbl}
       </button>
       <button class="btn-crud btn-edit" style="font-size:0.72rem;padding:6px 14px;min-height:34px;background:var(--bg3);border-color:var(--border);color:var(--muted);"
         onclick="document.getElementById('extDetailModal').classList.add('hidden'); returnToPriorityQueue();">
@@ -11926,6 +12059,198 @@ if (languageSelect) {
       body: JSON.stringify({ language: lang })
     }).catch(() => { /* backend optional for this feature */ });
   });
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// QUICK INSPECT FLOW
+// ════════════════════════════════════════════════════════════════════════════
+
+// NFPA 10 interval map (mirrors server.py NFPA_INTERVALS)
+const NFPA_INTERVALS = {
+  "Routine Inspection": 30,
+  "Annual Maintenance": 365,
+  "6-Year Service":     365 * 6,
+  "Hydrostatic Test":   365 * 12,
+  "Recharge":           365,
+};
+
+let _qiPrefilledExtId   = null;  // set when opened from extinguisher detail
+let _reportModalExtId   = null;  // set when report modal opened from extinguisher detail
+
+async function openQuickInspect(extId) {
+  _qiPrefilledExtId = extId || null;
+  const modal = document.getElementById("quickInspectModal");
+
+  // Reset form
+  document.getElementById("qiServiceType").value = "Routine Inspection";
+  document.getElementById("qiDate").value         = new Date().toISOString().split("T")[0];
+  document.getElementById("qiResult").value       = "";
+  document.getElementById("qiNotes").value        = "";
+  document.getElementById("qiPO").value           = "";
+  document.getElementById("qiError").style.display = "none";
+  document.getElementById("qiSubmitBtn").disabled  = false;
+  document.getElementById("qiSubmitBtn").textContent = "⚡ Submit";
+  ["qiChkMounted","qiChkAccess","qiChkPressure","qiChkSeal","qiChkDamage","qiChkNozzle","qiChkLabel","qiChkWeight"]
+    .forEach(id => document.getElementById(id).checked = false);
+
+  _qiUpdateNextDue();
+
+  // Load extinguisher list
+  const extRow = document.getElementById("qiExtRow");
+  const extSel = document.getElementById("qiExtSelect");
+  try {
+    const exts = await fetch(`/api/extinguishers?org_id=${orgId()}`).then(r => r.json());
+    // Filter out condemned/retired
+    const active = exts.filter(e => !["Condemned/Removed","Retired"].includes(e.ext_status));
+    extSel.innerHTML = '<option value="">— Select extinguisher —</option>' +
+      active.map(e => {
+        const loc = [e.building_name, e.location_description, e.room_number ? `Rm ${e.room_number}` : ""]
+          .filter(Boolean).join(" · ");
+        return `<option value="${e.extinguisher_id}">EXT-${e.extinguisher_id} · ${loc || e.address || "Unknown location"}</option>`;
+      }).join("");
+  } catch(err) {
+    extSel.innerHTML = '<option value="">Failed to load extinguishers</option>';
+  }
+
+  if (extId) {
+    extSel.value = extId;
+    extRow.style.display = "none";
+    document.getElementById("qiExtLabel").textContent =
+      extSel.options[extSel.selectedIndex]?.text || `EXT-${extId}`;
+  } else {
+    extRow.style.display = "";
+    document.getElementById("qiExtLabel").textContent = "Quick Inspect";
+  }
+
+  modal.classList.remove("hidden");
+}
+
+function closeQuickInspect() {
+  document.getElementById("quickInspectModal").classList.add("hidden");
+  const returnId = _qiPrefilledExtId;
+  _qiPrefilledExtId = null;
+  if (returnId) navigateToExtinguisher(returnId);
+}
+
+function _qiOnExtChange() {
+  const sel = document.getElementById("qiExtSelect");
+  const opt = sel.options[sel.selectedIndex];
+  document.getElementById("qiExtLabel").textContent =
+    opt && opt.value ? opt.text : "Quick Inspect";
+}
+
+function _qiUpdateNextDue() {
+  const svc  = document.getElementById("qiServiceType").value;
+  const date = document.getElementById("qiDate").value;
+  const days = NFPA_INTERVALS[svc];
+  if (days && date) {
+    const d = new Date(date + "T00:00:00");
+    d.setDate(d.getDate() + days);
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,"0");
+    const day = String(d.getDate()).padStart(2,"0");
+    document.getElementById("qiNextDueVal").textContent = `${y}-${m}-${day}`;
+  } else {
+    document.getElementById("qiNextDueVal").textContent = "—";
+  }
+}
+
+function _qiCheckAll() {
+  ["qiChkMounted","qiChkAccess","qiChkPressure","qiChkSeal","qiChkDamage","qiChkNozzle","qiChkLabel","qiChkWeight"]
+    .forEach(id => document.getElementById(id).checked = true);
+}
+
+async function _submitQuickInspect() {
+  const extId  = _qiPrefilledExtId || parseInt(document.getElementById("qiExtSelect").value);
+  const svc    = document.getElementById("qiServiceType").value;
+  const date   = document.getElementById("qiDate").value;
+  const result = document.getElementById("qiResult").value;
+  const notes  = document.getElementById("qiNotes").value.trim();
+  const po     = document.getElementById("qiPO").value.trim();
+  const errEl  = document.getElementById("qiError");
+  const btn    = document.getElementById("qiSubmitBtn");
+
+  errEl.style.display = "none";
+  if (!extId) { errEl.textContent = "Please select an extinguisher."; errEl.style.display = ""; return; }
+  if (!result) { errEl.textContent = "Please select an inspection result."; errEl.style.display = ""; return; }
+
+  btn.disabled = true; btn.textContent = "Submitting…";
+
+  const payload = {
+    extinguisher_id: extId,
+    inspector_id:    currentUser.user_id,
+    inspection_date: date,
+    service_type:    svc,
+    inspection_result: result,
+    notes:           notes,
+    po_number:       po,
+    org_id:          orgId(),
+    // Checklist
+    chk_mounted:  document.getElementById("qiChkMounted").checked,
+    chk_access:   document.getElementById("qiChkAccess").checked,
+    chk_pressure: document.getElementById("qiChkPressure").checked,
+    chk_seal:     document.getElementById("qiChkSeal").checked,
+    chk_damage:   document.getElementById("qiChkDamage").checked,
+    chk_nozzle:   document.getElementById("qiChkNozzle").checked,
+    chk_label:    document.getElementById("qiChkLabel").checked,
+    chk_weight:   document.getElementById("qiChkWeight").checked,
+  };
+
+  try {
+    const res  = await fetch("/api/reports", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (res.ok) {
+      const submittedExtId = extId; // capture before closeQuickInspect clears it
+      closeQuickInspect();
+      // Brief success flash on the sidebar item
+      const si = document.getElementById("sidebarQuickInspect");
+      if (si) { const orig = si.innerHTML; si.innerHTML = '<span class="si-icon">✅</span> Submitted!'; setTimeout(() => { si.innerHTML = orig; }, 2000); }
+      // Reload data then navigate back to the extinguisher detail popup
+      await loadAllData();
+      if (submittedExtId) navigateToExtinguisher(submittedExtId);
+    } else {
+      errEl.textContent = data.error || "Submission failed.";
+      errEl.style.display = "";
+    }
+  } catch(e) {
+    errEl.textContent = "Network error. Please try again.";
+    errEl.style.display = "";
+  } finally {
+    btn.disabled = false; btn.textContent = "⚡ Submit";
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// LOANER / SWAP TRACKING
+// ════════════════════════════════════════════════════════════════════════════
+async function _toggleLoaner(extId, currentlyLoaner) {
+  const clearing = currentlyLoaner === 1;
+  const msg      = clearing
+    ? "Remove loaner status from this extinguisher?"
+    : "Mark this extinguisher as a loaner unit currently deployed at a site?";
+  if (!confirm(msg)) return;
+  try {
+    const res  = await fetch(`/api/extinguishers/${extId}/loaner`, {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ clear: clearing })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      // Close detail modal, refresh data, reopen with updated row
+      document.getElementById("extDetailModal").classList.add("hidden");
+      await loadAllData();
+      const exts = window._allExtinguishers || [];
+      const updated = exts.find(e => e.extinguisher_id === extId);
+      if (updated) openExtDetail(updated);
+    } else {
+      alert(data.error || "Failed to update loaner status.");
+    }
+  } catch(e) {
+    alert("Network error updating loaner status.");
+  }
 }
 
 // ════════════════════════════════════════════════════════════════════════════
