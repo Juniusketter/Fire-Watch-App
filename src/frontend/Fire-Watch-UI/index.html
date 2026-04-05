@@ -134,7 +134,9 @@
       .sidebar.open{transform:translateX(0);}
       .sidebar-toggle{display:block;}
       .sidebar-overlay{display:none;position:fixed;inset:0;top:var(--topbar-h);background:rgba(0,0,0,0.5);z-index:140;}
-      .sidebar-overlay.show{display:block;}
+      /* Push the overlay's left edge to the sidebar's right edge so iOS touch events
+         reach sidebar buttons directly instead of being swallowed by the overlay. */
+      .sidebar-overlay.show{display:block;left:var(--sidebar-w);}
     }
     *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
     html,body{font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
@@ -4808,14 +4810,6 @@ function doLogout() {
   window.location.href = "/";
 }
 document.getElementById("btnLogout").addEventListener("click", doLogout);
-// iOS fix: on mobile, position:fixed + CSS transform causes the overlay's click to fire
-// instead of the sidebar button's onclick. Intercept touchend directly on the button
-// so iOS can't misroute the tap to the overlay underneath.
-document.getElementById("sidebarLogoutBtn").addEventListener("touchend", function(e) {
-  e.preventDefault();      // suppress the synthesised click that follows (avoid double-call)
-  e.stopPropagation();     // stop the event reaching the overlay
-  doLogout();
-});
 
 // ── CRUD: Company ─────────────────────────────────────────────────────────────
 let _editingCompanyId  = null;
