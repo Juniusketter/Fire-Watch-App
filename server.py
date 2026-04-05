@@ -410,6 +410,32 @@ def run_migrations():
             conn.commit()
             print("  [Migration] Created Messages table")
 
+        # ── ExtinguisherLocationHistory table ───────────────────────────────
+        if "ExtinguisherLocationHistory" not in tables:
+            conn.execute("""
+                CREATE TABLE ExtinguisherLocationHistory (
+                    history_id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                    extinguisher_id       INTEGER NOT NULL REFERENCES Extinguishers(extinguisher_id),
+                    org_id                INTEGER NOT NULL REFERENCES Organizations(org_id),
+                    changed_by_id         INTEGER REFERENCES Users(user_id),
+                    changed_by_name       TEXT DEFAULT '',
+                    changed_at            TEXT DEFAULT (datetime('now')),
+                    old_building_id       INTEGER,
+                    old_building_name     TEXT DEFAULT '',
+                    old_floor_number      TEXT DEFAULT '',
+                    old_room_number       TEXT DEFAULT '',
+                    old_location_desc     TEXT DEFAULT '',
+                    new_building_id       INTEGER,
+                    new_building_name     TEXT DEFAULT '',
+                    new_floor_number      TEXT DEFAULT '',
+                    new_room_number       TEXT DEFAULT '',
+                    new_location_desc     TEXT DEFAULT '',
+                    notes                 TEXT DEFAULT ''
+                )
+            """)
+            conn.commit()
+            print("  [Migration] Created ExtinguisherLocationHistory table")
+
         # ── Organizations.last_active column ────────────────────────────────
         org_cols_v2 = [r[1] for r in conn.execute("PRAGMA table_info(Organizations)").fetchall()]
         if "last_active" not in org_cols_v2:
@@ -873,28 +899,46 @@ def get_companies():
     with get_db() as conn:
         if company_id:
             rows = conn.execute("""
-                SELECT c.company_id, c.name, c.address, c.city, c.state, c.phone, c.contact_name,
+                SELECT c.company_id, c.org_id, c.name, c.address, c.city, c.state, c.phone, c.contact_name,
+                       o.name AS org_name,
                        COUNT(DISTINCT b.building_id) AS building_count,
                        COUNT(DISTINCT e.extinguisher_id) AS extinguisher_count
                 FROM Companies c
+                JOIN Organizations o ON o.org_id = c.org_id
                 LEFT JOIN Buildings b ON b.company_id = c.company_id
                 LEFT JOIN Extinguishers e ON e.building_id = b.building_id
                 WHERE c.org_id = ? AND c.company_id = ?
                 GROUP BY c.company_id
                 ORDER BY c.name
             """, (org_id, company_id)).fetchall()
-        else:
+        elif org_id:
             rows = conn.execute("""
-                SELECT c.company_id, c.name, c.address, c.city, c.state, c.phone, c.contact_name,
+                SELECT c.company_id, c.org_id, c.name, c.address, c.city, c.state, c.phone, c.contact_name,
+                       o.name AS org_name,
                        COUNT(DISTINCT b.building_id) AS building_count,
                        COUNT(DISTINCT e.extinguisher_id) AS extinguisher_count
                 FROM Companies c
+                JOIN Organizations o ON o.org_id = c.org_id
                 LEFT JOIN Buildings b ON b.company_id = c.company_id
                 LEFT JOIN Extinguishers e ON e.building_id = b.building_id
                 WHERE c.org_id = ?
                 GROUP BY c.company_id
                 ORDER BY c.name
             """, (org_id,)).fetchall()
+        else:
+            # Platform-wide: all companies across all orgs (platform admin use)
+            rows = conn.execute("""
+                SELECT c.company_id, c.org_id, c.name, c.address, c.city, c.state, c.phone, c.contact_name,
+                       o.name AS org_name,
+                       COUNT(DISTINCT b.building_id) AS building_count,
+                       COUNT(DISTINCT e.extinguisher_id) AS extinguisher_count
+                FROM Companies c
+                JOIN Organizations o ON o.org_id = c.org_id
+                LEFT JOIN Buildings b ON b.company_id = c.company_id
+                LEFT JOIN Extinguishers e ON e.building_id = b.building_id
+                GROUP BY c.company_id
+                ORDER BY o.name, c.name
+            """).fetchall()
     return jsonify([dict(r) for r in rows])
 
 @app.route("/api/companies", methods=["POST"])
@@ -982,19 +1026,33 @@ def get_buildings():
         elif org_id:
             rows = conn.execute("""
                 SELECT b.building_id, b.company_id, b.name, b.address, b.floors, b.notes,
-                       c.name AS company_name,
+                       c.name AS company_name, o.name AS org_name,
                        COUNT(DISTINCT e.extinguisher_id) AS extinguisher_count,
                        SUM(CASE WHEN e.next_due_date < date('now') AND e.next_due_date IS NOT NULL THEN 1 ELSE 0 END) AS overdue_count,
                        SUM(CASE WHEN a.status = 'Pending Inspection' THEN 1 ELSE 0 END) AS pending_count
                 FROM Buildings b
                 JOIN Companies c ON c.company_id = b.company_id
+                JOIN Organizations o ON o.org_id = b.org_id
                 LEFT JOIN Extinguishers e ON e.building_id = b.building_id
                 LEFT JOIN Assignments a ON a.extinguisher_id = e.extinguisher_id AND a.status = 'Pending Inspection'
                 WHERE b.org_id = ?
                 GROUP BY b.building_id ORDER BY c.name, b.name
             """, (org_id,)).fetchall()
         else:
-            rows = []
+            # Platform-wide: all buildings across all orgs (platform admin use)
+            rows = conn.execute("""
+                SELECT b.building_id, b.company_id, b.name, b.address, b.floors, b.notes,
+                       c.name AS company_name, o.name AS org_name,
+                       COUNT(DISTINCT e.extinguisher_id) AS extinguisher_count,
+                       SUM(CASE WHEN e.next_due_date < date('now') AND e.next_due_date IS NOT NULL THEN 1 ELSE 0 END) AS overdue_count,
+                       SUM(CASE WHEN a.status = 'Pending Inspection' THEN 1 ELSE 0 END) AS pending_count
+                FROM Buildings b
+                JOIN Companies c ON c.company_id = b.company_id
+                JOIN Organizations o ON o.org_id = b.org_id
+                LEFT JOIN Extinguishers e ON e.building_id = b.building_id
+                LEFT JOIN Assignments a ON a.extinguisher_id = e.extinguisher_id AND a.status = 'Pending Inspection'
+                GROUP BY b.building_id ORDER BY o.name, c.name, b.name
+            """).fetchall()
     return jsonify([dict(r) for r in rows])
 
 @app.route("/api/buildings", methods=["POST"])
@@ -1152,6 +1210,12 @@ def update_extinguisher(ext_id):
     d = request.get_json()
     try:
         with get_db() as conn:
+            # ── Snapshot the current location fields before overwriting ──────
+            old = conn.execute(
+                "SELECT building_id, floor_number, room_number, location_description "
+                "FROM Extinguishers WHERE extinguisher_id=?", (ext_id,)
+            ).fetchone()
+
             conn.execute(
                 "UPDATE Extinguishers SET address=?, building_number=?, "
                 "floor_number=?, room_number=?, location_description=?, "
@@ -1178,6 +1242,62 @@ def update_extinguisher(ext_id):
                  d.get("dot_cert_no", ""),
                  ext_id)
             )
+
+            # ── Log a location-history row if any location field changed ─────
+            new_building_id = d.get("building_id")
+            new_floor       = str(d.get("floor_number", "")).strip()
+            new_room        = str(d.get("room_number") or "").strip()
+            new_loc_desc    = str(d.get("location_description") or "").strip()
+
+            old_building_id = old["building_id"] if old else None
+            old_floor       = str(old["floor_number"] or "").strip() if old else ""
+            old_room        = str(old["room_number"] or "").strip() if old else ""
+            old_loc_desc    = str(old["location_description"] or "").strip() if old else ""
+
+            location_changed = (
+                str(new_building_id) != str(old_building_id) or
+                new_floor  != old_floor  or
+                new_room   != old_room   or
+                new_loc_desc != old_loc_desc
+            )
+
+            if old and location_changed:
+                # Resolve building names for both old and new building IDs
+                def _bname(bid):
+                    if not bid:
+                        return ""
+                    row = conn.execute(
+                        "SELECT name FROM Buildings WHERE building_id=?", (bid,)
+                    ).fetchone()
+                    return row["name"] if row else str(bid)
+
+                org_id       = d.get("org_id")
+                changed_by   = d.get("user_id")
+                changer_name = ""
+                if changed_by:
+                    u = conn.execute(
+                        "SELECT first_name, last_name FROM Users WHERE user_id=?",
+                        (changed_by,)
+                    ).fetchone()
+                    if u:
+                        changer_name = f"{u['first_name']} {u['last_name']}".strip()
+
+                conn.execute("""
+                    INSERT INTO ExtinguisherLocationHistory
+                        (extinguisher_id, org_id, changed_by_id, changed_by_name,
+                         old_building_id, old_building_name, old_floor_number,
+                         old_room_number, old_location_desc,
+                         new_building_id, new_building_name, new_floor_number,
+                         new_room_number, new_location_desc)
+                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                """, (
+                    ext_id, org_id, changed_by, changer_name,
+                    old_building_id, _bname(old_building_id),
+                    old_floor, old_room, old_loc_desc,
+                    new_building_id, _bname(new_building_id),
+                    new_floor, new_room, new_loc_desc
+                ))
+
         platform_log("admin", "extinguisher_updated", str(ext_id), "Updated")
         return jsonify({"success": True})
     except Exception as e:
@@ -1459,9 +1579,11 @@ def get_users():
                 """SELECT u.user_id, u.username, u.role,
                           u.first_name, u.last_name, u.middle_name,
                           u.email, u.phone, u.cert_number, u.account_status,
-                          u.company_id, c.name AS company_name
+                          u.company_id, c.name AS company_name,
+                          u.org_id, o.name AS org_name
                    FROM Users u
                    LEFT JOIN Companies c ON c.company_id = u.company_id
+                   LEFT JOIN Organizations o ON o.org_id = u.org_id
                    WHERE u.org_id=?""", (org_id,)
             ).fetchall()
         else:
@@ -1469,9 +1591,11 @@ def get_users():
                 """SELECT u.user_id, u.username, u.role,
                           u.first_name, u.last_name, u.middle_name,
                           u.email, u.phone, u.cert_number, u.account_status,
-                          u.company_id, c.name AS company_name
+                          u.company_id, c.name AS company_name,
+                          u.org_id, o.name AS org_name
                    FROM Users u
-                   LEFT JOIN Companies c ON c.company_id = u.company_id"""
+                   LEFT JOIN Companies c ON c.company_id = u.company_id
+                   LEFT JOIN Organizations o ON o.org_id = u.org_id"""
             ).fetchall()
     return jsonify([dict(r) for r in rows])
 
@@ -2944,6 +3068,26 @@ def set_loaner(ext_id):
             platform_log("inspector", "loaner_set", str(ext_id),
                          f"Loaner deployed for ext_id={loaner_for_id}")
             return jsonify({"success": True, "is_loaner": True}), 200
+
+
+# ── EXTINGUISHER LOCATION HISTORY ────────────────────────────────────────────
+@app.route("/api/extinguishers/<int:ext_id>/location-history", methods=["GET"])
+def get_location_history(ext_id):
+    """Return all recorded location moves for this extinguisher, newest first."""
+    try:
+        with get_db() as conn:
+            rows = conn.execute("""
+                SELECT history_id, changed_at, changed_by_name,
+                       old_building_name, old_floor_number, old_room_number, old_location_desc,
+                       new_building_name, new_floor_number, new_room_number, new_location_desc,
+                       notes
+                FROM ExtinguisherLocationHistory
+                WHERE extinguisher_id=?
+                ORDER BY changed_at DESC
+            """, (ext_id,)).fetchall()
+        return jsonify([dict(r) for r in rows])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 # ── AHJ / FIRE MARSHAL AUDITOR TOKEN ─────────────────────────────────────────

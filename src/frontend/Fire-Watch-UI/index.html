@@ -235,7 +235,7 @@
     .btn-logout:hover{background:rgba(193,18,31,0.1);}
     .stats-row{display:flex;gap:1px;background:var(--border);border-bottom:1px solid var(--border);flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;}
     .stats-row::-webkit-scrollbar{display:none;}
-    .stat-box{flex:1;min-width:90px;background:var(--bg2);padding:0.85rem 1rem;border-top:3px solid transparent;transition:border-color 0.2s;}
+    .stat-box{flex:1;min-width:90px;background:var(--bg2);padding:0.85rem 1rem;border-top:3px solid transparent;transition:border-color 0.2s;position:relative;overflow:hidden;}
     .stat-box.color-orange{border-top-color:var(--orange);}
     .stat-box.color-teal{border-top-color:var(--teal);}
     .stat-box.color-blue{border-top-color:var(--blue);}
@@ -547,6 +547,23 @@
     .stat-box.color-teal:hover   .stat-val { text-shadow: 0 0 20px rgba(13,148,136,0.45); }
     .stat-box.color-blue:hover   .stat-val { text-shadow: 0 0 20px rgba(29,78,216,0.45); }
     .stat-box.color-purple:hover .stat-val { text-shadow: 0 0 20px rgba(124,58,237,0.45); }
+    /* Stat boxes are clickable drill-downs */
+    .stat-box { cursor: pointer; user-select: none; }
+    .stat-box::before { content:''; position:absolute;inset:0;opacity:0;transition:opacity 0.15s;
+      background:rgba(255,255,255,0.03);border-radius:inherit; }
+    .stat-box:active::before { opacity:1; }
+    /* Drill-down table */
+    .drill-table { width:100%;border-collapse:collapse;font-size:0.75rem;font-family:'IBM Plex Mono',monospace; }
+    .drill-table th { padding:8px 12px;text-align:left;font-size:0.65rem;letter-spacing:0.08em;
+      text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);
+      background:var(--bg2);position:sticky;top:0;z-index:1;cursor:pointer;white-space:nowrap;user-select:none; }
+    .drill-table th:hover { color:var(--text); }
+    .drill-table th .sort-arrow { margin-left:4px;opacity:0.4;font-size:0.6rem; }
+    .drill-table th.sorted .sort-arrow { opacity:1;color:var(--orange); }
+    .drill-table td { padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.04);
+      color:var(--text);white-space:nowrap;max-width:200px;overflow:hidden;text-overflow:ellipsis;vertical-align:middle; }
+    .drill-table tr:hover td { background:var(--bg3);cursor:pointer; }
+    .drill-empty { padding:2.5rem;text-align:center;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:0.8rem; }
 
     /* ── 6. Company/building cards: landing feature-card hover */
     .company-card, .building-card {
@@ -1459,10 +1476,10 @@
       <!-- DASHBOARD VIEW -->
       <div id="viewDashboard">
         <div class="stats-row" id="statsRow">
-          <div class="stat-box color-orange" id="statBoxExt"><div class="stat-label" id="statLabelExt">Extinguishers</div><div class="stat-val" id="statExt">—</div></div>
-          <div class="stat-box color-teal" id="statBoxAssign"><div class="stat-label" id="statLabelAssign">Assignments</div><div class="stat-val" id="statAssign">—</div></div>
-          <div class="stat-box color-blue" id="statBoxReports"><div class="stat-label" id="statLabelReports">Reports</div><div class="stat-val" id="statReports">—</div></div>
-          <div class="stat-box color-purple" id="statBoxUsers"><div class="stat-label" id="statLabelUsers">Users</div><div class="stat-val" id="statUsers">—</div></div>
+          <div class="stat-box color-orange" id="statBoxExt" onclick="openStatDrilldown('ext')" title="Click to view extinguishers"><div class="stat-label" id="statLabelExt">Extinguishers</div><div class="stat-val" id="statExt">—</div></div>
+          <div class="stat-box color-teal" id="statBoxAssign" onclick="openStatDrilldown('assign')" title="Click to view assignments"><div class="stat-label" id="statLabelAssign">Assignments</div><div class="stat-val" id="statAssign">—</div></div>
+          <div class="stat-box color-blue" id="statBoxReports" onclick="openStatDrilldown('reports')" title="Click to view reports"><div class="stat-label" id="statLabelReports">Reports</div><div class="stat-val" id="statReports">—</div></div>
+          <div class="stat-box color-purple" id="statBoxUsers" onclick="openStatDrilldown('users')" title="Click to view users"><div class="stat-label" id="statLabelUsers">Users</div><div class="stat-val" id="statUsers">—</div></div>
         </div>
         <!-- Due Date Alert Banner — compact single bar -->
         <!-- AUTO-LOGOUT WARNING BANNER -->
@@ -2411,6 +2428,29 @@
       <button class="btn-cancel" id="buildingModalCancel">Cancel</button>
       <button class="btn-save" id="buildingModalSave">Save</button>
     </div>
+  </div>
+</div>
+
+<!-- STAT DRILL-DOWN MODAL -->
+<div class="modal-overlay hidden" id="statDrillModal" onclick="if(event.target===this)closeStatDrill()">
+  <div class="modal-box" style="width:min(96vw,900px);max-height:88vh;display:flex;flex-direction:column;padding:0;overflow:hidden;">
+    <!-- Header -->
+    <div style="display:flex;align-items:center;gap:0.75rem;padding:1rem 1.2rem 0.75rem;border-bottom:1px solid var(--border);flex-shrink:0;">
+      <div id="statDrillIcon" style="font-size:1.3rem;"></div>
+      <div style="flex:1;min-width:0;">
+        <div id="statDrillTitle" style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:0.06em;color:var(--text);"></div>
+        <div id="statDrillSub"   style="font-size:0.7rem;color:var(--muted);font-family:'IBM Plex Mono',monospace;margin-top:1px;"></div>
+      </div>
+      <input id="statDrillSearch" type="text" placeholder="Search…"
+        style="padding:5px 10px;border:1px solid var(--border);border-radius:5px;background:var(--bg3);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:0.75rem;width:180px;"
+        oninput="_drillRender()">
+      <button onclick="closeStatDrill()"
+        style="background:none;border:none;color:var(--muted2);font-size:1.2rem;cursor:pointer;padding:4px 6px;line-height:1;">✕</button>
+    </div>
+    <!-- Table area -->
+    <div id="statDrillBody" style="flex:1;overflow-y:auto;overflow-x:auto;padding:0;"></div>
+    <!-- Footer count -->
+    <div id="statDrillFooter" style="padding:0.5rem 1.2rem;border-top:1px solid var(--border);font-size:0.68rem;color:var(--muted);font-family:'IBM Plex Mono',monospace;flex-shrink:0;"></div>
   </div>
 </div>
 
@@ -4115,17 +4155,380 @@ async function loadStats() {
   } catch(e) { console.error("Stats error",e); }
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// ── STAT DRILL-DOWN ───────────────────────────────────────────────────────────
+// Clicking a stat box opens a searchable, sortable list modal of that data set.
+// Works for every role — only shows data the user is already allowed to see.
+// ══════════════════════════════════════════════════════════════════════════════
+
+let _drillType   = null;   // 'ext' | 'assign' | 'reports' | 'users'
+let _drillData   = [];     // full row set for the current drill
+let _drillSort   = { col: null, dir: 1 };  // dir: 1=asc, -1=desc
+
+// Config per stat type — columns to show and the default sort column
+const _drillConfig = {
+  ext: {
+    icon: "🧯",
+    columns: [
+      { key: "company_name",         label: "Company"       },
+      { key: "building_name",        label: "Building"      },
+      { key: "_floor_room",          label: "Floor / Room"  },
+      { key: "location_description", label: "Location"      },
+      { key: "_type_size",           label: "Type / Size"   },
+      { key: "ext_status",           label: "Status"        },
+      { key: "next_due_date",        label: "Next Due"      },
+    ],
+    defaultSort: "company_name",
+    click: row => { closeStatDrill(); openExtDetail(row); }
+  },
+  assign: {
+    icon: "📋",
+    columns: [
+      { key: "extinguisher_id",  label: "Ext ID"     },
+      { key: "_ext_location",    label: "Location"   },
+      { key: "inspector",        label: "Inspector"  },
+      { key: "status",           label: "Status"     },
+      { key: "due_date",         label: "Due Date"   },
+      { key: "notes",            label: "Notes"      },
+    ],
+    defaultSort: "due_date",
+    click: row => {
+      closeStatDrill();
+      // Select the row and open assignment detail
+      selectedAssignId = row.assignment_id;
+      openAssignDetail(row);
+    }
+  },
+  reports: {
+    icon: "📄",
+    columns: [
+      { key: "report_id",         label: "Report ID"    },
+      { key: "_ext_ref",          label: "Extinguisher" },
+      { key: "inspector",         label: "Inspector"    },
+      { key: "inspection_date",   label: "Date"         },
+      { key: "service_type",      label: "Service Type" },
+      { key: "inspection_result", label: "Result"       },
+      { key: "approval_status",   label: "Approval"     },
+    ],
+    defaultSort: "inspection_date",
+    defaultDir: -1,
+    click: row => { closeStatDrill(); openReportDetail(row); }
+  },
+  users: {
+    icon: "👥",
+    columns: [
+      { key: "_full_name",     label: "Name"         },
+      { key: "username",       label: "Username"     },
+      { key: "role",           label: "Role"         },
+      { key: "account_status", label: "Status"       },
+      { key: "company_name",   label: "Company"      },
+      { key: "org_name",       label: "Organization" },
+    ],
+    defaultSort: "_full_name",
+    click: row => {
+      closeStatDrill();
+      selectedUserId = row.user_id;
+      // If _lastUserRows doesn't contain this user (e.g. platform admin context),
+      // seed it with the current drill data so btnEditUser handler can find the row
+      if (!window._lastUserRows || !window._lastUserRows.find(u => u.user_id === row.user_id)) {
+        window._lastUserRows = [..._drillData];
+      }
+      document.getElementById("btnEditUser").click();
+    }
+  },
+  companies: {
+    icon: "🏢",
+    columns: [
+      { key: "org_name",           label: "Organization"  },
+      { key: "name",               label: "Company"       },
+      { key: "city",               label: "City"          },
+      { key: "state",              label: "State"         },
+      { key: "building_count",     label: "Buildings"     },
+      { key: "extinguisher_count", label: "Extinguishers" },
+      { key: "contact_name",       label: "Contact"       },
+    ],
+    defaultSort: "org_name",
+    click: row => { closeStatDrill(); }
+  },
+  buildings: {
+    icon: "🏗️",
+    columns: [
+      { key: "org_name",           label: "Organization"  },
+      { key: "company_name",       label: "Company"       },
+      { key: "name",               label: "Building"      },
+      { key: "address",            label: "Address"       },
+      { key: "floors",             label: "Floors"        },
+      { key: "extinguisher_count", label: "Extinguishers" },
+      { key: "overdue_count",      label: "Overdue"       },
+    ],
+    defaultSort: "org_name",
+    click: row => { closeStatDrill(); }
+  }
+};
+
+// Computed / derived column values
+function _drillCellValue(col, row) {
+  switch(col.key) {
+    case "_floor_room":
+      return [row.floor_number ? `Fl ${row.floor_number}` : null,
+              row.room_number  ? `Rm ${row.room_number}`  : null]
+             .filter(Boolean).join(" · ") || "—";
+    case "_type_size":
+      return [row.ext_type, row.ext_size_lbs ? `${row.ext_size_lbs} lbs` : null]
+             .filter(Boolean).join(" / ") || "—";
+    case "_ext_location":
+      return [row.building_name || row.address, row.location_description]
+             .filter(Boolean).join(" · ") || `EXT-${row.extinguisher_id}`;
+    case "_ext_ref":
+      return `EXT-${row.extinguisher_id}`;
+    case "_full_name":
+      return [(row.first_name||""), (row.last_name||"")].join(" ").trim() || row.username || "—";
+    case "report_id":
+      return `RPT-${row.report_id}`;
+    case "extinguisher_id":
+      return `EXT-${row.extinguisher_id}`;
+    case "role":
+      return (row.role || "").replace(/_/g," ");
+    case "ext_status":
+    case "approval_status":
+    case "status":
+    case "account_status":
+      return row[col.key] || "—";
+    default:
+      return row[col.key] != null ? String(row[col.key]) : "—";
+  }
+}
+
+// Color badge for status-like columns
+function _drillCellHtml(col, row) {
+  const val = _drillCellValue(col, row);
+  if (col.key === "ext_status") {
+    const c = val === "Active" ? "var(--teal)" : val === "Condemned/Removed" ? "var(--red)" : "var(--orange)";
+    return `<span style="color:${c};font-weight:600;">${_esc(val)}</span>`;
+  }
+  if (col.key === "inspection_result") {
+    const c = val === "Pass" ? "#15803D" : val === "Fail" ? "#C1121F" : val === "Needs Service" ? "#EAB308" : "var(--muted)";
+    return val === "—" ? `<span style="color:var(--muted);">—</span>`
+      : `<span style="padding:1px 7px;border-radius:3px;font-size:0.65rem;font-weight:600;background:${c}22;color:${c};border:1px solid ${c};">${_esc(val)}</span>`;
+  }
+  if (col.key === "approval_status") {
+    if (val === "Void") return `<span style="color:#C1121F;font-weight:600;">✗ VOID</span>`;
+    if (val === "Approved") return `<span style="color:#15803D;">✓ Approved</span>`;
+    return `<span style="color:var(--muted);">${_esc(val)}</span>`;
+  }
+  if (col.key === "status") {
+    const c = val === "Pending" ? "var(--orange)" : val === "Completed" ? "var(--teal)" : "var(--muted)";
+    return `<span style="color:${c};">${_esc(val)}</span>`;
+  }
+  if (col.key === "account_status") {
+    const c = val === "active" || val === "approved" ? "var(--teal)" : val === "pending" ? "var(--orange)" : val === "suspended" || val === "denied" ? "var(--red)" : "var(--muted)";
+    return `<span style="color:${c};">${_esc(val)}</span>`;
+  }
+  if (col.key === "next_due_date" && val !== "—") {
+    const today = new Date(); today.setHours(0,0,0,0);
+    const due   = new Date(val);
+    const diff  = Math.ceil((due - today) / 86400000);
+    const color = diff < 0 ? "#C1121F" : diff <= 30 ? "#EAB308" : "var(--teal)";
+    return `<span style="color:${color};">${_esc(val)}</span>`;
+  }
+  if (col.key === "due_date" && val && val !== "—") {
+    const today = new Date(); today.setHours(0,0,0,0);
+    const due   = new Date(val);
+    const diff  = Math.ceil((due - today) / 86400000);
+    const color = diff < 0 ? "#C1121F" : diff <= 7 ? "#EAB308" : "var(--text)";
+    return `<span style="color:${color};">${_esc(val)}</span>`;
+  }
+  if (col.key === "report_id") return `<span style="color:var(--orange);font-weight:600;">${_esc(val)}</span>`;
+  if (col.key === "extinguisher_id") return `<span style="color:var(--teal);">${_esc(val)}</span>`;
+  if (col.key === "role") return `<span style="color:var(--purple);">${_esc(val)}</span>`;
+  if (col.key === "overdue_count") {
+    const n = parseInt(val) || 0;
+    const c = n > 0 ? "#C1121F" : "var(--muted)";
+    return `<span style="color:${c};font-weight:${n>0?'600':'400'};">${n > 0 ? `⚠ ${n}` : "0"}</span>`;
+  }
+  if (col.key === "org_name") return `<span style="color:var(--orange);font-weight:500;">${_esc(val)}</span>`;
+  return `<span>${_esc(val)}</span>`;
+}
+
+function _drillRender() {
+  if (!_drillType) return;
+  const cfg   = _drillConfig[_drillType];
+  const q     = (document.getElementById("statDrillSearch").value || "").toLowerCase().trim();
+  const body  = document.getElementById("statDrillBody");
+  const footer = document.getElementById("statDrillFooter");
+
+  // Filter
+  let rows = _drillData.filter(row => {
+    if (!q) return true;
+    return cfg.columns.some(col => _drillCellValue(col, row).toLowerCase().includes(q));
+  });
+
+  // Sort
+  if (_drillSort.col) {
+    rows = [...rows].sort((a, b) => {
+      const av = _drillCellValue({ key: _drillSort.col }, a);
+      const bv = _drillCellValue({ key: _drillSort.col }, b);
+      return av.localeCompare(bv, undefined, { numeric: true }) * _drillSort.dir;
+    });
+  }
+
+  if (rows.length === 0) {
+    body.innerHTML = `<div class="drill-empty">${q ? "No results match your search." : "No records found."}</div>`;
+    footer.textContent = "0 records";
+    return;
+  }
+
+  let html = `<table class="drill-table"><thead><tr>`;
+  cfg.columns.forEach(col => {
+    const isSorted = _drillSort.col === col.key;
+    const arrow    = _drillSort.dir === 1 ? "▲" : "▼";
+    html += `<th class="${isSorted ? "sorted" : ""}" onclick="_drillSortBy('${col.key}')">
+      ${col.label}<span class="sort-arrow">${isSorted ? arrow : "▲"}</span>
+    </th>`;
+  });
+  html += `</tr></thead><tbody>`;
+
+  rows.forEach((row, i) => {
+    html += `<tr onclick="_drillRowClick(${i})" data-drill-idx="${i}">`;
+    cfg.columns.forEach(col => {
+      html += `<td title="${_esc(_drillCellValue(col, row))}">${_drillCellHtml(col, row)}</td>`;
+    });
+    html += `</tr>`;
+  });
+  html += `</tbody></table>`;
+  body.innerHTML = html;
+
+  // Store visible rows for click handler
+  body._drillRows = rows;
+  footer.textContent = `${rows.length} of ${_drillData.length} record${_drillData.length !== 1 ? "s" : ""}`;
+}
+
+function _drillSortBy(colKey) {
+  if (_drillSort.col === colKey) {
+    _drillSort.dir *= -1;
+  } else {
+    _drillSort.col = colKey;
+    _drillSort.dir = 1;
+  }
+  _drillRender();
+}
+
+function _drillRowClick(idx) {
+  const body = document.getElementById("statDrillBody");
+  const row  = body._drillRows && body._drillRows[idx];
+  if (!row) return;
+  _drillConfig[_drillType].click(row);
+}
+
+async function openStatDrilldown(statType) {
+  const cfg = _drillConfig[statType];
+  if (!cfg) return;
+
+  _drillType = statType;
+  _drillSort = { col: cfg.defaultSort, dir: cfg.defaultDir || 1 };
+  document.getElementById("statDrillSearch").value = "";
+  document.getElementById("statDrillIcon").textContent  = cfg.icon;
+
+  // Get the label from the live stat box so it matches exactly what the user sees
+  const labelMap = { ext: "statLabelExt", assign: "statLabelAssign", reports: "statLabelReports", users: "statLabelUsers" };
+  const label = document.getElementById(labelMap[statType])?.textContent || cfg.icon;
+  document.getElementById("statDrillTitle").textContent = label;
+  document.getElementById("statDrillBody").innerHTML = `<div class="drill-empty">Loading…</div>`;
+  document.getElementById("statDrillFooter").textContent = "";
+  document.getElementById("statDrillModal").classList.remove("hidden");
+
+  // Resolve data — use in-memory cache when available, otherwise fetch directly.
+  // NOTE: window._allExtinguishers is only set for Inspector paths.
+  // Admin uses a drill-down hierarchy that never populates it, so we always
+  // fetch directly for Admin/Client to guarantee a full org-scoped result.
+  const oid = orgId();
+  let data = [];
+  try {
+    if (statType === "ext") {
+      if (isInv()) {
+        // Inspector sees extinguishers in their ASSIGNED BUILDINGS only.
+        // window._lastExtRows is set by loadExtinguishers() to exactly that set.
+        if (window._lastExtRows && window._lastExtRows.length > 0) {
+          data = [...window._lastExtRows];
+        } else {
+          // Fallback: rebuild the same filter loadExtinguishers() uses
+          const assigns = (window._allAssignments && window._allAssignments.length)
+            ? window._allAssignments
+            : await fetch(`/api/assignments?org_id=${oid}&user_id=${currentUser.user_id}`).then(r=>r.json()).catch(()=>[]);
+          const active = assigns.filter(a => !String(a.status||"").toLowerCase().includes("complete"));
+          const bldgIds = new Set(active.map(a => Number(a.building_id)).filter(Boolean));
+          const all = await fetch(`/api/extinguishers?org_id=${oid}`).then(r=>r.json()).catch(()=>[]);
+          data = all.filter(e => bldgIds.has(Number(e.building_id)));
+        }
+      } else if (isThirdInv()) {
+        // 3rd Party Inspector sees ONLY their specifically assigned extinguishers.
+        if (window._lastExtRows && window._lastExtRows.length > 0) {
+          data = [...window._lastExtRows];
+        } else {
+          const assigns = (window._allAssignments && window._allAssignments.length)
+            ? window._allAssignments
+            : await fetch(`/api/assignments?org_id=${oid}&user_id=${currentUser.user_id}`).then(r=>r.json()).catch(()=>[]);
+          const extIds = new Set(assigns.map(a => Number(a.extinguisher_id)).filter(Boolean));
+          const all = await fetch(`/api/extinguishers?org_id=${oid}`).then(r=>r.json()).catch(()=>[]);
+          data = all.filter(e => extIds.has(Number(e.extinguisher_id)));
+        }
+      } else if (isClient()) {
+        // Client sees only their company's equipment.
+        data = await fetch(`/api/extinguishers?company_id=${currentUser.company_id}`).then(r=>r.json()).catch(()=>[]);
+      } else {
+        // Admin / 3rd Party Admin: full org inventory.
+        // loadExtinguishers() for Admin uses drill-down cards and never sets
+        // window._allExtinguishers, so always fetch directly here.
+        data = await fetch(`/api/extinguishers?org_id=${oid}`).then(r=>r.json()).catch(()=>[]);
+        window._allExtinguishers = data; // prime the cache for QR scanner etc.
+      }
+    } else if (statType === "assign") {
+      // loadAssignments() already scopes by role at fetch time:
+      //   Inspector/3rdInv → ?user_id=   Admin → org-wide   3rdAdmin → team-filtered client-side
+      if (!window._allAssignments || window._allAssignments.length === 0) await loadAssignments();
+      data = window._allAssignments || [];
+    } else if (statType === "reports") {
+      // loadReports() already scopes by role at fetch time:
+      //   Inspector/3rdInv → ?user_id=   Admin → org-wide   3rdAdmin → team-filtered   Client → company
+      if (!window._allReports || window._allReports.length === 0) await loadReports();
+      data = window._allReports || [];
+    } else if (statType === "users") {
+      if (window._lastUserRows && window._lastUserRows.length > 0) {
+        data = window._lastUserRows;
+      } else {
+        let rows = await fetch(`/api/users${oid ? `?org_id=${oid}` : ""}`).then(r=>r.json());
+        if (isThirdAdmin()) rows = rows.filter(u => u.role === "3rd_Party_Inspector");
+        const nonActive = new Set(["pending","denied","suspended"]);
+        data = rows.filter(u => !nonActive.has(u.account_status));
+        window._lastUserRows = data;
+      }
+    }
+  } catch(e) {
+    console.warn("Stat drill fetch error:", e);
+  }
+
+  _drillData = data;
+  document.getElementById("statDrillSub").textContent =
+    `${data.length} record${data.length !== 1 ? "s" : ""}`;
+  _drillRender();
+}
+
+function closeStatDrill() {
+  document.getElementById("statDrillModal").classList.add("hidden");
+  _drillType = null;
+  _drillData = [];
+}
+
 // ── Load data ─────────────────────────────────────────────────────────────────
 // Load all data for the current user's role.
 // Admin loads everything; Inspector loads only their assignments and reports.
 // Called on login, refresh, and every 5-second auto-poll cycle.
 function loadAllData() {
-  console.log("[FW DEBUG] loadAllData - role:", currentUser?.role, "isInv:", isInv());
   if (isAdmin()) {
     if (!window._currentView || window._currentView === 'dashboard') { loadExtinguishers(); loadAssignments(); loadReports(); loadUsers(); }
   }
   else if (isInv()) {
-    if (!window._currentView || window._currentView === 'dashboard') { loadAssignments().then(() => { console.log("[FW DEBUG] assignments done → loading extinguishers"); loadExtinguishers(); }); loadReports(); }
+    if (!window._currentView || window._currentView === 'dashboard') { loadAssignments().then(() => loadExtinguishers()); loadReports(); }
   }
   else if (isThirdAdmin()) {
     if (!window._currentView || window._currentView === 'dashboard') { loadAssignments(); loadReports(); loadUsers(); }
@@ -4140,8 +4543,6 @@ function loadAllData() {
 }
 
 async function loadExtinguishers() {
-  console.log("[FW DEBUG] loadExtinguishers START - role:", currentUser?.role,
-    "isInv:", isInv(), "isClient:", isClient(), "orgId:", orgId());
   // Client role: flat table scoped to their company — no drill-down
   if (isClient()) {
     // Client gets full company→building→ext drill-down scoped to their company_id.
@@ -4172,11 +4573,9 @@ async function loadExtinguishers() {
   // They have no business seeing any other equipment in the building.
   if (isInv() || isThirdInv()) {
     let assignments = window._lastAssignRows || [];
-    console.log("[FW DEBUG] loadExtinguishers called. _lastAssignRows length:", assignments.length);
     if (!assignments.length) {
       try {
         const oid = orgId();
-        console.log("[FW DEBUG] Self-fetching assignments. orgId:", oid, "user_id:", currentUser?.user_id);
         if (!oid || !currentUser?.user_id) {
           document.getElementById("tableExtWrap").innerHTML =
             "<p class='empty-msg'>[ NO ACTIVE ASSIGNMENTS ]</p>";
@@ -4187,17 +4586,13 @@ async function loadExtinguishers() {
           `/api/assignments?org_id=${oid}&user_id=${currentUser.user_id}`
         ).then(r => r.json());
         window._lastAssignRows = assignments;
-        console.log("[FW DEBUG] Self-fetched assignments:", assignments.length, "rows");
       } catch(e) {
-        console.error("[FW DEBUG] Assignment fetch failed:", e);
         assignments = [];
       }
     }
     const activeAssignments = assignments.filter(
       a => !String(a.status || "").toLowerCase().includes("complete")
     );
-    console.log("[FW DEBUG] Active assignments:", activeAssignments.length,
-      "building_ids:", activeAssignments.map(a => a.building_id));
 
     document.getElementById("drillCompanyView").classList.add("hidden");
     document.getElementById("drillBuildingView").classList.add("hidden");
@@ -4215,22 +4610,17 @@ async function loadExtinguishers() {
 
     const oid = orgId();
     const allRows = await fetch(`/api/extinguishers?org_id=${oid}`).then(r=>r.json()).catch(()=>[]);
-    console.log("[FW DEBUG] Extinguishers fetched:", allRows.length,
-      "sample building_ids:", allRows.slice(0,3).map(e => e.building_id));
     window._allExtinguishers = allRows;
 
     let rows;
     if (isThirdInv()) {
       const assignedExtIds = new Set(activeAssignments.map(a => Number(a.extinguisher_id)).filter(Boolean));
       rows = allRows.filter(e => assignedExtIds.has(Number(e.extinguisher_id)));
-      console.log("[FW DEBUG] 3rdInv filter: assignedExtIds:", [...assignedExtIds], "result:", rows.length);
     } else {
       const assignedBuildingIds = new Set(
         activeAssignments.map(a => Number(a.building_id)).filter(Boolean)
       );
       rows = allRows.filter(e => assignedBuildingIds.has(Number(e.building_id)));
-      console.log("[FW DEBUG] Inv filter: assignedBuildingIds:", [...assignedBuildingIds],
-        "filtered rows:", rows.length);
     }
 
     window._lastExtRows = rows;
@@ -8120,6 +8510,68 @@ function openExtDetail(row) {
   historyHtml += `</div>`;
   document.getElementById("detailExtGrid").innerHTML += historyHtml;
 
+  // ── Location History — async fetch, injected after the modal is shown ──────
+  document.getElementById("detailExtGrid").innerHTML += `
+    <div class="ext-detail-field-full" style="margin-top:0.3rem;" id="locHistSection">
+      <div class="ext-detail-label" style="margin-bottom:0.4rem;">📍 Location History</div>
+      <div id="locHistBody" style="font-size:0.75rem;color:var(--muted);">Loading…</div>
+    </div>`;
+
+  // Fetch location history in the background so it doesn't block modal render
+  (async () => {
+    const locHistBody = document.getElementById("locHistBody");
+    if (!locHistBody) return;
+    try {
+      const res  = await fetch(`/api/extinguishers/${row.extinguisher_id}/location-history`);
+      const data = await res.json();
+      if (!locHistBody) return; // modal may have closed
+      if (!Array.isArray(data) || data.length === 0) {
+        locHistBody.innerHTML = `<span style="color:var(--muted);">No moves recorded yet.</span>`;
+        return;
+      }
+      let html = `<div style="max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;">`;
+      data.forEach(h => {
+        const oldLoc = [
+          h.old_building_name,
+          h.old_floor_number ? `Floor ${h.old_floor_number}` : null,
+          h.old_room_number  ? `Room ${h.old_room_number}`   : null,
+          h.old_location_desc
+        ].filter(Boolean).join(" · ") || "—";
+        const newLoc = [
+          h.new_building_name,
+          h.new_floor_number ? `Floor ${h.new_floor_number}` : null,
+          h.new_room_number  ? `Room ${h.new_room_number}`   : null,
+          h.new_location_desc
+        ].filter(Boolean).join(" · ") || "—";
+        const when = h.changed_at ? h.changed_at.slice(0, 16).replace("T", " ") : "—";
+        const who  = h.changed_by_name || "Unknown";
+        html += `
+          <div style="padding:8px 10px;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.72rem;">
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px;">
+              <span style="color:var(--muted);font-size:0.65rem;">${when}</span>
+              <span style="color:var(--muted2);font-size:0.65rem;">by ${_esc(who)}</span>
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:6px;">
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:0.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px;">From</div>
+                <div style="color:var(--text);">${_esc(oldLoc)}</div>
+              </div>
+              <div style="color:var(--orange);font-size:1rem;padding-top:14px;">→</div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:0.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px;">To</div>
+                <div style="color:var(--teal);">${_esc(newLoc)}</div>
+              </div>
+            </div>
+            ${h.notes ? `<div style="font-size:0.65rem;color:var(--muted);margin-top:4px;">${_esc(h.notes)}</div>` : ""}
+          </div>`;
+      });
+      html += `</div>`;
+      locHistBody.innerHTML = html;
+    } catch (e) {
+      if (locHistBody) locHistBody.innerHTML = `<span style="color:var(--muted);">Could not load history.</span>`;
+    }
+  })();
+
   // Footer — quick action buttons based on role
   const footer = document.getElementById("detailExtFooter");
   if (isAdmin() && !window._platformReadOnly) {
@@ -10519,14 +10971,15 @@ async function loadPlatformDashboardOverview() {
   const complPct = ct.active_total > 0 ? Math.round((ct.compliant / ct.active_total) * 100) : null;
   const complColor = complPct === null ? "var(--muted)" : complPct >= 90 ? "var(--teal)" : complPct >= 70 ? "var(--orange)" : "var(--red)";
 
+  const clickableStatStyle = statBoxStyle + "cursor:pointer;transition:filter 0.15s;";
   document.getElementById("platformDashStats").innerHTML = `
-    <div style="${statBoxStyle}"><div style="${statNumStyle}color:var(--orange);">${orgs.length}</div><div style="${statLabelStyle}">Organizations</div></div>
-    <div style="${statBoxStyle}"><div style="${statNumStyle}color:var(--teal);">${totalCompanies}</div><div style="${statLabelStyle}">Companies</div></div>
-    <div style="${statBoxStyle}"><div style="${statNumStyle}color:var(--blue);">${totalBuildings}</div><div style="${statLabelStyle}">Buildings</div></div>
-    <div style="${statBoxStyle}"><div style="${statNumStyle}color:var(--purple);">${totalExt}</div><div style="${statLabelStyle}">Extinguishers</div></div>
-    <div style="${statBoxStyle}"><div style="${statNumStyle}color:var(--teal);">${totalUsers}</div><div style="${statLabelStyle}">Users</div></div>
-    <div style="${statBoxStyle}"><div style="${statNumStyle}color:var(--orange);">${totalAssignments}</div><div style="${statLabelStyle}">Assignments</div></div>
-    <div style="${statBoxStyle}"><div style="${statNumStyle}color:var(--red);">${totalReports}</div><div style="${statLabelStyle}">Reports</div></div>
+    <div style="${clickableStatStyle}" onclick="_platformStatClick('orgs')"    title="Click to view organizations"  onmouseover="this.style.filter='brightness(1.15)'" onmouseout="this.style.filter=''"><div style="${statNumStyle}color:var(--orange);">${orgs.length}</div><div style="${statLabelStyle}">Organizations</div></div>
+    <div style="${clickableStatStyle}" onclick="_platformStatClick('companies')" title="Click to view companies"     onmouseover="this.style.filter='brightness(1.15)'" onmouseout="this.style.filter=''"><div style="${statNumStyle}color:var(--teal);">${totalCompanies}</div><div style="${statLabelStyle}">Companies</div></div>
+    <div style="${clickableStatStyle}" onclick="_platformStatClick('buildings')" title="Click to view buildings"     onmouseover="this.style.filter='brightness(1.15)'" onmouseout="this.style.filter=''"><div style="${statNumStyle}color:var(--blue);">${totalBuildings}</div><div style="${statLabelStyle}">Buildings</div></div>
+    <div style="${clickableStatStyle}" onclick="_platformStatClick('ext')"       title="Click to view extinguishers" onmouseover="this.style.filter='brightness(1.15)'" onmouseout="this.style.filter=''"><div style="${statNumStyle}color:var(--purple);">${totalExt}</div><div style="${statLabelStyle}">Extinguishers</div></div>
+    <div style="${clickableStatStyle}" onclick="_platformStatClick('users')"     title="Click to view users"         onmouseover="this.style.filter='brightness(1.15)'" onmouseout="this.style.filter=''"><div style="${statNumStyle}color:var(--teal);">${totalUsers}</div><div style="${statLabelStyle}">Users</div></div>
+    <div style="${clickableStatStyle}" onclick="_platformStatClick('assign')"    title="Click to view assignments"   onmouseover="this.style.filter='brightness(1.15)'" onmouseout="this.style.filter=''"><div style="${statNumStyle}color:var(--orange);">${totalAssignments}</div><div style="${statLabelStyle}">Assignments</div></div>
+    <div style="${clickableStatStyle}" onclick="_platformStatClick('reports')"   title="Click to view reports"       onmouseover="this.style.filter='brightness(1.15)'" onmouseout="this.style.filter=''"><div style="${statNumStyle}color:var(--red);">${totalReports}</div><div style="${statLabelStyle}">Reports</div></div>
   `;
 
   // Compliance health row
@@ -10629,15 +11082,21 @@ async function loadPlatformDashboard() {
   const totalUsers = orgs.reduce((s, o) => s + (o.user_count || 0), 0);
   const totalExt   = orgs.reduce((s, o) => s + (o.extinguisher_count || 0), 0);
 
-  const statBox = (label, val, borderColor) =>
-    `<div style="background:var(--bg3);border:1px solid ${borderColor};border-radius:8px;padding:0.8rem 1.2rem;min-width:100px;">
+  const statBox = (label, val, borderColor, onclick) =>
+    `<div onclick="${onclick}" title="Click to view ${label.toLowerCase()}"
+      style="background:var(--bg3);border:1px solid ${borderColor};border-radius:8px;padding:0.8rem 1.2rem;min-width:100px;cursor:pointer;transition:transform 0.1s,background 0.15s;user-select:none;"
+      onmouseenter="this.style.background='var(--bg2)';this.style.transform='translateY(-1px)'"
+      onmouseleave="this.style.background='var(--bg3)';this.style.transform=''">
       <div style="font-family:'IBM Plex Mono',monospace;font-size:0.6rem;color:${borderColor};letter-spacing:0.1em;text-transform:uppercase;">${label}</div>
       <div style="font-size:1.5rem;font-weight:700;color:var(--text);">${val}</div>
     </div>`;
   document.getElementById("platformStats").innerHTML =
-    statBox("Orgs",total,"var(--border)") + statBox("Pending",pending,"var(--orange)") +
-    statBox("Approved",approved,"var(--teal)") + statBox("Suspended",suspended,"var(--red)") +
-    statBox("Users",totalUsers,"var(--border)") + statBox("Extinguishers",totalExt,"var(--border)");
+    statBox("Orgs",       total,      "var(--border)", "_platformStatClick('all')")       +
+    statBox("Pending",    pending,    "var(--orange)", "_platformStatClick('pending')")   +
+    statBox("Approved",   approved,   "var(--teal)",   "_platformStatClick('approved')")  +
+    statBox("Suspended",  suspended,  "var(--red)",    "_platformStatClick('suspended')") +
+    statBox("Users",      totalUsers, "var(--border)", "_platformStatClick('users')")     +
+    statBox("Extinguishers", totalExt,"var(--border)", "_platformStatClick('ext')");
 
   // Search + status filter toolbar
   const toolbar = `
@@ -10658,6 +11117,82 @@ async function loadPlatformDashboard() {
   document.getElementById("platformPanelOrgs").innerHTML = toolbar +
     `<div id="platformOrgTableBody" style="overflow-x:auto;"></div>`;
   renderPlatformOrgTable();
+}
+
+// ── Platform Admin stat-box click handler ─────────────────────────────────────
+async function _platformStatClick(type) {
+  // Org-status types: set the filter on the org table and scroll down to it
+  if (["all","pending","approved","suspended"].includes(type)) {
+    switchPlatformView("orgs"); // ensure the orgs panel is visible
+    // Small delay so the panel renders before we try to set the filter
+    await new Promise(r => setTimeout(r, 60));
+    const filterEl = document.getElementById("orgStatusFilter");
+    if (filterEl) filterEl.value = type;
+    // Highlight the matching tab button
+    document.querySelectorAll("#orgStatusTabs button").forEach(btn => {
+      const isActive = btn.dataset.status === type;
+      btn.style.background    = isActive ? "var(--orange)"       : "var(--bg3)";
+      btn.style.color         = isActive ? "#fff"                : "var(--muted)";
+      btn.style.borderColor   = isActive ? "var(--orange)"       : "var(--border)";
+      btn.style.fontWeight    = isActive ? "700"                 : "";
+    });
+    renderPlatformOrgTable();
+    document.getElementById("platformPanelOrgs")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
+
+  // All other types: open the shared stat drill-down modal with platform-wide data
+  const iconMap  = {
+    users: "👥", ext: "🧯", companies: "🏢", buildings: "🏗️",
+    assign: "📋", reports: "📄"
+  };
+  const titleMap = {
+    users:     "All Users (Platform)",
+    ext:       "All Extinguishers (Platform)",
+    companies: "All Companies (Platform)",
+    buildings: "All Buildings (Platform)",
+    assign:    "All Assignments (Platform)",
+    reports:   "All Reports (Platform)",
+  };
+  const defaultSortMap = {
+    users: "_full_name", ext: "company_name", companies: "org_name",
+    buildings: "org_name", assign: "due_date", reports: "inspection_date"
+  };
+
+  _drillType = type;
+  _drillSort = { col: defaultSortMap[type] || null, dir: type === "reports" ? -1 : 1 };
+  document.getElementById("statDrillSearch").value       = "";
+  document.getElementById("statDrillIcon").textContent   = iconMap[type]  || "📊";
+  document.getElementById("statDrillTitle").textContent  = titleMap[type] || "Platform Data";
+  document.getElementById("statDrillSub").textContent    = "";
+  document.getElementById("statDrillBody").innerHTML     = `<div class="drill-empty">Loading…</div>`;
+  document.getElementById("statDrillFooter").textContent = "";
+  document.getElementById("statDrillModal").classList.remove("hidden");
+
+  let data = [];
+  try {
+    if (type === "users") {
+      // Fetch all users across all orgs — org_id + org_name now included in response
+      data = await fetch("/api/users").then(r => r.json());
+    } else if (type === "ext") {
+      data = await fetch("/api/extinguishers").then(r => r.json());
+    } else if (type === "companies") {
+      data = await fetch("/api/companies").then(r => r.json());
+    } else if (type === "buildings") {
+      data = await fetch("/api/buildings").then(r => r.json());
+    } else if (type === "assign") {
+      data = await fetch("/api/assignments").then(r => r.json());
+    } else if (type === "reports") {
+      data = await fetch("/api/reports").then(r => r.json());
+    }
+  } catch(e) {
+    console.warn("Platform stat drill error:", e);
+  }
+
+  _drillData = data;
+  document.getElementById("statDrillSub").textContent =
+    `${data.length} record${data.length !== 1 ? "s" : ""} across all organizations`;
+  _drillRender();
 }
 
 function renderPlatformOrgTable() {
