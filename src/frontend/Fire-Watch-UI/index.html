@@ -13372,20 +13372,33 @@ function renderClientDeficiencies() {
     return;
   }
 
+  // Build a set of extinguisher IDs that already have an active (open) service request
+  const activeSRExtIds = new Set(
+    (window._allServiceRequests || [])
+      .filter(r => r.status === "Pending" || r.status === "In Progress")
+      .map(r => r.extinguisher_id)
+  );
+
   body.innerHTML = defs.map(d => {
     const loc     = `${d.building_name || "—"} · Fl ${d.floor || "?"} · ${d.room || ""}`;
     const locEsc  = loc.replace(/'/g,"\\'");
     const lastEsc = (d.last_result || "").replace(/'/g,"\\'");
     const resultColor = d.last_result === "Fail" ? "var(--red)" : d.last_result === "Needs Service" ? "var(--orange)" : "var(--muted)";
+    const hasActiveSR = activeSRExtIds.has(d.extinguisher_id);
+    const actionBtn = hasActiveSR
+      ? `<span style="padding:4px 12px;font-size:0.72rem;border-radius:5px;background:var(--bg2);color:var(--teal);border:1px solid var(--teal);flex-shrink:0;font-family:'IBM Plex Mono',monospace;cursor:default;">
+           ✓ Service Requested
+         </span>`
+      : `<button onclick="openServiceRequestModal(${d.extinguisher_id},'EXT-${d.extinguisher_id}','${locEsc}','${lastEsc}');event.stopPropagation();"
+           style="padding:4px 12px;font-size:0.72rem;border-radius:5px;background:var(--orange);color:#fff;border:none;cursor:pointer;flex-shrink:0;font-family:'IBM Plex Mono',monospace;">
+           🔧 Request Service
+         </button>`;
     return `
       <div style="display:flex;align-items:center;gap:0.75rem;padding:0.6rem 0.75rem;border-bottom:1px solid var(--border);border-radius:6px;margin-bottom:4px;background:var(--bg3);font-size:0.82rem;flex-wrap:wrap;">
         <span style="color:var(--red);font-family:'IBM Plex Mono',monospace;font-weight:600;flex-shrink:0;">EXT-${d.extinguisher_id}</span>
         <span style="color:var(--text);flex:1;min-width:140px;">${_esc(d.building_name || "—")} · Fl ${d.floor || "?"} · ${_esc(d.room || "")}</span>
         <span style="font-size:0.72rem;font-weight:600;color:${resultColor};padding:2px 8px;border-radius:10px;border:1px solid ${resultColor};background:${resultColor}22;flex-shrink:0;">${_esc(d.last_result || "—")}</span>
-        <button onclick="openServiceRequestModal(${d.extinguisher_id},'EXT-${d.extinguisher_id}','${locEsc}','${lastEsc}');event.stopPropagation();"
-          style="padding:4px 12px;font-size:0.72rem;border-radius:5px;background:var(--orange);color:#fff;border:none;cursor:pointer;flex-shrink:0;font-family:'IBM Plex Mono',monospace;">
-          🔧 Request Service
-        </button>
+        ${actionBtn}
       </div>`;
   }).join("");
 }
@@ -13553,6 +13566,20 @@ async function submitServiceRequest() {
     if (!res.ok) { errEl.textContent = data.error || "Failed to submit request."; return; }
     closeServiceRequestModal();
     showToast("✅ Service request submitted.");
+    // Optimistically add the new request to the local cache so UI updates instantly
+    if (data && data.request_id) {
+      window._allServiceRequests = window._allServiceRequests || [];
+      window._allServiceRequests.push({
+        request_id:     data.request_id,
+        extinguisher_id: window._currentSRExtId,
+        status:          "Pending",
+        request_type:    payload.request_type,
+        requested_by:    payload.requested_by,
+        created_at:      new Date().toISOString(),
+      });
+    }
+    // Re-render deficiencies panel so button flips to "✓ Service Requested"
+    if (document.getElementById("panelDeficiencies")) renderClientDeficiencies();
     // Refresh SR panel if visible
     if (document.getElementById("panelServiceRequests").classList.contains("active")) {
       loadServiceRequests();
