@@ -1521,13 +1521,13 @@
               <div style="font-size:1.4rem;font-weight:700;color:var(--text);" id="clientPctLabel">—% Compliant</div>
               <div style="font-size:0.8rem;color:var(--muted);margin-top:2px;" id="clientSubLabel">Loading compliance data...</div>
             </div>
-            <div style="flex:none;display:flex;gap:0.75rem;flex-wrap:wrap;">
-              <button class="btn-save" style="font-size:0.78rem;padding:8px 18px;" onclick="downloadClientReport()">⬇ Download Annual Report</button>
+            <div style="flex:none;display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
+              <!-- Deficiency badge — clicking switches to the Deficiencies tab -->
+              <div id="clientDefBadge" style="display:none;cursor:pointer;padding:5px 12px;border-radius:6px;background:rgba(193,18,31,0.12);border:1px solid var(--red);font-family:'IBM Plex Mono',monospace;font-size:0.72rem;color:var(--red);font-weight:600;"
+                onclick="switchTab('panelDeficiencies')">
+                ⚠ <span id="clientDefBadgeCount">0</span> Deficienc<span id="clientDefBadgePlural">ies</span>
+              </div>
             </div>
-          </div>
-          <div id="clientDeficiencyList" style="margin-top:0.75rem;display:none;">
-            <div style="font-family:'IBM Plex Mono',monospace;font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--red);margin-bottom:0.5rem;">Current Deficiencies</div>
-            <div id="clientDeficiencyItems"></div>
           </div>
         </div>
 
@@ -1670,6 +1670,8 @@
     <div class="panel" id="panelReports">
       <div class="table-toolbar hidden" id="reportToolbar">
         <button class="btn-crud btn-edit" id="btnSubmitReport">＋ Submit Report</button>
+        <!-- Client-only: Download Annual Report — shown in buildTabs for isClient() -->
+        <button class="btn-save" id="btnClientAnnualReport" style="display:none;font-size:0.78rem;padding:6px 14px;" onclick="downloadClientReport()">⬇ Annual Report</button>
         <div class="export-dropdown" id="exportDropdown" style="display:none;position:relative;">
           <button class="btn-crud btn-add" id="btnExportToggle">📁 Export File ▾</button>
           <div class="export-menu hidden" id="exportMenu" style="position:absolute;top:100%;left:0;margin-top:4px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;min-width:160px;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,0.4);overflow:hidden;">
@@ -1746,6 +1748,19 @@
                   text-transform:uppercase;color:var(--muted);margin-bottom:0.5rem;">Active Users</div>
       <div class="table-scroll-wrap" id="tableUsersWrap"></div>
       <div class="card-list" id="cardUsersWrap"></div>
+    </div>
+
+    <!-- DEFICIENCIES PANEL (Client only) -->
+    <div class="panel" id="panelDeficiencies">
+      <div style="padding:0.75rem 0 0.5rem;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:0.65rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--red);margin-bottom:0.75rem;display:flex;align-items:center;gap:0.6rem;">
+          <span>⚠ Current Deficiencies</span>
+          <span id="defPanelCount" style="background:var(--red);color:#fff;border-radius:10px;padding:1px 8px;font-size:0.6rem;"></span>
+        </div>
+        <div id="defPanelBody">
+          <div style="color:var(--muted);font-size:0.85rem;">Loading…</div>
+        </div>
+      </div>
     </div>
 
     <!-- SERVICE REQUESTS PANEL (Admin + Client) -->
@@ -3979,7 +3994,7 @@ function showDashboard() {
 function buildTabs() {
   const tabBar = document.getElementById("tabBar");
   tabBar.innerHTML = "";
-  ["panelExtinguishers","panelAssignments","panelReports","panelUsers","panelServiceRequests"].forEach(id => document.getElementById(id).classList.remove("active"));
+  ["panelExtinguishers","panelAssignments","panelReports","panelUsers","panelDeficiencies","panelServiceRequests"].forEach(id => document.getElementById(id).classList.remove("active"));
   ["statBoxExt","statBoxAssign","statBoxReports","statBoxUsers"].forEach(id => document.getElementById(id).style.display="");
   // Hide all toolbars first
   ["extToolbar","assignToolbar","reportToolbar","userToolbar"].forEach(id => document.getElementById(id).classList.add("hidden"));
@@ -4081,8 +4096,12 @@ function buildTabs() {
     tabs = [
       {id:"panelExtinguishers",    label:"My Equipment"},
       {id:"panelReports",          label:"Inspection Reports"},
+      {id:"panelDeficiencies",     label:"Deficiencies"},
       {id:"panelServiceRequests",  label:"Service Requests"},
     ];
+    // Show client-only Annual Report button inside the reports toolbar
+    const annualBtn = document.getElementById("btnClientAnnualReport");
+    if (annualBtn) annualBtn.style.display = "";
     // Show the ext toolbar but hide ALL write buttons — Client is view-only
     document.getElementById("extToolbar").classList.remove("hidden");
     ["btnAddCompany","btnEditCompany","btnDeleteCompany",
@@ -4125,10 +4144,11 @@ function buildTabs() {
 function switchTab(panelId, clickedBtn, tabBar) {
   tabBar.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
   clickedBtn.classList.add("active");
-  ["panelExtinguishers","panelAssignments","panelReports","panelUsers","panelServiceRequests"].forEach(id => document.getElementById(id).classList.remove("active"));
+  ["panelExtinguishers","panelAssignments","panelReports","panelUsers","panelDeficiencies","panelServiceRequests"].forEach(id => document.getElementById(id).classList.remove("active"));
   document.getElementById(panelId).classList.add("active");
   // Load service requests on first visit to that tab
   if (panelId === "panelServiceRequests") loadServiceRequests();
+  if (panelId === "panelDeficiencies")   renderClientDeficiencies();
   // Stagger table row fade-in on panel reveal
   const panel = document.getElementById(panelId);
   panel.querySelectorAll("tbody tr").forEach((tr, i) => {
@@ -7411,24 +7431,19 @@ async function loadClientDashboard() {
     // Draw pie chart
     drawClientPie(pct);
 
-    // Deficiencies
-    const defList = document.getElementById("clientDeficiencyList");
-    const defItems = document.getElementById("clientDeficiencyItems");
-    if (stats.deficiencies && stats.deficiencies.length > 0) {
-      defItems.innerHTML = stats.deficiencies.map(d =>
-        `<div style="display:flex;gap:0.5rem;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:0.8rem;flex-wrap:wrap;">
-           <span style="color:var(--red);font-family:'IBM Plex Mono',monospace;flex-shrink:0;">EXT-${d.extinguisher_id}</span>
-           <span style="color:var(--text);flex:1;min-width:120px;">${d.building_name} · Fl ${d.floor || "?"} · ${d.room || ""}</span>
-           <span style="color:var(--muted);font-size:0.72rem;">${d.last_result}</span>
-           <button onclick="openServiceRequestModal(${d.extinguisher_id},'EXT-${d.extinguisher_id}','${(d.building_name||"").replace(/'/g,"\\'")} · Fl ${d.floor||"?"} · ${(d.room||"").replace(/'/g,"\\'")}','${(d.last_result||"").replace(/'/g,"\\'")}');event.stopPropagation();"
-             style="margin-left:auto;padding:3px 10px;font-size:0.7rem;border-radius:5px;background:var(--orange);color:#fff;border:none;cursor:pointer;flex-shrink:0;">
-             🔧 Request Service
-           </button>
-         </div>`
-      ).join("");
-      defList.style.display = "";
-    } else {
-      defList.style.display = "none";
+    // Deficiencies — update badge on banner and pre-populate panel data
+    window._clientDeficiencies = stats.deficiencies || [];
+    const defCount = window._clientDeficiencies.length;
+    const defBadge = document.getElementById("clientDefBadge");
+    if (defBadge) {
+      document.getElementById("clientDefBadgeCount").textContent = defCount;
+      document.getElementById("clientDefBadgePlural").textContent = defCount === 1 ? "y" : "ies";
+      defBadge.style.display = defCount > 0 ? "" : "none";
+    }
+    // If the deficiencies panel is currently active, render it now
+    if (document.getElementById("panelDeficiencies") &&
+        document.getElementById("panelDeficiencies").classList.contains("active")) {
+      renderClientDeficiencies();
     }
 
     // Also render extinguishers scoped to client company
@@ -13327,6 +13342,46 @@ function _fmtMsgDate(iso) {
   if (diffH < 24)  return `${Math.floor(diffH)}h ago`;
   if (diffH < 168) return `${Math.floor(diffH/24)}d ago`;
   return d.toLocaleDateString(undefined, { month:"short", day:"numeric" });
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CLIENT DEFICIENCIES PANEL
+// ══════════════════════════════════════════════════════════════════════════════
+
+function renderClientDeficiencies() {
+  const body    = document.getElementById("defPanelBody");
+  const counter = document.getElementById("defPanelCount");
+  if (!body) return;
+
+  const defs = window._clientDeficiencies || [];
+  if (counter) counter.textContent = defs.length;
+
+  if (defs.length === 0) {
+    body.innerHTML = `
+      <div style="display:flex;flex-direction:column;align-items:center;padding:2.5rem 1rem;gap:0.75rem;text-align:center;">
+        <span style="font-size:2rem;">✅</span>
+        <div style="font-size:1rem;font-weight:600;color:var(--teal);">No Active Deficiencies</div>
+        <div style="font-size:0.82rem;color:var(--muted);">All equipment is currently compliant.</div>
+      </div>`;
+    return;
+  }
+
+  body.innerHTML = defs.map(d => {
+    const loc     = `${d.building_name || "—"} · Fl ${d.floor || "?"} · ${d.room || ""}`;
+    const locEsc  = loc.replace(/'/g,"\\'");
+    const lastEsc = (d.last_result || "").replace(/'/g,"\\'");
+    const resultColor = d.last_result === "Fail" ? "var(--red)" : d.last_result === "Needs Service" ? "var(--orange)" : "var(--muted)";
+    return `
+      <div style="display:flex;align-items:center;gap:0.75rem;padding:0.6rem 0.75rem;border-bottom:1px solid var(--border);border-radius:6px;margin-bottom:4px;background:var(--bg3);font-size:0.82rem;flex-wrap:wrap;">
+        <span style="color:var(--red);font-family:'IBM Plex Mono',monospace;font-weight:600;flex-shrink:0;">EXT-${d.extinguisher_id}</span>
+        <span style="color:var(--text);flex:1;min-width:140px;">${_esc(d.building_name || "—")} · Fl ${d.floor || "?"} · ${_esc(d.room || "")}</span>
+        <span style="font-size:0.72rem;font-weight:600;color:${resultColor};padding:2px 8px;border-radius:10px;border:1px solid ${resultColor};background:${resultColor}22;flex-shrink:0;">${_esc(d.last_result || "—")}</span>
+        <button onclick="openServiceRequestModal(${d.extinguisher_id},'EXT-${d.extinguisher_id}','${locEsc}','${lastEsc}');event.stopPropagation();"
+          style="padding:4px 12px;font-size:0.72rem;border-radius:5px;background:var(--orange);color:#fff;border:none;cursor:pointer;flex-shrink:0;font-family:'IBM Plex Mono',monospace;">
+          🔧 Request Service
+        </button>
+      </div>`;
+  }).join("");
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
