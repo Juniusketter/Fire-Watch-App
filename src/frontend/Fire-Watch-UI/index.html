@@ -9813,8 +9813,25 @@ async function openBulkNFPAModal() {
   document.getElementById("bnProgress").classList.add("hidden");
   document.getElementById("bnProgressBar").style.width      = "0%";
   document.getElementById("bnProgressBar").style.background = "var(--teal)";
-  document.getElementById("bnScope").value  = "all";
   document.getElementById("bnResult").value = "";
+
+  // Client role: restrict scope to their company only — no org-wide or inspector access
+  const bnScopeSel = document.getElementById("bnScope");
+  if (isClient()) {
+    bnScopeSel.innerHTML = `
+      <option value="company">🏢 My Company</option>
+      <option value="building">🏗 By Building</option>
+      <option value="floor">📐 By Floor</option>`;
+    bnScopeSel.value = "company";
+  } else {
+    bnScopeSel.innerHTML = `
+      <option value="all">🌐 All Reports — Entire Organization</option>
+      <option value="company">🏢 By Company</option>
+      <option value="building">🏗 By Building</option>
+      <option value="floor">📐 By Floor</option>
+      <option value="inspector">👤 By Inspector</option>`;
+    bnScopeSel.value = "all";
+  }
 
   // Default date range — last 30 days
   const today    = new Date();
@@ -9823,9 +9840,10 @@ async function openBulkNFPAModal() {
   document.getElementById("bnDateTo").value   = today.toISOString().split("T")[0];
   document.getElementById("bnDateFrom").value = thirtyAgo.toISOString().split("T")[0];
 
-  // Hide all sub-filters
+  // Hide all sub-filters, then show the right ones for the default scope
   ["bnCompanyRow","bnBuildingRow","bnFloorRow","bnInspectorRow"]
     .forEach(id => document.getElementById(id).classList.add("hidden"));
+  onBnScopeChange();
 
   // Pre-load companies and inspectors for sub-filter dropdowns
   try {
@@ -9839,13 +9857,24 @@ async function openBulkNFPAModal() {
     compSel.innerHTML = "<option value=''>— Select company —</option>" +
       companies.map(c => `<option value="${c.company_id}">${c.name}</option>`).join("");
 
-    // Populate inspector dropdown
-    const inspSel = document.getElementById("bnInspector");
-    const inspectors = users.filter(u => u.role.includes("Inspector"));
-    inspSel.innerHTML = "<option value=''>— Select inspector —</option>" +
-      inspectors.map(u =>
-        `<option value="${u.username}">${u.username} [${u.role.replace(/_/g," ")}]</option>`
-      ).join("");
+    // Client: pre-select and lock their company so they can't switch to another
+    if (isClient() && currentUser.company_id) {
+      compSel.value    = String(currentUser.company_id);
+      compSel.disabled = true;
+      onBnCompanyChange(); // pre-load buildings for their company
+    } else {
+      compSel.disabled = false;
+    }
+
+    // Populate inspector dropdown (non-Client only — row is hidden for Clients anyway)
+    if (!isClient()) {
+      const inspSel = document.getElementById("bnInspector");
+      const inspectors = users.filter(u => u.role.includes("Inspector"));
+      inspSel.innerHTML = "<option value=''>— Select inspector —</option>" +
+        inspectors.map(u =>
+          `<option value="${u.username}">${u.username} [${u.role.replace(/_/g," ")}]</option>`
+        ).join("");
+    }
   } catch(e) {}
 
   document.getElementById("bulkNFPAModal").classList.remove("hidden");
@@ -9918,6 +9947,16 @@ function closeBulkNFPAModal() {
 async function loadBnReports() {
   const errEl = document.getElementById("bnStep1Error");
   errEl.textContent = "";
+
+  // Safety: Client can never load org-wide or inspector-scoped reports
+  if (isClient()) {
+    const bnScopeSel = document.getElementById("bnScope");
+    if (bnScopeSel.value === "all" || bnScopeSel.value === "inspector") {
+      bnScopeSel.value = "company";
+    }
+    const compSel = document.getElementById("bnCompany");
+    if (currentUser.company_id) compSel.value = String(currentUser.company_id);
+  }
 
   const scope      = document.getElementById("bnScope").value;
   const dateFrom   = document.getElementById("bnDateFrom").value;
