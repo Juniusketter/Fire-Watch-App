@@ -1747,6 +1747,32 @@
       <div class="table-scroll-wrap" id="tableUsersWrap"></div>
       <div class="card-list" id="cardUsersWrap"></div>
     </div>
+
+    <!-- SERVICE REQUESTS PANEL (Admin + Client) -->
+    <div class="panel" id="panelServiceRequests">
+      <div class="table-toolbar" id="srToolbar" style="justify-content:space-between;flex-wrap:wrap;gap:0.5rem;">
+        <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
+          <select id="srStatusFilter" onchange="renderServiceRequestsTable()" style="font-size:0.78rem;padding:5px 10px;border-radius:6px;background:var(--bg3);border:1px solid var(--border);color:var(--text);">
+            <option value="">All Statuses</option>
+            <option value="Pending">Pending</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Fulfilled">Fulfilled</option>
+            <option value="Rejected">Rejected</option>
+          </select>
+          <select id="srTypeFilter" onchange="renderServiceRequestsTable()" style="font-size:0.78rem;padding:5px 10px;border-radius:6px;background:var(--bg3);border:1px solid var(--border);color:var(--text);">
+            <option value="">All Types</option>
+            <option value="New Extinguisher">New Extinguisher</option>
+            <option value="Replacement Parts">Replacement Parts</option>
+            <option value="Service/Repair">Service/Repair</option>
+            <option value="Inspection Request">Inspection Request</option>
+          </select>
+        </div>
+        <span id="srCountBadge" style="font-size:0.72rem;color:var(--muted);font-family:'IBM Plex Mono',monospace;"></span>
+      </div>
+      <div class="table-scroll-wrap" id="tableSRWrap"></div>
+      <div class="card-list"         id="cardSRWrap"></div>
+    </div>
+
         </div><!-- /tab-panels -->
       </div><!-- /viewDashboard -->
 
@@ -3953,7 +3979,7 @@ function showDashboard() {
 function buildTabs() {
   const tabBar = document.getElementById("tabBar");
   tabBar.innerHTML = "";
-  ["panelExtinguishers","panelAssignments","panelReports","panelUsers"].forEach(id => document.getElementById(id).classList.remove("active"));
+  ["panelExtinguishers","panelAssignments","panelReports","panelUsers","panelServiceRequests"].forEach(id => document.getElementById(id).classList.remove("active"));
   ["statBoxExt","statBoxAssign","statBoxReports","statBoxUsers"].forEach(id => document.getElementById(id).style.display="");
   // Hide all toolbars first
   ["extToolbar","assignToolbar","reportToolbar","userToolbar"].forEach(id => document.getElementById(id).classList.add("hidden"));
@@ -3980,7 +4006,7 @@ function buildTabs() {
 
   let tabs = [];
   if (isAdmin()) {
-    tabs = [{id:"panelExtinguishers",label:"Extinguishers"},{id:"panelAssignments",label:"Assignments"},{id:"panelReports",label:"Reports"},{id:"panelUsers",label:"All Users"}];
+    tabs = [{id:"panelExtinguishers",label:"Extinguishers"},{id:"panelAssignments",label:"Assignments"},{id:"panelReports",label:"Reports"},{id:"panelUsers",label:"All Users"},{id:"panelServiceRequests",label:"Service Requests"}];
     document.getElementById("extToolbar").classList.remove("hidden");
     document.getElementById("assignToolbar").classList.remove("hidden");
     document.getElementById("reportToolbar").classList.remove("hidden");
@@ -4053,8 +4079,9 @@ function buildTabs() {
   } else if (isClient()) {
     // Client / Facility Manager — read-only compliance portal with drill-down
     tabs = [
-      {id:"panelExtinguishers", label:"My Equipment"},
-      {id:"panelReports",       label:"Inspection Reports"},
+      {id:"panelExtinguishers",    label:"My Equipment"},
+      {id:"panelReports",          label:"Inspection Reports"},
+      {id:"panelServiceRequests",  label:"Service Requests"},
     ];
     // Show the ext toolbar but hide ALL write buttons — Client is view-only
     document.getElementById("extToolbar").classList.remove("hidden");
@@ -4098,8 +4125,10 @@ function buildTabs() {
 function switchTab(panelId, clickedBtn, tabBar) {
   tabBar.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
   clickedBtn.classList.add("active");
-  ["panelExtinguishers","panelAssignments","panelReports","panelUsers"].forEach(id => document.getElementById(id).classList.remove("active"));
+  ["panelExtinguishers","panelAssignments","panelReports","panelUsers","panelServiceRequests"].forEach(id => document.getElementById(id).classList.remove("active"));
   document.getElementById(panelId).classList.add("active");
+  // Load service requests on first visit to that tab
+  if (panelId === "panelServiceRequests") loadServiceRequests();
   // Stagger table row fade-in on panel reveal
   const panel = document.getElementById(panelId);
   panel.querySelectorAll("tbody tr").forEach((tr, i) => {
@@ -7387,10 +7416,14 @@ async function loadClientDashboard() {
     const defItems = document.getElementById("clientDeficiencyItems");
     if (stats.deficiencies && stats.deficiencies.length > 0) {
       defItems.innerHTML = stats.deficiencies.map(d =>
-        `<div style="display:flex;gap:0.5rem;align-items:baseline;padding:4px 0;border-bottom:1px solid var(--border);font-size:0.8rem;">
-           <span style="color:var(--red);font-family:'IBM Plex Mono',monospace;">EXT-${d.extinguisher_id}</span>
-           <span style="color:var(--text);">${d.building_name} · Fl ${d.floor || "?"} · ${d.room || ""}</span>
-           <span style="color:var(--muted);margin-left:auto;">${d.last_result}</span>
+        `<div style="display:flex;gap:0.5rem;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:0.8rem;flex-wrap:wrap;">
+           <span style="color:var(--red);font-family:'IBM Plex Mono',monospace;flex-shrink:0;">EXT-${d.extinguisher_id}</span>
+           <span style="color:var(--text);flex:1;min-width:120px;">${d.building_name} · Fl ${d.floor || "?"} · ${d.room || ""}</span>
+           <span style="color:var(--muted);font-size:0.72rem;">${d.last_result}</span>
+           <button onclick="openServiceRequestModal(${d.extinguisher_id},'EXT-${d.extinguisher_id}','${(d.building_name||"").replace(/'/g,"\\'")} · Fl ${d.floor||"?"} · ${(d.room||"").replace(/'/g,"\\'")}','${(d.last_result||"").replace(/'/g,"\\'")}');event.stopPropagation();"
+             style="margin-left:auto;padding:3px 10px;font-size:0.7rem;border-radius:5px;background:var(--orange);color:#fff;border:none;cursor:pointer;flex-shrink:0;">
+             🔧 Request Service
+           </button>
          </div>`
       ).join("");
       defList.style.display = "";
@@ -8514,6 +8547,27 @@ function openExtDetail(row) {
   historyHtml += `</div>`;
   document.getElementById("detailExtGrid").innerHTML += historyHtml;
 
+  // ── Service Requests — async fetch, injected after reports ──────────────────
+  document.getElementById("detailExtGrid").innerHTML += `
+    <div class="ext-detail-field-full" style="margin-top:0.3rem;" id="extDetailSRSection">
+      <div class="ext-detail-label" style="margin-bottom:0.4rem;">🔧 Service Requests</div>
+      <div style="font-size:0.75rem;color:var(--muted);">Loading…</div>
+    </div>`;
+
+  // Fetch service requests for this extinguisher
+  (async () => {
+    const srSection = document.getElementById("extDetailSRSection");
+    if (!srSection) return;
+    try {
+      const res  = await fetch(`/api/service_requests?extinguisher_id=${row.extinguisher_id}`);
+      const data = await res.json();
+      if (!srSection) return;
+      renderExtDetailSRSection(srSection, row.extinguisher_id, Array.isArray(data) ? data : []);
+    } catch (e) {
+      if (srSection) srSection.querySelector("div:last-child").textContent = "Could not load service requests.";
+    }
+  })();
+
   // ── Location History — async fetch, injected after the modal is shown ──────
   document.getElementById("detailExtGrid").innerHTML += `
     <div class="ext-detail-field-full" style="margin-top:0.3rem;" id="locHistSection">
@@ -8599,7 +8653,9 @@ function openExtDetail(row) {
       </button>
     `;
   } else if (isClient()) {
-    // Client: view-only — QR Code and NFPA form only, no write access
+    // Client: view-only — QR Code, NFPA form, Request Service
+    const _clientExtLoc = (row.location_description || row.building_name || '').replace(/'/g,'');
+    const _clientExtLast = (row.last_inspection_result || '').replace(/'/g,'');
     footer.innerHTML = `
       <button class="btn-crud" style="font-size:0.72rem;padding:6px 14px;min-height:34px;background:var(--bg3);border-color:var(--teal);color:var(--teal);"
         onclick="openQRModal(${row.extinguisher_id}, '${(row.location_description || row.building_name || 'Ext #' + row.extinguisher_id).replace(/'/g,'')  }')">
@@ -8608,6 +8664,10 @@ function openExtDetail(row) {
       <button class="btn-crud btn-edit" style="font-size:0.72rem;padding:6px 14px;min-height:34px;background:var(--purple,#7C3AED);border-color:var(--purple,#7C3AED);"
         onclick="document.getElementById('extDetailModal').classList.add('hidden'); generateNFPAForm({report_id:0, extinguisher_id:${row.extinguisher_id}, inspector:'${currentUser.username}', inspection_date:'', notes:''});">
         📄 NFPA Form
+      </button>
+      <button class="btn-crud" style="font-size:0.72rem;padding:6px 14px;min-height:34px;background:var(--bg3);border-color:var(--orange);color:var(--orange);"
+        onclick="openServiceRequestModal(${row.extinguisher_id},'EXT-${row.extinguisher_id}','${_clientExtLoc}','${_clientExtLast}')">
+        🔧 Request Service
       </button>
       <button class="btn-crud" style="font-size:0.72rem;padding:6px 14px;min-height:34px;background:var(--bg3);border-color:var(--border);color:var(--muted);"
         onclick="document.getElementById('extDetailModal').classList.add('hidden');">Close</button>
@@ -13268,6 +13328,379 @@ function _fmtMsgDate(iso) {
   if (diffH < 168) return `${Math.floor(diffH/24)}d ago`;
   return d.toLocaleDateString(undefined, { month:"short", day:"numeric" });
 }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SERVICE REQUESTS
+// ══════════════════════════════════════════════════════════════════════════════
+
+window._allServiceRequests = [];
+window._currentSRId        = null;
+window._currentSRExtId     = null;
+
+// ── Load all service requests scoped to current user's role ───────────────────
+async function loadServiceRequests() {
+  try {
+    let url = "/api/service_requests?";
+    if (isClient()) {
+      url += `company_id=${currentUser.company_id || ""}`;
+    } else if (isAdmin() || isThirdAdmin()) {
+      url += `org_id=${currentUser.org_id || ""}`;
+    } else {
+      // Inspectors / 3rd-party inspectors — show org-scoped too
+      url += `org_id=${currentUser.org_id || ""}`;
+    }
+    const res  = await fetch(url);
+    const data = await res.json();
+    window._allServiceRequests = Array.isArray(data) ? data : [];
+  } catch (e) {
+    window._allServiceRequests = [];
+  }
+  renderServiceRequestsTable();
+}
+
+// ── Render the service requests table/cards ───────────────────────────────────
+function renderServiceRequestsTable() {
+  const all       = window._allServiceRequests || [];
+  const statusF   = (document.getElementById("srStatusFilter")  || {}).value || "all";
+  const typeF     = (document.getElementById("srTypeFilter")    || {}).value || "all";
+
+  const filtered = all.filter(r => {
+    if (statusF !== "all" && r.status !== statusF) return false;
+    if (typeF   !== "all" && r.request_type !== typeF) return false;
+    return true;
+  });
+
+  // Badge
+  const pending = all.filter(r => r.status === "Pending").length;
+  const badge   = document.getElementById("srCountBadge");
+  if (badge) badge.textContent = `${filtered.length} record${filtered.length !== 1 ? "s" : ""}${pending ? `  •  ${pending} pending` : ""}`;
+
+  // ── TABLE (desktop) ──────────────────────────────────────────────────────────
+  const wrap = document.getElementById("tableSRWrap");
+  if (!wrap) return;
+
+  if (filtered.length === 0) {
+    wrap.innerHTML = `<div style="padding:2rem;text-align:center;color:var(--muted);font-size:0.85rem;">No service requests found.</div>`;
+    const cWrap = document.getElementById("cardSRWrap");
+    if (cWrap) cWrap.innerHTML = wrap.innerHTML;
+    return;
+  }
+
+  const statusColor = s => s === "Pending" ? "var(--orange)" : s === "In Progress" ? "var(--blue)" : s === "Fulfilled" ? "var(--teal)" : s === "Rejected" ? "var(--red)" : "var(--muted)";
+  const canEdit     = isAdmin() || isThirdAdmin();
+
+  let html = `<table class="data-table">
+    <thead><tr>
+      <th>ID</th><th>Extinguisher</th><th>Type</th><th>Requested By</th>
+      <th>Date</th><th>Status</th>${canEdit ? "<th>Actions</th>" : ""}
+    </tr></thead><tbody>`;
+
+  filtered.forEach(r => {
+    const extLabel = r.extinguisher_id ? `EXT-${r.extinguisher_id}` : "—";
+    const loc      = [r.building_name, r.floor_number != null ? `Fl ${r.floor_number}` : null, r.room_number].filter(Boolean).join(" · ") || "—";
+    const date     = (r.created_at || "").slice(0,10);
+    const sc       = statusColor(r.status);
+
+    html += `<tr style="cursor:${canEdit ? "pointer" : "default"}" ${canEdit ? `onclick="openSRAdminModal(${JSON.stringify(r).replace(/"/g,'&quot;')})"` : ""}>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:0.75rem;color:var(--orange);">SR-${r.request_id}</td>
+      <td style="font-size:0.78rem;"><span style="color:var(--teal);">${_esc(extLabel)}</span><br><span style="font-size:0.68rem;color:var(--muted);">${_esc(loc)}</span></td>
+      <td style="font-size:0.78rem;">${_esc(r.request_type || "—")}</td>
+      <td style="font-size:0.78rem;">${_esc(r.requested_by || "—")}</td>
+      <td style="font-size:0.78rem;color:var(--muted);">${date}</td>
+      <td><span style="font-size:0.72rem;font-weight:600;color:${sc};padding:2px 8px;border-radius:12px;border:1px solid ${sc};background:${sc}22;">${_esc(r.status)}</span></td>
+      ${canEdit ? `<td><button onclick="event.stopPropagation();openSRAdminModal(${JSON.stringify(r).replace(/"/g,'&quot;')})"
+        style="font-size:0.68rem;padding:3px 10px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--text);cursor:pointer;">
+        Review
+      </button></td>` : ""}
+    </tr>`;
+  });
+  html += `</tbody></table>`;
+  wrap.innerHTML = html;
+
+  // ── CARDS (mobile) ───────────────────────────────────────────────────────────
+  const cWrap = document.getElementById("cardSRWrap");
+  if (!cWrap) return;
+  cWrap.innerHTML = filtered.map(r => {
+    const extLabel = r.extinguisher_id ? `EXT-${r.extinguisher_id}` : "—";
+    const loc      = [r.building_name, r.floor_number != null ? `Fl ${r.floor_number}` : null, r.room_number].filter(Boolean).join(" · ") || "—";
+    const date     = (r.created_at || "").slice(0,10);
+    const sc       = statusColor(r.status);
+    return `
+      <div class="ext-card" style="cursor:${canEdit ? "pointer" : "default"}" ${canEdit ? `onclick="openSRAdminModal(${JSON.stringify(r).replace(/"/g,'&quot;')})"` : ""}>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:0.72rem;color:var(--orange);">SR-${r.request_id}</span>
+          <span style="font-size:0.68rem;font-weight:600;color:${sc};padding:2px 8px;border-radius:12px;border:1px solid ${sc};background:${sc}22;">${_esc(r.status)}</span>
+        </div>
+        <div style="font-size:0.8rem;font-weight:600;margin-bottom:3px;">${_esc(r.request_type || "—")}</div>
+        <div style="font-size:0.75rem;color:var(--teal);">${_esc(extLabel)} · ${_esc(loc)}</div>
+        <div style="font-size:0.72rem;color:var(--muted);margin-top:4px;">By ${_esc(r.requested_by || "—")} · ${date}</div>
+        ${r.notes ? `<div style="font-size:0.7rem;color:var(--muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_esc(r.notes)}</div>` : ""}
+      </div>`;
+  }).join("");
+}
+
+// ── Open the client "Submit Request" modal ─────────────────────────────────────
+function openServiceRequestModal(extId, extLabel, location, lastResult) {
+  window._currentSRExtId = extId;
+  // Pre-fill info bar
+  document.getElementById("srExtInfo").innerHTML =
+    `<span style="color:var(--orange);font-weight:600;">${_esc(extLabel)}</span>` +
+    (location  ? `  ·  ${_esc(location)}`  : "") +
+    (lastResult ? `<br><span style="color:var(--muted);font-size:0.75rem;">Last result: ${_esc(lastResult)}</span>` : "");
+  // Reset form
+  document.getElementById("srType").value       = "Service/Repair";
+  document.getElementById("srPartNumber").value = "";
+  document.getElementById("srQuantity").value   = "1";
+  document.getElementById("srVendor").value     = "";
+  document.getElementById("srCost").value       = "";
+  document.getElementById("srNotes").value      = "";
+  document.getElementById("srError").textContent = "";
+  document.getElementById("serviceRequestModal").classList.remove("hidden");
+}
+
+function closeServiceRequestModal() {
+  document.getElementById("serviceRequestModal").classList.add("hidden");
+}
+
+// ── Submit a new service request ───────────────────────────────────────────────
+async function submitServiceRequest() {
+  const errEl = document.getElementById("srError");
+  errEl.textContent = "";
+  const requestType = document.getElementById("srType").value.trim();
+  if (!requestType) { errEl.textContent = "Request type is required."; return; }
+
+  const payload = {
+    extinguisher_id: window._currentSRExtId || null,
+    org_id:          currentUser.org_id     || null,
+    company_id:      currentUser.company_id || null,
+    requested_by:    currentUser.username   || currentUser.name || "Unknown",
+    request_type:    requestType,
+    part_number:     document.getElementById("srPartNumber").value.trim(),
+    quantity:        parseInt(document.getElementById("srQuantity").value)  || 1,
+    vendor:          document.getElementById("srVendor").value.trim(),
+    estimated_cost:  parseFloat(document.getElementById("srCost").value)    || 0,
+    notes:           document.getElementById("srNotes").value.trim(),
+  };
+
+  try {
+    const res = await fetch("/api/service_requests", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) { errEl.textContent = data.error || "Failed to submit request."; return; }
+    closeServiceRequestModal();
+    showToast("✅ Service request submitted.");
+    // Refresh SR panel if visible
+    if (document.getElementById("panelServiceRequests").classList.contains("active")) {
+      loadServiceRequests();
+    }
+    // Refresh badge on ext detail if still open
+    if (!document.getElementById("extDetailModal").classList.contains("hidden") && window._currentSRExtId) {
+      refreshExtDetailSRSection(window._currentSRExtId);
+    }
+  } catch (e) {
+    errEl.textContent = "Network error — please try again.";
+  }
+}
+
+// ── Open admin review modal ────────────────────────────────────────────────────
+function openSRAdminModal(req) {
+  window._currentSRId = req.request_id;
+  const extLabel = req.extinguisher_id ? `EXT-${req.extinguisher_id}` : "—";
+  const loc      = [req.building_name, req.floor_number != null ? `Fl ${req.floor_number}` : null, req.room_number].filter(Boolean).join(" · ") || "—";
+  const date     = (req.created_at || "").slice(0,10);
+
+  document.getElementById("srAdminInfo").innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.3rem 1.2rem;font-size:0.8rem;">
+      <div><span style="color:var(--muted);font-size:0.68rem;text-transform:uppercase;letter-spacing:0.08em;">Request</span><br>
+        <strong style="color:var(--orange);">SR-${req.request_id}</strong></div>
+      <div><span style="color:var(--muted);font-size:0.68rem;text-transform:uppercase;letter-spacing:0.08em;">Type</span><br>
+        <strong>${_esc(req.request_type || "—")}</strong></div>
+      <div><span style="color:var(--muted);font-size:0.68rem;text-transform:uppercase;letter-spacing:0.08em;">Extinguisher</span><br>
+        <span style="color:var(--teal);">${_esc(extLabel)}</span> · <span style="font-size:0.75rem;">${_esc(loc)}</span></div>
+      <div><span style="color:var(--muted);font-size:0.68rem;text-transform:uppercase;letter-spacing:0.08em;">Requested By</span><br>
+        ${_esc(req.requested_by || "—")}</div>
+      <div><span style="color:var(--muted);font-size:0.68rem;text-transform:uppercase;letter-spacing:0.08em;">Submitted</span><br>
+        ${date}</div>
+      <div><span style="color:var(--muted);font-size:0.68rem;text-transform:uppercase;letter-spacing:0.08em;">Est. Cost</span><br>
+        ${req.estimated_cost ? `$${parseFloat(req.estimated_cost).toFixed(2)}` : "—"}</div>
+      ${req.part_number ? `<div><span style="color:var(--muted);font-size:0.68rem;text-transform:uppercase;letter-spacing:0.08em;">Part #</span><br>${_esc(req.part_number)}</div>` : ""}
+      ${req.vendor      ? `<div><span style="color:var(--muted);font-size:0.68rem;text-transform:uppercase;letter-spacing:0.08em;">Vendor</span><br>${_esc(req.vendor)}</div>` : ""}
+      ${req.quantity && req.quantity > 1 ? `<div><span style="color:var(--muted);font-size:0.68rem;text-transform:uppercase;letter-spacing:0.08em;">Qty</span><br>${req.quantity}</div>` : ""}
+      ${req.notes ? `<div style="grid-column:1/-1;"><span style="color:var(--muted);font-size:0.68rem;text-transform:uppercase;letter-spacing:0.08em;">Requester Notes</span><br><span style="font-size:0.78rem;">${_esc(req.notes)}</span></div>` : ""}
+    </div>`;
+
+  document.getElementById("srAdminStatus").value = req.status || "Pending";
+  document.getElementById("srAdminNotes").value  = req.admin_notes || "";
+  document.getElementById("srAdminError").textContent = "";
+  document.getElementById("srAdminModal").classList.remove("hidden");
+}
+
+function closeSRAdminModal() {
+  document.getElementById("srAdminModal").classList.add("hidden");
+}
+
+// ── Save admin status update ───────────────────────────────────────────────────
+async function saveSRAdminUpdate() {
+  const errEl = document.getElementById("srAdminError");
+  errEl.textContent = "";
+  if (!window._currentSRId) { errEl.textContent = "No request selected."; return; }
+
+  const payload = {
+    status:      document.getElementById("srAdminStatus").value,
+    admin_notes: document.getElementById("srAdminNotes").value.trim(),
+  };
+
+  try {
+    const res  = await fetch(`/api/service_requests/${window._currentSRId}`, {
+      method:  "PUT",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) { errEl.textContent = data.error || "Failed to save update."; return; }
+    closeSRAdminModal();
+    showToast("✅ Service request updated.");
+    loadServiceRequests();
+  } catch (e) {
+    errEl.textContent = "Network error — please try again.";
+  }
+}
+
+// ── Refresh the SR section inside the extinguisher detail modal ───────────────
+async function refreshExtDetailSRSection(extId) {
+  const container = document.getElementById("extDetailSRSection");
+  if (!container) return;
+  try {
+    const res  = await fetch(`/api/service_requests?extinguisher_id=${extId}`);
+    const data = await res.json();
+    renderExtDetailSRSection(container, extId, Array.isArray(data) ? data : []);
+  } catch (e) { /* silent */ }
+}
+
+function renderExtDetailSRSection(container, extId, requests) {
+  const open = requests.filter(r => r.status !== "Fulfilled" && r.status !== "Rejected");
+  const canReview = isAdmin() || isThirdAdmin();
+
+  let html = `<div class="ext-detail-label" style="margin-bottom:0.4rem;">
+    🔧 Service Requests
+    ${open.length ? `<span style="margin-left:8px;padding:1px 8px;border-radius:10px;font-size:0.62rem;font-weight:700;background:rgba(234,88,12,0.15);color:var(--orange);border:1px solid var(--orange);">${open.length} open</span>` : ""}
+  </div>`;
+
+  if (requests.length === 0) {
+    html += `<div style="font-size:0.75rem;color:var(--muted);padding:0.3rem 0;">No service requests for this unit.</div>`;
+    if (isClient()) {
+      const extRow = (window._allExtinguishers || []).find(e => e.extinguisher_id === extId) || {};
+      const loc    = [extRow.building_name, extRow.floor_number != null ? `Fl ${extRow.floor_number}` : null, extRow.room_number].filter(Boolean).join(" · ") || "";
+      html += `<button onclick="openServiceRequestModal(${extId},'EXT-${extId}','${loc.replace(/'/g,"\\'")}','')"
+        style="margin-top:6px;font-size:0.72rem;padding:4px 12px;border:1px solid var(--orange);border-radius:4px;background:var(--bg3);color:var(--orange);cursor:pointer;">
+        + New Request
+      </button>`;
+    }
+  } else {
+    html += `<div style="max-height:140px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;">`;
+    requests.forEach(r => {
+      const sc    = r.status === "Pending" ? "var(--orange)" : r.status === "In Progress" ? "var(--blue)" : r.status === "Fulfilled" ? "var(--teal)" : r.status === "Rejected" ? "var(--red)" : "var(--muted)";
+      const date  = (r.created_at || "").slice(0,10);
+      html += `<div style="display:flex;align-items:center;gap:0.5rem;padding:6px 10px;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.72rem;${canReview ? "cursor:pointer;" : ""}"
+          ${canReview ? `onclick="openSRAdminModal(${JSON.stringify(r).replace(/"/g,'&quot;')})"` : ""}
+          onmouseenter="this.style.background='var(--bg3)'" onmouseleave="this.style.background='none'">
+        <span style="color:var(--orange);font-family:'IBM Plex Mono',monospace;flex-shrink:0;">SR-${r.request_id}</span>
+        <span style="flex:1;">${_esc(r.request_type || "—")}</span>
+        <span style="font-size:0.68rem;font-weight:600;color:${sc};padding:1px 7px;border-radius:10px;border:1px solid ${sc};background:${sc}22;flex-shrink:0;">${_esc(r.status)}</span>
+        <span style="color:var(--muted);font-size:0.68rem;flex-shrink:0;">${date}</span>
+      </div>`;
+    });
+    html += `</div>`;
+    if (isClient()) {
+      const extRow = (window._allExtinguishers || []).find(e => e.extinguisher_id === extId) || {};
+      const loc    = [extRow.building_name, extRow.floor_number != null ? `Fl ${extRow.floor_number}` : null, extRow.room_number].filter(Boolean).join(" · ") || "";
+      html += `<button onclick="openServiceRequestModal(${extId},'EXT-${extId}','${loc.replace(/'/g,"\\'")}','')"
+        style="margin-top:6px;font-size:0.72rem;padding:4px 12px;border:1px solid var(--orange);border-radius:4px;background:var(--bg3);color:var(--orange);cursor:pointer;">
+        + New Request
+      </button>`;
+    }
+  }
+  container.innerHTML = html;
+}
 </script>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     SERVICE REQUEST — CLIENT SUBMIT MODAL
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay hidden" id="serviceRequestModal" onclick="if(event.target===this)closeServiceRequestModal()">
+  <div class="modal-box" style="max-width:520px;width:96%;">
+    <h3>🔧 Request Service / Order Parts</h3>
+    <div id="srExtInfo" style="background:var(--bg3);border-radius:6px;padding:0.6rem 0.85rem;margin-bottom:1rem;font-size:0.82rem;color:var(--muted);font-family:'IBM Plex Mono',monospace;"></div>
+
+    <div class="form-row">
+      <label>Request Type <span style="color:var(--red);">*</span></label>
+      <select id="srType">
+        <option value="New Extinguisher">🧯 New Extinguisher</option>
+        <option value="Replacement Parts">🔩 Replacement Parts</option>
+        <option value="Service/Repair" selected>🔧 Service / Repair</option>
+        <option value="Inspection Request">📋 Inspection Request</option>
+      </select>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 1rem;">
+      <div class="form-row">
+        <label>Part Number <span style="color:var(--muted);">(optional)</span></label>
+        <input id="srPartNumber" type="text" placeholder="e.g. ABC-1234">
+      </div>
+      <div class="form-row">
+        <label>Quantity</label>
+        <input id="srQuantity" type="number" min="1" value="1" style="width:100%;">
+      </div>
+      <div class="form-row">
+        <label>Preferred Vendor <span style="color:var(--muted);">(optional)</span></label>
+        <input id="srVendor" type="text" placeholder="e.g. Amerex, Kidde">
+      </div>
+      <div class="form-row">
+        <label>Estimated Cost ($) <span style="color:var(--muted);">(optional)</span></label>
+        <input id="srCost" type="number" min="0" step="0.01" placeholder="0.00">
+      </div>
+    </div>
+    <div class="form-row">
+      <label>Notes / Description <span style="color:var(--muted);">(optional)</span></label>
+      <textarea id="srNotes" rows="3" placeholder="Describe the issue or what is needed…" style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px 10px;font-size:0.85rem;resize:vertical;"></textarea>
+    </div>
+    <div class="modal-error" id="srError" style="margin-bottom:0.5rem;"></div>
+    <div style="display:flex;justify-content:flex-end;gap:0.75rem;margin-top:0.5rem;">
+      <button class="btn-cancel" onclick="closeServiceRequestModal()">Cancel</button>
+      <button class="btn-save" onclick="submitServiceRequest()" style="background:var(--orange);border-color:var(--orange);">Submit Request</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     SERVICE REQUEST — ADMIN VIEW / UPDATE MODAL
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay hidden" id="srAdminModal" onclick="if(event.target===this)closeSRAdminModal()">
+  <div class="modal-box" style="max-width:540px;width:96%;">
+    <h3>📋 Service Request</h3>
+    <div id="srAdminInfo" style="background:var(--bg3);border-radius:6px;padding:0.75rem 0.85rem;margin-bottom:1rem;font-size:0.82rem;line-height:1.6;"></div>
+
+    <div class="form-row">
+      <label>Status</label>
+      <select id="srAdminStatus">
+        <option value="Pending">Pending</option>
+        <option value="In Progress">In Progress</option>
+        <option value="Fulfilled">Fulfilled</option>
+        <option value="Rejected">Rejected</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label>Admin Notes</label>
+      <textarea id="srAdminNotes" rows="3" placeholder="Add notes for the requester…" style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px 10px;font-size:0.85rem;resize:vertical;"></textarea>
+    </div>
+    <div class="modal-error" id="srAdminError" style="margin-bottom:0.5rem;"></div>
+    <div style="display:flex;justify-content:flex-end;gap:0.75rem;margin-top:0.5rem;">
+      <button class="btn-cancel" onclick="closeSRAdminModal()">Cancel</button>
+      <button class="btn-save" onclick="saveSRAdminUpdate()">Save Update</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>

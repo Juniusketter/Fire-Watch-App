@@ -539,6 +539,30 @@ def run_migrations():
                 )
             conn.commit()
 
+        # ── ServiceRequests table ──────────────────────────────────────────
+        if "ServiceRequests" not in tables:
+            conn.execute("""
+                CREATE TABLE ServiceRequests (
+                    request_id      INTEGER PRIMARY KEY AUTOINCREMENT,
+                    org_id          INTEGER REFERENCES Organizations(org_id),
+                    company_id      INTEGER REFERENCES Companies(company_id),
+                    extinguisher_id INTEGER REFERENCES Extinguishers(extinguisher_id),
+                    requested_by    TEXT NOT NULL,
+                    request_type    TEXT NOT NULL DEFAULT 'Service/Repair',
+                    part_number     TEXT DEFAULT '',
+                    quantity        INTEGER DEFAULT 1,
+                    vendor          TEXT DEFAULT '',
+                    estimated_cost  REAL DEFAULT 0.0,
+                    notes           TEXT DEFAULT '',
+                    status          TEXT DEFAULT 'Pending',
+                    admin_notes     TEXT DEFAULT '',
+                    created_at      TEXT DEFAULT (datetime('now')),
+                    updated_at      TEXT DEFAULT (datetime('now'))
+                )
+            """)
+            conn.commit()
+            print("  [Migration] Created ServiceRequests table")
+
 run_migrations()
 
 # ── Serve frontend ─────────────────────────────────────────────────────────────
@@ -3289,6 +3313,87 @@ def client_stats():
         "deficiencies":    deficiencies,
         "extinguishers":   [dict(e) for e in exts],
     })
+
+# ── SERVICE REQUESTS ──────────────────────────────────────────────────────────
+
+@app.route("/api/service_requests", methods=["GET"])
+def get_service_requests():
+    db = get_db()
+    org_id     = request.args.get("org_id",     type=int)
+    company_id = request.args.get("company_id", type=int)
+    ext_id     = request.args.get("extinguisher_id", type=int)
+
+    query = """
+        SELECT sr.*,
+               e.location_description, e.ext_status,
+               c.name  AS company_name,
+               o.name  AS org_name
+        FROM ServiceRequests sr
+        LEFT JOIN Extinguishers e ON e.extinguisher_id = sr.extinguisher_id
+        LEFT JOIN Companies     c ON c.company_id = sr.company_id
+        LEFT JOIN Organizations o ON o.org_id = sr.org_id
+        WHERE 1=1
+    """
+    params = []
+    if org_id:
+        query += " AND sr.org_id = ?";     params.append(org_id)
+    if company_id:
+        query += " AND sr.company_id = ?"; params.append(company_id)
+    if ext_id:
+        query += " AND sr.extinguisher_id = ?"; params.append(ext_id)
+    query += " ORDER BY sr.created_at DESC"
+
+    rows = db.execute(query, params).fetchall()
+    return jsonify([dict(r) for r in rows])
+
+
+@app.route("/api/service_requests", methods=["POST"])
+def create_service_request():
+    db   = get_db()
+    data = request.get_json()
+    required = ["org_id", "company_id", "extinguisher_id", "requested_by", "request_type"]
+    for f in required:
+        if not data.get(f):
+            return jsonify({"error": f"Missing required field: {f}"}), 400
+
+    db.execute("""
+        INSERT INTO ServiceRequests
+            (org_id, company_id, extinguisher_id, requested_by, request_type,
+             part_number, quantity, vendor, estimated_cost, notes, status, created_at, updated_at)
+        VALUES (?,?,?,?,?,?,?,?,?,?,'Pending',datetime('now'),datetime('now'))
+    """, (
+        data["org_id"], data["company_id"], data["extinguisher_id"],
+        data["requested_by"], data["request_type"],
+        data.get("part_number", ""), data.get("quantity", 1),
+        data.get("vendor", ""), data.get("estimated_cost", 0),
+        data.get("notes", "")
+    ))
+    db.commit()
+    req_id = db.execute("SELECT last_insert_rowid()").fetchone()[0]
+    return jsonify({"request_id": req_id, "status": "Pending"}), 201
+
+
+@app.route("/api/service_requests/<int:req_id>", methods=["PUT"])
+def update_service_request(req_id):
+    db   = get_db()
+    data = request.get_json()
+    allowed = ["status", "admin_notes", "request_type", "part_number",
+               "quantity", "vendor", "estimated_cost", "notes"]
+    fields  = {k: data[k] for k in allowed if k in data}
+    if not fields:
+        return jsonify({"error": "No updatable fields provided"}), 400
+
+    fields["updated_at"] = "datetime('now')"
+    set_clause = ", ".join(
+        f"{k} = datetime('now')" if k == "updated_at" else f"{k} = ?"
+        for k in fields
+    )
+    values = [v for k, v in fields.items() if k != "updated_at"]
+    values.append(req_id)
+    db.execute(f"UPDATE ServiceRequests SET {set_clause} WHERE request_id = ?", values)
+    db.commit()
+    return jsonify({"ok": True})
+
 
 # ── START ──────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
