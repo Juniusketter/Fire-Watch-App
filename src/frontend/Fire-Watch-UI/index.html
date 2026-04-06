@@ -10300,48 +10300,52 @@ async function generateBulkNFPA() {
   label.textContent   = `✓ ${selectedReports.length} form${selectedReports.length !== 1 ? "s" : ""} ready — opening print dialog…`;
 
   // Complete HTML document — CSS defined once, all forms inside body
+  // A no-print toolbar with Print and Close buttons is injected at the top
+  // so the page is fully self-contained when opened as a standalone tab.
   const html = `<!DOCTYPE html><html lang="en"><head>
     <meta charset="UTF-8">
     <title>NFPA 10 Inspection Forms — ${orgName} (${selectedReports.length} forms)</title>
-    <style>${sharedCSS}</style>
-  </head><body>${formBodies}</body></html>`;
+    <style>${sharedCSS}
+    .nfpa-toolbar{text-align:center;padding:12px 16px;background:#f0f4f8;border-bottom:1px solid #ccd3da;margin-bottom:1rem;}
+    .nfpa-toolbar button{margin:0 6px;padding:10px 26px;font-size:14px;font-weight:700;border:none;border-radius:6px;cursor:pointer;}
+    .nfpa-btn-print{background:#1f3864;color:#fff;}
+    .nfpa-btn-close{background:#e5e7eb;color:#374151;}
+    .nfpa-toolbar p{font-size:12px;color:#666;margin:6px 0 0;}
+    @media print{.nfpa-toolbar{display:none!important;}}
+    </style>
+  </head><body>
+  <div class="nfpa-toolbar">
+    <button class="nfpa-btn-print" onclick="window.print()">🖨 Print / Save as PDF</button>
+    <button class="nfpa-btn-close" onclick="window.close()">✕ Close Tab</button>
+    <p>${selectedReports.length} form${selectedReports.length !== 1 ? "s" : ""} — close this tab when done to return to FireWatch</p>
+  </div>
+  ${formBodies}</body></html>`;
 
-  // Deliver: hidden iframe on desktop, download on mobile
+  // Deliver: open as a standalone Blob URL in a new tab — fully detached from
+  // FireWatch so closing the print tab never affects the app.
+  // Mobile falls back to a file download (popups are blocked on most mobile browsers).
   const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) || window.innerWidth < 768;
+  const blob    = new Blob([html], { type: "text/html" });
+  const blobUrl = URL.createObjectURL(blob);
 
   if (isMobile) {
-    const blob = new Blob([html], { type: "text/html" });
-    const a    = document.createElement("a");
-    a.href     = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href     = blobUrl;
     a.download = `NFPA10_Bulk_Forms_${orgName.replace(/\s+/g,"_")}_${selectedReports.length}forms.html`;
     a.click();
-    setTimeout(() => closeBulkNFPAModal(), 500);
+    setTimeout(() => { URL.revokeObjectURL(blobUrl); closeBulkNFPAModal(); }, 500);
     return;
   }
 
-  // Remove any leftover print iframe
-  const old = document.getElementById("bulkNFPAPrintFrame");
-  if (old) old.remove();
-
-  const iframe = document.createElement("iframe");
-  iframe.id    = "bulkNFPAPrintFrame";
-  iframe.style.cssText = "position:fixed;width:0;height:0;border:none;left:-9999px;top:-9999px;";
-  document.body.appendChild(iframe);
-
-  iframe.onload = () => {
-    try {
-      iframe.contentWindow.focus();
-      iframe.contentWindow.print();
-    } catch(e) {
-      const win = window.open("", "_blank");
-      if (win) { win.document.write(html); win.document.close(); }
-    }
-    setTimeout(() => closeBulkNFPAModal(), 1000);
-  };
-
-  iframe.contentDocument.open();
-  iframe.contentDocument.write(html);
-  iframe.contentDocument.close();
+  const win = window.open(blobUrl, "_blank");
+  if (!win) {
+    // Popup blocked — fall back to download
+    const a = document.createElement("a");
+    a.href     = blobUrl;
+    a.download = `NFPA10_Bulk_Forms_${orgName.replace(/\s+/g,"_")}_${selectedReports.length}forms.html`;
+    a.click();
+  }
+  setTimeout(() => { URL.revokeObjectURL(blobUrl); closeBulkNFPAModal(); }, 800);
 }
 
 // Wire the button
@@ -12493,46 +12497,32 @@ async function printQRSheet(scope) {
   </body></html>`;
 
   // ── Deliver to user ──────────────────────────────────────────────────────────
-  // Desktop: inject into a hidden <iframe> instead of window.open() so the
-  // app never freezes while the print dialog is open.
-  // Mobile:  download as an HTML file (popups are blocked on most mobile browsers).
+  // Open as a standalone Blob URL in a new tab — fully detached from FireWatch
+  // so closing the print tab never affects the app. The HTML already contains
+  // window.onload → window.print() so the dialog fires automatically.
+  // Mobile falls back to a file download (popups blocked on most mobile browsers).
   const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) || window.innerWidth < 768;
+  const blob    = new Blob([html], { type: "text/html" });
+  const blobUrl = URL.createObjectURL(blob);
 
   if (isMobile) {
-    const blob = new Blob([html], { type: "text/html" });
-    const a    = document.createElement("a");
-    a.href     = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href     = blobUrl;
     a.download = `FireWatch_QR_Labels_${scope}_${Date.now()}.html`;
     a.click();
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 500);
     return;
   }
 
-  // Remove any leftover print iframe from a previous call
-  const existingFrame = document.getElementById("qrPrintFrame");
-  if (existingFrame) existingFrame.remove();
-
-  // Create a hidden iframe, write the print HTML into it, and let its
-  // own window.print() fire — the parent page stays fully interactive.
-  const iframe = document.createElement("iframe");
-  iframe.id    = "qrPrintFrame";
-  iframe.style.cssText = "position:fixed;width:0;height:0;border:none;left:-9999px;top:-9999px;";
-  document.body.appendChild(iframe);
-
-  iframe.onload = () => {
-    try {
-      iframe.contentWindow.focus();
-      iframe.contentWindow.print();
-    } catch(e) {
-      // Fallback: open in new tab if iframe print fails (e.g. strict CSP)
-      const win = window.open("", "_blank");
-      if (win) { win.document.write(html); win.document.close(); }
-    }
-  };
-
-  // Write HTML into the iframe document
-  iframe.contentDocument.open();
-  iframe.contentDocument.write(html);
-  iframe.contentDocument.close();
+  const win = window.open(blobUrl, "_blank");
+  if (!win) {
+    // Popup blocked — fall back to download
+    const a = document.createElement("a");
+    a.href     = blobUrl;
+    a.download = `FireWatch_QR_Labels_${scope}_${Date.now()}.html`;
+    a.click();
+  }
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
 }
 
 /**
