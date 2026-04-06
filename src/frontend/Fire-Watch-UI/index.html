@@ -10345,7 +10345,9 @@ async function generateBulkNFPA() {
     a.download = `NFPA10_Bulk_Forms_${orgName.replace(/\s+/g,"_")}_${selectedReports.length}forms.html`;
     a.click();
   }
-  setTimeout(() => { URL.revokeObjectURL(blobUrl); closeBulkNFPAModal(); }, 800);
+  // Revoke the blob URL after a short delay (tab has already loaded by then).
+  // Do NOT auto-close the modal — let the user dismiss it manually.
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
 }
 
 // Wire the button
