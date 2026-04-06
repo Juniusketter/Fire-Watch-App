@@ -9531,38 +9531,35 @@ document.getElementById("pdfGenerateBtn").addEventListener("click", () => {
 
   html += `</body></html>`;
 
-  // Detect mobile
+  // Deliver: open as a standalone Blob URL in a new tab — fully detached from
+  // FireWatch so closing the print tab never affects the app.
+  // Mobile falls back to a file download (popups blocked on most mobile browsers).
+  // Modal is NOT auto-closed — let the user dismiss it manually.
   const isMobilePdf = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth < 768;
+  const pdfBlob    = new Blob([html], { type: "text/html" });
+  const pdfBlobUrl = URL.createObjectURL(pdfBlob);
 
   if (isMobilePdf) {
-    // Mobile: download as HTML file that can be opened in browser and printed
-    const blob = new Blob([html], { type: "text/html" });
     const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
+    a.href = pdfBlobUrl;
     a.download = `${title.replace(/\s+/g, "_")}_${dateFrom || "all"}_${dateTo || "all"}.html`;
     document.body.appendChild(a);
     a.click();
-    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(a.href); }, 200);
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(pdfBlobUrl); }, 500);
   } else {
-    // Desktop: open in new tab for print/save as PDF
-    const win = window.open("", "_blank");
-    if (win) {
-      win.document.write(html);
-      win.document.close();
-      setTimeout(() => win.print(), 500);
-    } else {
-      // Popup blocked fallback
-      const blob = new Blob([html], { type: "text/html" });
+    const win = window.open(pdfBlobUrl, "_blank");
+    if (!win) {
+      // Popup blocked — fall back to download
       const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
+      a.href = pdfBlobUrl;
       a.download = `${title.replace(/\s+/g, "_")}_${dateFrom || "all"}_${dateTo || "all"}.html`;
       document.body.appendChild(a);
       a.click();
-      setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(a.href); }, 200);
+      setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(pdfBlobUrl); }, 500);
+    } else {
+      setTimeout(() => URL.revokeObjectURL(pdfBlobUrl), 5000);
     }
   }
-
-  document.getElementById("pdfReportModal").classList.add("hidden");
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
