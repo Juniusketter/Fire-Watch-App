@@ -4122,8 +4122,8 @@ function buildTabs() {
       const el = document.getElementById(id);
       if (el) el.style.display = "none";
     });
-    // Hide assign/report/user toolbars
-    ["assignToolbar","reportToolbar","userToolbar"].forEach(id =>
+    // Hide assign/user toolbars (reportToolbar is shown above with client-only buttons)
+    ["assignToolbar","userToolbar"].forEach(id =>
       document.getElementById(id).classList.add("hidden")
     );
     // Show only relevant stats
