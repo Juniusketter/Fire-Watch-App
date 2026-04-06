@@ -4099,9 +4099,15 @@ function buildTabs() {
       {id:"panelDeficiencies",     label:"Deficiencies"},
       {id:"panelServiceRequests",  label:"Service Requests"},
     ];
-    // Show client-only Annual Report button inside the reports toolbar
+    // Show report toolbar with client-only buttons; hide write/admin actions
+    document.getElementById("reportToolbar").classList.remove("hidden");
     const annualBtn = document.getElementById("btnClientAnnualReport");
     if (annualBtn) annualBtn.style.display = "";
+    // Hide non-client report toolbar items
+    ["btnSubmitReport","exportDropdown","btnGeneratePdfReport","btnAHJLink","pendingReviewWrap"].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = "none";
+    });
     // Show the ext toolbar but hide ALL write buttons — Client is view-only
     document.getElementById("extToolbar").classList.remove("hidden");
     ["btnAddCompany","btnEditCompany","btnDeleteCompany",
