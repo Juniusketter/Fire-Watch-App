@@ -1,8 +1,18 @@
+# Firewatch UI Language Toggle (Qt / C++)
 
-# Firewatch MEGA Bundle (Final)
+## Files
+- TranslationStore.h/.cpp: JSON-based translation loader
+- Translator.h/.cpp: Applies translations recursively to the UI
 
-✅ Security (password policy, inactivity timeout)
-✅ Full English & Spanish dictionaries (key parity: 115 keys)
-✅ Automated translation parity test
+## How to Use
 
-This bundle replaces all prior partial dictionaries.
+1. Add trKey to widgets:
+```
+ui->loginButton->setProperty("trKey", "lIn");
+```
+
+2. Toggle language:
+```
+TranslationStore::loadLanguage("es");
+applyTranslations(this);
+```
