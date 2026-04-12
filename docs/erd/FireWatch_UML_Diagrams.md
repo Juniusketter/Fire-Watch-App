@@ -1,6 +1,6 @@
 # FireWatch — UML Diagrams
-**Updated:** April 4, 2026
-**Matches:** Sprint 4 production state (`server.py` + `FireWatch.db` + Qt desktop app)
+**Updated:** April 12, 2026
+**Matches:** Sprint 5 final production state (`server.py` + `FireWatch.db` + Qt desktop app)
 
 ---
 
@@ -112,6 +112,47 @@ erDiagram
     text inspection_result "Pass|Fail|Needs Service"
   }
 
+  Messages {
+    int message_id PK
+    int org_id FK
+    int sender_id FK
+    int recipient_id FK "null = broadcast"
+    text subject
+    text body
+    int is_read "0|1"
+    int is_broadcast "0|1"
+    text broadcast_role "role filter or empty"
+    text created_at
+  }
+
+  PlatformAnnouncements {
+    int announcement_id PK
+    text title
+    text body
+    text priority "info|warning|critical"
+    text created_at
+    text expires_at "nullable"
+    int is_active "0|1"
+  }
+
+  ServiceRequests {
+    int request_id PK
+    int org_id FK
+    int company_id FK
+    int extinguisher_id FK
+    text requested_by "username"
+    text request_type "Service/Repair|Recharge|Parts|Other"
+    text part_number "optional"
+    int quantity
+    text vendor "optional"
+    real estimated_cost
+    text notes
+    text status "Pending|In Progress|Fulfilled|Rejected"
+    text admin_notes
+    text created_at
+    text updated_at
+  }
+
   PlatformSettings {
     text key PK
     text value
@@ -143,6 +184,14 @@ erDiagram
   Extinguishers ||--o{ Assignments : "targeted_by"
   Extinguishers ||--o{ Reports : "inspected_in"
   Extinguishers }o--|| Reports : "last_report_id"
+  Extinguishers ||--o{ ServiceRequests : "requested_for"
+
+  Organizations ||--o{ Messages : "scoped_to"
+  Users ||--o{ Messages : "sends"
+  Users ||--o{ Messages : "receives"
+
+  Organizations ||--o{ ServiceRequests : "scoped_to"
+  Companies ||--o{ ServiceRequests : "requested_by_client"
 ```
 
 ---
@@ -321,12 +370,12 @@ flowchart TB
   end
 
   subgraph Server["Server Layer"]
-    Flask["Flask REST API\nserver.py\n55+ endpoints"]
+    Flask["Flask REST API\nserver.py\n58+ endpoints"]
     Static["Static File Server\n/ and /app and /uploads"]
   end
 
   subgraph Data["Data Layer"]
-    SQLite["SQLite Database\nFireWatch.db\n9 tables"]
+    SQLite["SQLite Database\nFireWatch.db\n12 tables"]
     Uploads["File Storage\nsrc/uploads/"]
   end
 
