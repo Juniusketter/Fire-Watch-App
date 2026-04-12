@@ -12676,49 +12676,376 @@ function _getCurrentFloor() {
   }
 })();
 
-// ── Language Toggle (EN/ES — Sprint 5) ────────────────────────────────────
-// translations{} maps data-key attribute values to display strings per locale.
-// To translate a UI element, add data-key="keyName" to the HTML tag and add
-// the matching key to both en{} and es{} below.
-const translations = {
-  en: {
-    // example: greeting: "Welcome"
-  },
-  es: {
-    // example: greeting: "Bienvenido"
-  }
+// ══════════════════════════════════════════════════════════════════════════════
+// LANGUAGE TOGGLE — EN / ES  (Sprint 5)
+// Built from the team translation dictionary (Lillian, Quinci, Rafael)
+// ══════════════════════════════════════════════════════════════════════════════
+
+const FW_ES = {
+  "— provided by your organization's administrator": "— proporcionado por el administrador de su organización",
+  "— Select —": "Seleccion",
+  "— Select building —": "Seleccion de Edificio",
+  "— select building —": "Seleccion de Edificio",
+  "— Select building first —": "Seleccione edifico primero",
+  "— Select company —": "Seleccione Compañia",
+  "— Select company first —": "Seleccione Compañia primero",
+  "— Select Floor —": "Seleccione Piso (o nivel)",
+  "— Select floor —": "Seleccione Piso (o nivel)",
+  "— Select Inspector —": "Seleccione Inspector",
+  "— select reason —": "Seleccione Razonamiento",
+  "— Select result —": "Seleccione Resultados",
+  "— Select scope —": "Seleccione Parámetros",
+  "— Select your role —": "— Selecciona tu rol —",
+  "(applied to all assignments)": "Aplicar a todas las tareas",
+  "(if applicable)": "(si corresponde)",
+  "(leave blank to keep current password)": "Dejar en blanco para retener password corriente",
+  "(optional)": "(opcional)",
+  "[ NO NOTIFICATIONS ]": "Ninguna Notificaciones",
+  "% Compliant": "% Cumplimiento",
+  "← Back": "Retroseder",
+  "＋ Add Building": "Añadir Edificio",
+  "＋ Add Company": "Añadir Compañia",
+  "＋ Add Extinguisher ▾": "Añadir Extinguidor",
+  "＋ Add Row": "Añadir Linea",
+  "＋ Add User": "Añadir Usuario",
+  "＋ Bulk Add": "Añadir en masa",
+  "＋ Bulk Assignment": "Añadir tares en masa",
+  "＋ Generate Assignment ▾": "Generar Tarea",
+  "＋ Single Assignment": "Tarea singular",
+  "＋ Single Extinguisher": "Extinguidor singular",
+  "＋ Submit Report": "Presentar Reporte",
+  "⏳ Pending Account Approvals": "Aprobación de Cuenta Pendiente",
+  "● Never inspected": "Nunca se ha inspeccionado",
+  "⚙ Platform": "⚙ Plataforma",
+  "⚙ Platform Admin": "⚙ Administrador de Plataforma",
+  "⚠ LEGAL ACTION — CANNOT BE UNDONE": "ACCIÓN LEGAL - NO SE PUEDE DESHACER",
+  "✎ Edit": "Editar",
+  "✎ Edit Selected": "Editar seleccionado",
+  "✓ Preferences saved": "Guardar preferencias",
+  "✓ Profile saved": "Salvar perfil",
+  "✕ Clear": "Descartar",
+  "✕ Delete": "Borrar",
+  "✕ Delete User": "Borrar Usuario",
+  "✕ Remove photo": "Remover Foto",
+  "⬇ Download Annual Report": "Descargar Reporte Anual",
+  "⬇ Download PNG": "Descargar PNG",
+  "⬇ Download Template": "Descargar modelo",
+  "🌐 All Reports — Entire Organization": "Todos los reportes - De Toda la Organización",
+  "🌐 Entire Organization": "Toda la Organización",
+  "🏗 Building — all extinguishers in a building": "Edificio - todos los extinguidores en un edificio",
+  "🏗 By Building": "Por Edificio",
+  "🏗 This Building": "Este Edificio",
+  "🏢 By Company": "Por Compañia",
+  "🏢 Companies": "Compañias",
+  "🏢 Company — all extinguishers in a company": "Compañia - todos los extinguidores de una compañia",
+  "🏢 Floor — all extinguishers on one floor": "Piso - Todos los Extinguidores del piso",
+  "🏢 This Company": "Estas Compañia",
+  "🏢 This Floor": "Este Piso",
+  "👤 By Inspector": "Por Inspector",
+  "📁 Export File ▾": "Exportar",
+  "📂 Import All Valid Rows": "Importar todas las lineas validas",
+  "📂 Import CSV": "Importar CSV",
+  "📄 Export as PDF": "Exportar en PDF",
+  "📊 Export as CSV": "Exportar en CSV",
+  "📋 Generate Inspection Report (PDF)": "Generar reporte de Inspector",
+  "📋 Generate PDF Report": "Producir Reporte PDF",
+  "📋 Priority Queue": "Ordern de Prioridad",
+  "📐 By Floor": "Por Piso",
+  "📝 Export as Word": "Exportar en Word",
+  "🔒 Auditor Link": "Link para Auditor",
+  "🔲 Print QR Labels ▾": "Imprimir etiqueta QR",
+  "🖨 Print Label": "Imprimir etiqueta",
+  "0 valid": "0 Valido",
+  "0-7 days": "0-7 dias",
+  "16-21 days": "16-21 dias",
+  "22-30+ days": "33-30+ dias",
+  "24 hours": "24 horas",
+  "3rd Party Admin": "Administrador de Terceros",
+  "3rd Party Admin (Subcontractor Supervisor)": "Administrador de Terceros (Supervisor Subcontratista)",
+  "3rd Party Inspector": "Inspector Externo",
+  "3rd Party Inspector (Subcontractor Technician)": "Inspector Externo (Técnico Subcontratista)",
+  "48 hours": "48 horas",
+  "6-Year Service": "Servicio a 6 años",
+  "72 hours": "72 horas",
+  "8-15 days": "8-15 dias",
+  "ABC — Multi-Purpose": "ABC - Uso varido",
+  "About FireWatch": "Acerca de FireWatch",
+  "Access Platform Dashboard": "Panel de Acceso de la Plataforma",
+  "Access/visibility unobstructed": "Accesso/Visibilidad inobstruida",
+  "Account Credentials": "Credenciales de Cuenta",
+  "Account Information": "Información de Cuenta",
+  "Active": "Activo",
+  "Active Only": "Solo Activos",
+  "Active Users": "Usuarios Activos",
+  "Activity Log": "Registro de Actividad",
+  "Add All": "Añadir Todo",
+  "Add Building": "Añadir Edificio",
+  "Add Company": "Añadir Compañia",
+  "Add Extinguisher": "Añadir Extinguidor",
+  "Add New User": "Añadir Usuario nuevo",
+  "Adding 0 of 0…": "Añadiendo 0 de 0…",
+  "Address": "Dirección",
+  "Admin": "Administrador",
+  "Admin Account": "Cuenta de Administrador",
+  "All Assignments": "Todas las tareas",
+  "All Inspectors": "Todos los Inspectores",
+  "All reports": "Todos los reportes",
+  "All Reports (Organization-wide)": "Todos los Reportes (de la Organización)",
+  "All Results": "Todos los resultados",
+  "Announcements": "Anuncios",
+  "Annual Maintenance": "Mantenimiento Anual",
+  "Appearance — Theme": "Apariencia — Tema",
+  "Assign By": "Asignado por",
+  "Assign to Company *": "Asignado a Compañia *",
+  "Assignment": "Tarea",
+  "Assignment *": "Tarea *",
+  "Assignments": "Tareas",
+  "BC — Gas/Electrical": "BC - Gas / Electricidad",
+  "browse files": "Buscar documentos",
+  "Building": "Edificio",
+  "Building *": "Edificio *",
+  "Building Name": "Nombre de Edificio",
+  "Built to track fire extinguisher inspections, assignments, and compliance reporting across multiple user roles in accordance with NFPA standards.": "Diseñado para realizar un seguimiento de las inspecciones, asignaciones e informes de cumplimiento de extintores de incendios en múltiples roles de usuario, de acuerdo con las normas de la NFPA.",
+  "By Extinguisher": "Por Extinguidor",
+  "Camera": "Cámara",
+  "Cancel": "Cancelar",
+  "Change Password": "Cambiar Contraseña",
+  "City": "Ciudad",
+  "Class A — Ordinary Combustibles": "Clase A - Combustibles Ordinarios",
+  "Class B — Flammable Liquids": "Clase B - Líquidos Inflamables",
+  "Class C — Electrical": "Clase C - Eléctrico",
+  "Class D — Combustible Metals": "Clase D - Metales Combustibles",
+  "Class K — Kitchen/Cooking": "Clase K - Cocina",
+  "Client (Building / Facility Manager)": "Cliente (Administrador de Edificios/Instalaciones)",
+  "Client (Facility Manager)": "Cliente (Administrador de Instalaciones)",
+  "Close": "Cerrar",
+  "Cloud Hosting": "Alojamiento en la Nube",
+  "Company": "Compañia",
+  "Company *": "Compañia *",
+  "Company Name": "Nombre de Compañia",
+  "Condemned / Removed": "Condenado / Removido",
+  "Confirm": "Confirmar",
+  "Confirm New Password": "Confirmar Contraseña Nueva",
+  "Confirm Password": "Confirmar Contraseña",
+  "Copy Link": "Copiar Link",
+  "Course": "Curso",
+  "Create Account": "Crear una Cuenta",
+  "Create User": "Crear Usuario",
+  "Create your account. Your registration will be reviewed by your organization's administrator before you can log in.": "Crea tu cuenta. Su registro será revisado por el administrador de su organización antes de que pueda iniciar sesión.",
+  "CSC480B — Computer Science Capstone Project II · National University, San Diego": "CSC480B — Proyecto Final de Ciencias de la Computación II · Universidad Nacional de San Diego",
+  "CSV File": "Archivo CSV",
+  "Current Deficiencies": "Deficiencias Actuales",
+  "Current Password": "Contraseña Actual",
+  "Dark": "Oscuro",
+  "Dashboard": "Panel",
+  "Database": "Base de Datos",
+  "Database & Frontend Developer": "Desarrollador de Bases de Datos y Frontend",
+  "Date": "Fecha",
+  "Date From": "Fecha Inicial",
+  "Date To": "Fecha Final",
+  "Default intervals (in days) used platform-wide for overdue calculations. Changes take effect immediately.": "Se utilizan intervalos predeterminados (en días) en toda la plataforma para los cálculos de vencimiento. Los cambios entran en vigor de inmediato.",
+  "Describe reason": "Describir Razón",
+  "Desktop App": "Aplicación de Escritorio",
+  "Development Team": "Equipo de Desarrollo",
+  "Development Team — Fire Wardens Safety": "Equipo de Desarrollo — Seguridad de los Responsables de Incendios",
+  "DOT Cert Number": "Número de Certificación DOT",
+  "Due Date": "Fecha de Vencimiento",
+  "Email Address": "Dirección de Correo Electrónico",
+  "FireWatch — NFPA Fire Extinguisher Compliance Tracking System": "FireWatch — Sistema de seguimiento del cumplimiento NFPA sobre extintores",
+  "First Name": "Primer Nombre",
+  "Floor": "Piso",
+  "Floor *": "Piso *",
+  "From": "De",
+  "From Date": "Fecha Inicial",
+  "Frontend Developer": "Desarrollador Frontend",
+  "Generate": "Generar",
+  "Generate Assignment": "Generar Tarea",
+  "Generate Auditor Access Link": "Generar Link de Acceso para Auditor",
+  "Generate Link": "Generar Link",
+  "Generate PDF": "Generar PDF",
+  "Generating 0 of 0…": "Generando 0 de 0…",
+  "Has notes": "Tiene Notas",
+  "Has photo": "Tiene Foto",
+  "High Contrast": "Alto Contraste",
+  "I am applying as": "Estoy postulando como",
+  "Importing 0 of 0 …": "Importando 0 de 0…",
+  "Inspection Complete": "Inspección Completada",
+  "Inspector (Primary Technician)": "Inspector (Técnico Primario)",
+  "Instructor": "Instructora",
+  "Last Name": "Apellido",
+  "Light": "Claro",
+  "LIVE SQLITE DATABASE CONNECTION": "CONEXIÓN EN VIVO A LA BASE DE DATOS SQLITE",
+  "LOCAL-FIRST · OFFLINE CAPABLE": "LOCAL PRIMERO · CAPAZ SIN CONEXIÓN",
+  "Login": "Acceso",
+  "Logout": "Cerrar Sesión",
+  "LOGOUT": "CERRAR SESIÓN",
+  "Mobile Phone": "Teléfono Móvil",
+  "MULTI-ORGANIZATION PLATFROM": "PLATAFORMA MULTI-ORGANIZACIÓN",
+  "Navy Blue": "Azul Marino",
+  "New Account": "Nueva Cuenta",
+  "New Organization": "Nueva Organización",
+  "NFPA 10 Inspection Intervals": "NFPA 10 Intervalos de Inspección",
+  "NFPA COMPLIANCE TRACKING SYSTEM": "SISTEMA DE SEGUIMIENTO DE CUMPLIMIENTO NFPA",
+  "Organization Details": "Detalles de la Organización",
+  "Organization ID": "ID de la Organización",
+  "Organization Management": "Gestión de la Organización",
+  "Organization Name": "Nombre de la Organización",
+  "Organization Overview": "Descripción General de la Organización",
+  "Organization Pending Approval": "Organización Pendiente de Aprobación",
+  "Organizations": "Organizaciones",
+  "Password": "Contraseña",
+  "Personal Information": "Información Personal",
+  "Phone": "Teléfono",
+  "Platform": "Plataforma",
+  "PLATFORM ADMIN": "ADMINISTRADOR DE PLATAFORMA",
+  "Platform Owner": "Propietario de la Plataforma",
+  "Platform Password": "Contraseña de la Plataforma",
+  "Platform Settings": "Configuración de la Plataforma",
+  "Project Manager & Backend Lead": "Gerente de Proyecto y Líder de Backend",
+  "Purpose": "Objetivo",
+  "Python Flask · REST API · SHA-256 Authentication": "Python Flask · REST API · Autenticación SHA-256",
+  "Qt Creator 6.10.2 · C++ · MinGW 64-bit": "Qt Creator 6.10.2 · C++ · MinGW 64 bits",
+  "Register Org": "Registrar Organización",
+  "Register Organization": "Registrar Organización",
+  "Render.com · Starter Plan · Auto-deploy via GitHub": "Render.com · Plan Básico · Implementación automática via GitHub",
+  "Repository": "Repositorio",
+  "Require Approval for New Organizations": "Requerir Aprobación para Nuevas Organizaciones",
+  "Role & Organization": "Rol y Organización",
+  "ROLE-BASED ACCESS CONTROL": "CONTROL DE ACCESO BASADO EN ROLES",
+  "Save Intervals": "Guardar Intervalos",
+  "Saved!": "¡Guardado!",
+  "Settings": "Ajustes",
+  "Sign In": "Iniciar Sesión",
+  "Sign Up": "Registrarse",
+  "SQLite — FireWatch.db (shared with Qt desktop app)": "SQLite — FireWatch.db (compartido con la aplicación Qt)",
+  "State": "Estado",
+  "State License / Cert No.": "Licencia Estatal / Número de Certificación",
+  "Subcontracting Company Name": "Nombre de la Empresa Subcontratista",
+  "SuperAdmin": "SuperAdministrador",
+  "Tech Stack": "Pila Tecnológica",
+  "Theme": "Tema",
+  "Username": "Nombre de Usuario",
+  "Web Frontend": "Interfaz Web",
+  "When ON, new orgs start as \"pending.\" When OFF, auto-approved.": "Cuando está ACTIVADO, las nuevas organizaciones aparecen como \"pendientes\". Cuando está DESACTIVADO, se aprueban automáticamente.",
+  "Your organization has been registered and is awaiting approval from the FireWatch platform team. You'll be able to access the full dashboard once approved.": "Su organización ha sido registrada y está pendiente de aprobación. Podrá acceder al panel de control completo una vez aprobado."
 };
 
-function changeLanguage(lang) {
-  document.querySelectorAll('[data-key]').forEach(element => {
-    const key = element.getAttribute('data-key');
-    if (translations[lang] && translations[lang][key] !== undefined) {
-      element.innerText = translations[lang][key];
+// Build reverse map (ES → EN) for restoring when toggling back to English
+const FW_ES_REV = {};
+for (const [en, es] of Object.entries(FW_ES)) FW_ES_REV[es] = en;
+
+// Current language state
+window.currentLang = 'en';
+
+// Helper: translate a string (used in dynamic JS-generated HTML)
+window._t = (text) => (window.currentLang === 'es' && FW_ES[text]) ? FW_ES[text] : text;
+
+// ── DOM Text Walker ─────────────────────────────────────────────────────────
+// Walks all text nodes in the page and replaces content using the map.
+// Skips script/style/input/textarea nodes.
+// Stores originals on each node so toggling back is clean.
+const _FW_SKIP_TAGS = new Set(['SCRIPT','STYLE','INPUT','TEXTAREA','SELECT']);
+
+function _walkTextNodes(node, map) {
+  if (node.nodeType === Node.TEXT_NODE) {
+    const trimmed = node.textContent.trim();
+    if (trimmed && map[trimmed] !== undefined) {
+      if (node._fw_orig === undefined) node._fw_orig = node.textContent;
+      node.textContent = node.textContent.replace(trimmed, map[trimmed]);
     }
-  });
-  document.documentElement.lang = lang;
-  try { localStorage.setItem('fw_lang', lang); } catch(e) {}
+    return;
+  }
+  if (node.nodeType !== Node.ELEMENT_NODE) return;
+  if (_FW_SKIP_TAGS.has(node.tagName)) return;
+  node.childNodes.forEach(c => _walkTextNodes(c, map));
 }
 
+function _restoreTextNodes(node) {
+  if (node.nodeType === Node.TEXT_NODE) {
+    if (node._fw_orig !== undefined) {
+      node.textContent = node._fw_orig;
+      delete node._fw_orig;
+    }
+    return;
+  }
+  if (node.nodeType !== Node.ELEMENT_NODE) return;
+  if (_FW_SKIP_TAGS.has(node.tagName)) return;
+  node.childNodes.forEach(c => _restoreTextNodes(c));
+}
+
+// Translate <option> elements and <input placeholder> attributes
+function _translateAttrs(lang) {
+  if (lang === 'es') {
+    document.querySelectorAll('option').forEach(el => {
+      const t = el.textContent.trim();
+      if (FW_ES[t]) { if (!el._fw_orig_opt) el._fw_orig_opt = el.textContent; el.textContent = FW_ES[t]; }
+    });
+    document.querySelectorAll('[placeholder]').forEach(el => {
+      const p = el.placeholder.trim();
+      if (FW_ES[p]) { if (!el._fw_orig_ph) el._fw_orig_ph = el.placeholder; el.placeholder = FW_ES[p]; }
+    });
+    document.querySelectorAll('[title]').forEach(el => {
+      const t = el.title.trim();
+      if (FW_ES[t]) { if (!el._fw_orig_title) el._fw_orig_title = el.title; el.title = FW_ES[t]; }
+    });
+  } else {
+    document.querySelectorAll('option').forEach(el => { if (el._fw_orig_opt) { el.textContent = el._fw_orig_opt; delete el._fw_orig_opt; }});
+    document.querySelectorAll('[placeholder]').forEach(el => { if (el._fw_orig_ph) { el.placeholder = el._fw_orig_ph; delete el._fw_orig_ph; }});
+    document.querySelectorAll('[title]').forEach(el => { if (el._fw_orig_title) { el.title = el._fw_orig_title; delete el._fw_orig_title; }});
+  }
+}
+
+// ── Main changeLanguage function ────────────────────────────────────────────
+function changeLanguage(lang) {
+  const prev = window.currentLang;
+  window.currentLang = lang;
+  document.documentElement.lang = lang;
+  try { localStorage.setItem('fw_lang', lang); } catch(e) {}
+
+  if (lang === 'es') {
+    _walkTextNodes(document.body, FW_ES);
+    _translateAttrs('es');
+  } else {
+    _restoreTextNodes(document.body);
+    _translateAttrs('en');
+  }
+
+  // Re-render dynamic content in the currently active panel so it picks up the new language
+  try {
+    const activePanel = document.querySelector('.panel.active');
+    if (activePanel) {
+      const id = activePanel.id;
+      if (id === 'panelReports'         && typeof applyReportFilters  === 'function') applyReportFilters();
+      if (id === 'panelExtinguishers'   && typeof loadExtinguishers   === 'function') loadExtinguishers();
+      if (id === 'panelAssignments'     && typeof loadAssignments     === 'function') loadAssignments();
+      if (id === 'panelUsers'           && typeof loadUsers           === 'function') loadUsers();
+      if (id === 'panelServiceRequests' && typeof renderServiceRequestsTable === 'function') renderServiceRequestsTable();
+      if (id === 'panelDeficiencies'    && typeof renderClientDeficiencies   === 'function') renderClientDeficiencies();
+    }
+    // Re-render sidebar nav labels
+    if (typeof buildTabs === 'function') {
+      // Re-translate the tab bar labels
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        const orig = btn._fw_tab_orig || btn.textContent.trim();
+        btn._fw_tab_orig = orig;
+        btn.textContent = (lang === 'es' && FW_ES[orig]) ? FW_ES[orig] : orig;
+      });
+    }
+  } catch(e) { /* silent — UI still works, just dynamic content stays in English */ }
+}
+
+// ── Init on page load ───────────────────────────────────────────────────────
 const languageSelect = document.getElementById('languageSelect');
 if (languageSelect) {
-  // Restore saved preference on load
   const savedLang = (function(){ try { return localStorage.getItem('fw_lang'); } catch(e){ return null; } })();
-  if (savedLang && (savedLang === 'en' || savedLang === 'es')) {
+  if (savedLang === 'en' || savedLang === 'es') {
     languageSelect.value = savedLang;
+    if (savedLang === 'es') {
+      // Defer so the DOM is fully rendered first
+      requestAnimationFrame(() => changeLanguage('es'));
+    }
   }
-  changeLanguage(languageSelect.value);
-
-  languageSelect.addEventListener('change', (event) => {
-    const lang = event.target.value;
-    changeLanguage(lang);
-    // Notify backend (optional — for server-side preference storage)
-    fetch('/api/changeLanguage', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ language: lang })
-    }).catch(() => { /* backend optional for this feature */ });
-  });
+  languageSelect.addEventListener('change', e => changeLanguage(e.target.value));
 }
 
 // ════════════════════════════════════════════════════════════════════════════
