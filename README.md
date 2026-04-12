@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # 🔥 FireWatch — NFPA 10 Fire Extinguisher Compliance Tracking
 
 **FireWatch** is a full-stack multi-tenant SaaS platform for managing NFPA 10 fire extinguisher compliance across organizations, buildings, and inspection teams.
@@ -131,6 +132,25 @@ Platform Admin password: `FireWatch2026!` (enter on the Platform Admin login scr
 
 ## 📁 Project Structure
 
+=======
+# Firewatch UI Language Toggle (Qt / C++)
+
+## Files
+- TranslationStore.h/.cpp: JSON-based translation loader
+- Translator.h/.cpp: Applies translations recursively to the UI
+
+## How to Use
+
+1. Add trKey to widgets:
+```
+ui->loginButton->setProperty("trKey", "lIn");
+```
+
+2. Toggle language:
+```
+TranslationStore::loadLanguage("es");
+applyTranslations(this);
+>>>>>>> a21d7c6250a2ed70166c07de5177741e9b442360
 ```
 Fire-Watch-App/
 ├── server.py                        # Flask backend — 41 REST endpoints

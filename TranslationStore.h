@@ -4,8 +4,8 @@
 
 class TranslationStore {
 public:
-    static bool loadLanguage(const QString& langCode);
-    static QString translate(const QString& key);
+    static bool loadLanguage(const QString& lang);
+    static QString t(const QString& key);
 
 private:
     static QMap<QString, QString> translations;
