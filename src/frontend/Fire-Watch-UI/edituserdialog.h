@@ -52,6 +52,12 @@ public:
         m_phone     = new QLineEdit(this);
         m_phone->setPlaceholderText("Phone number");
 
+        m_certNumber = new QLineEdit(this);
+        m_certNumber->setPlaceholderText("Inspector certification number");
+
+        m_subcontractorCompany = new QLineEdit(this);
+        m_subcontractorCompany->setPlaceholderText("Subcontractor company name");
+
         // ── Optional password reset section ──────────────────────────────
         QGroupBox *pwGroup = new QGroupBox("Reset Password (optional)", this);
         m_resetPassword = new QCheckBox("Set a new password", pwGroup);
@@ -89,8 +95,10 @@ public:
         form->addRow("Role",       m_role);
         form->addRow("First Name", m_firstName);
         form->addRow("Last Name",  m_lastName);
-        form->addRow("Email",      m_email);
-        form->addRow("Phone",      m_phone);
+        form->addRow("Email",               m_email);
+        form->addRow("Phone",               m_phone);
+        form->addRow("Cert Number",         m_certNumber);
+        form->addRow("Subcontractor Co.",   m_subcontractorCompany);
 
         QDialogButtonBox *buttons = new QDialogButtonBox(
             QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
@@ -132,16 +140,20 @@ public:
     void setFirstName(const QString &v) { m_firstName->setText(v); }
     void setLastName(const QString &v)  { m_lastName->setText(v); }
     void setEmail(const QString &v)     { m_email->setText(v); }
-    void setPhone(const QString &v)     { m_phone->setText(v); }
+    void setPhone(const QString &v)           { m_phone->setText(v); }
+    void setCertNumber(const QString &v)      { m_certNumber->setText(v); }
+    void setSubcontractorCompany(const QString &v) { m_subcontractorCompany->setText(v); }
 
     // ── Getters ───────────────────────────────────────────────────────────
     QString role()            const { return m_role->currentData().toString(); }
     QString firstName()       const { return m_firstName->text().trimmed(); }
     QString lastName()        const { return m_lastName->text().trimmed(); }
     QString email()           const { return m_email->text().trimmed(); }
-    QString phone()           const { return m_phone->text().trimmed(); }
-    bool    resetPassword()   const { return m_resetPassword->isChecked(); }
-    QString newPassword()     const { return m_newPassword->text(); }
+    QString phone()                const { return m_phone->text().trimmed(); }
+    QString certNumber()           const { return m_certNumber->text().trimmed(); }
+    QString subcontractorCompany() const { return m_subcontractorCompany->text().trimmed(); }
+    bool    resetPassword()        const { return m_resetPassword->isChecked(); }
+    QString newPassword()          const { return m_newPassword->text(); }
 
 private:
     QLabel    *m_usernameDisplay;
@@ -150,6 +162,8 @@ private:
     QLineEdit *m_lastName;
     QLineEdit *m_email;
     QLineEdit *m_phone;
+    QLineEdit *m_certNumber;
+    QLineEdit *m_subcontractorCompany;
     QCheckBox *m_resetPassword;
     QLineEdit *m_newPassword;
     QLineEdit *m_confirmPassword;

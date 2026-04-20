@@ -41,6 +41,7 @@ public:
         m_role->addItem("Admin",               "Admin");
         m_role->addItem("3rd Party Admin",     "3rd_Party_Admin");
         m_role->addItem("3rd Party Inspector", "3rd_Party_Inspector");
+        m_role->addItem("Client",              "Client");
 
         m_errorLabel = new QLabel(this);
         m_errorLabel->setStyleSheet("color: #c1121f; font-size: 11px;");

@@ -31,6 +31,19 @@ public:
         m_assignment    = new QComboBox(this);
         m_extinguisher  = new QComboBox(this);
 
+        m_serviceType = new QComboBox(this);
+        m_serviceType->addItem("Routine Inspection", "Routine Inspection");
+        m_serviceType->addItem("Annual",             "Annual");
+        m_serviceType->addItem("6-Year",             "6-Year");
+        m_serviceType->addItem("Hydrostatic",        "Hydrostatic");
+        m_serviceType->addItem("Replacement",        "Replacement");
+
+        m_result = new QComboBox(this);
+        m_result->addItem("Pass",          "Pass");
+        m_result->addItem("Fail",          "Fail");
+        m_result->addItem("Needs Repair",  "Needs Repair");
+        m_result->addItem("Conditional",   "Conditional");
+
         m_inspectionDate = new QDateEdit(this);
         m_inspectionDate->setCalendarPopup(true);
         m_inspectionDate->setDate(QDate::currentDate());
@@ -44,6 +57,8 @@ public:
         form->setLabelAlignment(Qt::AlignRight);
         form->addRow("Assignment *",      m_assignment);
         form->addRow("Extinguisher *",    m_extinguisher);
+        form->addRow("Service Type *",    m_serviceType);
+        form->addRow("Result *",          m_result);
         form->addRow("Inspection Date",   m_inspectionDate);
         form->addRow("Notes",             m_notes);
 
@@ -101,12 +116,16 @@ public:
 
     int     assignmentId()    const { return m_assignment->currentData().toInt(); }
     int     extinguisherId()  const { return m_extinguisher->currentData().toInt(); }
+    QString serviceType()     const { return m_serviceType->currentData().toString(); }
+    QString result()          const { return m_result->currentData().toString(); }
     QString inspectionDate()  const { return m_inspectionDate->date().toString(Qt::ISODate); }
     QString notes()           const { return m_notes->toPlainText().trimmed(); }
 
 private:
     QComboBox  *m_assignment;
     QComboBox  *m_extinguisher;
+    QComboBox  *m_serviceType;
+    QComboBox  *m_result;
     QDateEdit  *m_inspectionDate;
     QTextEdit  *m_notes;
 };

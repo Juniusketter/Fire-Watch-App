@@ -10,6 +10,7 @@
 #include <QDialog>
 #include <QComboBox>
 #include <QDateEdit>
+#include <QLineEdit>
 #include <QFormLayout>
 #include <QVBoxLayout>
 #include <QDialogButtonBox>
@@ -34,11 +35,15 @@ public:
         m_dueDate->setDate(QDate::currentDate().addDays(7));
         m_dueDate->setDisplayFormat("yyyy-MM-dd");
 
+        m_notes = new QLineEdit(this);
+        m_notes->setPlaceholderText("Optional notes for the inspector...");
+
         QFormLayout *form = new QFormLayout();
         form->setLabelAlignment(Qt::AlignRight);
         form->addRow("Extinguisher *", m_extinguisher);
         form->addRow("Inspector *",    m_inspector);
         form->addRow("Due Date",       m_dueDate);
+        form->addRow("Notes",          m_notes);
 
         QDialogButtonBox *buttons = new QDialogButtonBox(
             QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
@@ -76,14 +81,16 @@ public:
             m_inspector->addItem(p.second, p.first);
     }
 
-    int    extinguisherId() const { return m_extinguisher->currentData().toInt(); }
-    int    inspectorId()    const { return m_inspector->currentData().toInt(); }
-    QString dueDate()       const { return m_dueDate->date().toString(Qt::ISODate); }
+    int     extinguisherId() const { return m_extinguisher->currentData().toInt(); }
+    int     inspectorId()    const { return m_inspector->currentData().toInt(); }
+    QString dueDate()        const { return m_dueDate->date().toString(Qt::ISODate); }
+    QString notes()          const { return m_notes->text().trimmed(); }
 
 private:
     QComboBox *m_extinguisher;
     QComboBox *m_inspector;
     QDateEdit *m_dueDate;
+    QLineEdit *m_notes;
 };
 
 #endif // ASSIGNDIALOG_H

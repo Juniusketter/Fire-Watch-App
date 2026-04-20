@@ -42,3 +42,26 @@ src/uploads/*.jpeg
 
 # Don't commit standalone databases at root
 /database.db
+
+# Compiled binaries
+*.exe
+*.dll
+*.so
+*.o
+*.obj
+
+# Qt build tooling
+.ninja_log
+.ninja_deps
+*.user
+.qtc_clangd/
+compile_commands.json
+
+# Logs
+*.log
+
+# Node
+node_modules/
+
+# Zip deliverables (archive externally)
+*.zip

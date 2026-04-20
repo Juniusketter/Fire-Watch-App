@@ -61,7 +61,9 @@ private:
     bool isAdmin()       const { return m_role == "Admin"; }
     bool isInv()         const { return m_role == "Inspector"; }
     bool isThirdPAdmin() const { return m_role == "3rd_Party_Admin"; }
-    bool isThirdPInv()   const { return m_role == "3rd_Party_Inspector"; }
+    bool isThirdPInv()    const { return m_role == "3rd_Party_Inspector"; }
+    bool isClient()       const { return m_role == "Client"; }
+    bool isPlatformAdmin() const { return m_role == "Platform_Admin"; }
 
     // ── Tab setup ─────────────────────────────────────────────────────────
     void setupTabsForRole();

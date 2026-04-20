@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # 🔥 FireWatch — NFPA 10 Fire Extinguisher Compliance Tracking
 
 **FireWatch** is a full-stack multi-tenant SaaS platform for managing NFPA 10 fire extinguisher compliance across organizations, buildings, and inspection teams.
@@ -132,25 +131,6 @@ Platform Admin password: `FireWatch2026!` (enter on the Platform Admin login scr
 
 ## 📁 Project Structure
 
-=======
-# Firewatch UI Language Toggle (Qt / C++)
-
-## Files
-- TranslationStore.h/.cpp: JSON-based translation loader
-- Translator.h/.cpp: Applies translations recursively to the UI
-
-## How to Use
-
-1. Add trKey to widgets:
-```
-ui->loginButton->setProperty("trKey", "lIn");
-```
-
-2. Toggle language:
-```
-TranslationStore::loadLanguage("es");
-applyTranslations(this);
->>>>>>> a21d7c6250a2ed70166c07de5177741e9b442360
 ```
 Fire-Watch-App/
 ├── server.py                        # Flask backend — 41 REST endpoints
@@ -158,17 +138,11 @@ Fire-Watch-App/
 ├── README.md
 ├── src/
 │   ├── database/
-│   │   └── FireWatch.db             # SQLite database
+│   │   └── FireWatch.db             # SQLite database (9-table schema)
 │   ├── frontend/
 │   │   └── Fire-Watch-UI/
-│   │       └── index.html           # Full SPA — HTML/CSS/JS (~14,000+ lines)
-│   ├── backend/                     # Qt/C++ source files
-│   │   ├── main.cpp
-│   │   ├── User.cpp / User.h
-│   │   ├── Admin.cpp / Admin.h
-│   │   ├── dashboard.cpp / dashboard.h
-│   │   ├── mainwindow.cpp / mainwindow.h
-│   │   └── ... (dialogs, role classes)
+│   │       └── index.html           # Full SPA — HTML/CSS/JS (~15,000+ lines)
+│   │       └── *.h / *.cpp          # Qt desktop app source (C++/Qt Widgets)
 │   └── uploads/                     # Inspection photo storage (ephemeral on Render)
 └── docs/
     └── erd/                         # Mermaid UML / ERD diagrams

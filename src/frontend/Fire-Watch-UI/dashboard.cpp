@@ -102,12 +102,21 @@ void Dashboard::setupTabsForRole()
         loadReports();
         ui->tabWidget->setTabText(0, "My Assignments");
     }
+    else if (isClient()) {
+        setWindowTitle("FireWatch — Client Dashboard");
+        ui->tabWidget->removeTab(3);
+        ui->tabWidget->removeTab(2);
+        ui->tabWidget->removeTab(1);
+        loadExtinguishers();
+        ui->tabWidget->setTabText(0, "My Extinguishers");
+    }
     else {
+        // Fallback — show extinguishers read-only
         setWindowTitle("FireWatch — Dashboard");
         ui->tabWidget->removeTab(3);
         ui->tabWidget->removeTab(2);
-        ui->tabWidget->removeTab(0);
-        loadAssignments();
+        ui->tabWidget->removeTab(1);
+        loadExtinguishers();
     }
 }
 
@@ -278,6 +287,7 @@ void Dashboard::onRefreshClicked()
     else if (isInv())         { loadAssignments(); loadReports(); }
     else if (isThirdPAdmin()) { loadAssignments(); loadUsers(); }
     else if (isThirdPInv())   { loadAssignments(); }
+    else if (isClient())      { loadExtinguishers(); }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -507,13 +517,14 @@ void Dashboard::onGenerateAssignment()
     // Write assignment to DB
     QSqlQuery q(m_db);
     q.prepare(
-        "INSERT INTO Assignments (admin_id, inspector_id, extinguisher_id, due_date, status, org_id) "
-        "VALUES (:admin, :inspector, :ext, :due, 'Pending Inspection', :orgId)"
+        "INSERT INTO Assignments (admin_id, inspector_id, extinguisher_id, due_date, status, notes, org_id) "
+        "VALUES (:admin, :inspector, :ext, :due, 'Pending Inspection', :notes, :orgId)"
     );
     q.bindValue(":admin",     m_userId);
     q.bindValue(":inspector", dlg.inspectorId());
     q.bindValue(":ext",       dlg.extinguisherId());
     q.bindValue(":due",       dlg.dueDate());
+    q.bindValue(":notes",     dlg.notes().isEmpty() ? QVariant(QVariant::String) : dlg.notes());
     q.bindValue(":orgId",     m_orgId);
 
     if (q.exec()) {
@@ -588,13 +599,17 @@ void Dashboard::onGenerateReport()
     // Write report to DB
     QSqlQuery q(m_db);
     q.prepare(
-        "INSERT INTO Reports (extinguisher_id, inspector_id, inspection_date, notes) "
-        "VALUES (:ext, :inspector, :date, :notes)"
+        "INSERT INTO Reports "
+        "(extinguisher_id, inspector_id, inspection_date, service_type, inspection_result, notes, org_id) "
+        "VALUES (:ext, :inspector, :date, :serviceType, :result, :notes, :orgId)"
     );
-    q.bindValue(":ext",       dlg.extinguisherId());
-    q.bindValue(":inspector", m_userId);
-    q.bindValue(":date",      dlg.inspectionDate());
-    q.bindValue(":notes",     dlg.notes());
+    q.bindValue(":ext",         dlg.extinguisherId());
+    q.bindValue(":inspector",   m_userId);
+    q.bindValue(":date",        dlg.inspectionDate());
+    q.bindValue(":serviceType", dlg.serviceType());
+    q.bindValue(":result",      dlg.result());
+    q.bindValue(":notes",       dlg.notes().isEmpty() ? QVariant(QVariant::String) : dlg.notes());
+    q.bindValue(":orgId",       m_orgId);
 
     if (!q.exec()) {
         QMessageBox::critical(this, "Database Error",
@@ -676,6 +691,13 @@ void Dashboard::updateStats()
         ui->frameUsers->setVisible(false);
         ui->statAssignments->setText(QString::number(count("SELECT COUNT(*) FROM Assignments WHERE inspector_id = :userId AND org_id = :orgId")));
         ui->lblAssign->setText("My Assignments");
+    }
+    else if (isClient()) {
+        ui->frameAssign->setVisible(false);
+        ui->frameReports->setVisible(false);
+        ui->frameUsers->setVisible(false);
+        ui->statExtinguishers->setText(QString::number(count("SELECT COUNT(*) FROM Extinguishers WHERE org_id = :orgId")));
+        ui->lblExt->setText("My Extinguishers");
     }
 }
 
@@ -903,11 +925,12 @@ void Dashboard::onAddUser()
 
     QSqlQuery q(m_db);
     q.prepare(
-        "INSERT INTO Users (username, password_hash, role) VALUES (:u, :p, :r)"
+        "INSERT INTO Users (username, password_hash, role, org_id) VALUES (:u, :p, :r, :orgId)"
     );
-    q.bindValue(":u", dlg.username());
-    q.bindValue(":p", hashedPw);
-    q.bindValue(":r", dlg.role());
+    q.bindValue(":u",     dlg.username());
+    q.bindValue(":p",     hashedPw);
+    q.bindValue(":r",     dlg.role());
+    q.bindValue(":orgId", m_orgId);
 
     if (q.exec()) {
         QMessageBox::information(this, "User Created",
@@ -951,7 +974,8 @@ void Dashboard::onEditUser()
     }
 
     QSqlQuery fetch(m_db);
-    fetch.prepare("SELECT username, role, first_name, last_name, email, phone "
+    fetch.prepare("SELECT username, role, first_name, last_name, email, phone, "
+                  "cert_number, subcontractor_company_name "
                   "FROM Users WHERE user_id = :id");
     fetch.bindValue(":id", userId);
     fetch.exec();
@@ -964,20 +988,25 @@ void Dashboard::onEditUser()
     dlg.setLastName(fetch.value("last_name").toString());
     dlg.setEmail(fetch.value("email").toString());
     dlg.setPhone(fetch.value("phone").toString());
+    dlg.setCertNumber(fetch.value("cert_number").toString());
+    dlg.setSubcontractorCompany(fetch.value("subcontractor_company_name").toString());
 
     if (dlg.exec() != QDialog::Accepted) return;
 
     QSqlQuery q(m_db);
     q.prepare(
         "UPDATE Users SET role = :role, first_name = :fn, last_name = :ln, "
-        "email = :email, phone = :phone "
+        "email = :email, phone = :phone, "
+        "cert_number = :cert, subcontractor_company_name = :sub "
         "WHERE user_id = :id"
     );
     q.bindValue(":role",  dlg.role());
-    q.bindValue(":fn",    dlg.firstName().isEmpty() ? QVariant(QVariant::String) : dlg.firstName());
-    q.bindValue(":ln",    dlg.lastName().isEmpty()  ? QVariant(QVariant::String) : dlg.lastName());
-    q.bindValue(":email", dlg.email().isEmpty()     ? QVariant(QVariant::String) : dlg.email());
-    q.bindValue(":phone", dlg.phone().isEmpty()     ? QVariant(QVariant::String) : dlg.phone());
+    q.bindValue(":fn",    dlg.firstName().isEmpty()            ? QVariant(QVariant::String) : dlg.firstName());
+    q.bindValue(":ln",    dlg.lastName().isEmpty()             ? QVariant(QVariant::String) : dlg.lastName());
+    q.bindValue(":email", dlg.email().isEmpty()                ? QVariant(QVariant::String) : dlg.email());
+    q.bindValue(":phone", dlg.phone().isEmpty()                ? QVariant(QVariant::String) : dlg.phone());
+    q.bindValue(":cert",  dlg.certNumber().isEmpty()           ? QVariant(QVariant::String) : dlg.certNumber());
+    q.bindValue(":sub",   dlg.subcontractorCompany().isEmpty() ? QVariant(QVariant::String) : dlg.subcontractorCompany());
     q.bindValue(":id",    userId);
 
     if (!q.exec()) {

@@ -1,5 +1,5 @@
 # FireWatch — UML Diagrams
-**Updated:** April 12, 2026
+**Updated:** April 20, 2026
 **Matches:** Sprint 5 final production state (`server.py` + `FireWatch.db` + Qt desktop app)
 
 ---
@@ -26,6 +26,12 @@ erDiagram
     text username "UNIQUE"
     text password_hash "SHA-256 client-side"
     text role "Admin|Inspector|3rd_Party_Admin|3rd_Party_Inspector|Client"
+    text first_name
+    text last_name
+    text email
+    text phone
+    text cert_number "Inspector certification number"
+    text subcontractor_company_name "3rd-party affiliation"
     text preferences "JSON blob"
     int org_id FK
     text account_status "pending|approved|suspended|denied"
@@ -86,7 +92,7 @@ erDiagram
     int admin_id FK
     int inspector_id FK
     int extinguisher_id FK
-    text status "Pending|In Progress|Complete"
+    text status "Pending Inspection|In Progress|Inspection Complete"
     text notes
     text due_date
     int org_id FK
@@ -100,7 +106,8 @@ erDiagram
     text photo_path
     text notes
     int org_id FK
-    text service_type "routine|annual|6year|hydro|recharge|condemned"
+    text service_type "Routine Inspection|Annual|6-Year|Hydrostatic|Replacement"
+    text inspection_result "Pass|Fail|Needs Repair|Conditional"
     int chk_mounted "NFPA 7.2.2 - properly mounted"
     int chk_access "NFPA 7.2.2 - unobstructed access"
     int chk_pressure "NFPA 7.2.2 - pressure in range"
@@ -109,7 +116,8 @@ erDiagram
     int chk_nozzle "NFPA 7.2.2 - nozzle/hose clear"
     int chk_label "NFPA 7.2.2 - label legible"
     int chk_weight "NFPA 7.2.2 - weight acceptable"
-    text inspection_result "Pass|Fail|Needs Service"
+    text is_voided "0|1"
+    text void_reason
   }
 
   Messages {
@@ -200,6 +208,7 @@ erDiagram
 
 ```mermaid
 classDiagram
+  %% ── Legacy role stub classes (Sprint 1–2 scaffolding, not used by Dashboard) ──
   class User {
     -string username
     -string password
@@ -218,39 +227,30 @@ classDiagram
     -string adminID
     -int DBAccess
     +Admin()
-    +Admin(u, p, c, id, access)
     +accessDB(access) bool
     +changeDB(access, action, field) bool
-    +viewDB(access)
-    +generateAssignment(locations, dueDate, invsList, thirdPCompanyName) Assignment
+    +generateAssignment(locs, dueDate, invsList, company) Assignment
     +getAdminID() string
-    +setAdminID(id)
   }
 
   class Inv {
     -string invID
     +Inv()
-    +Inv(u, p, c, id)
     +generateReport(extId, assignId, date, notes) bool
     +getInvID() string
-    +setInvID(id)
   }
 
   class ThirdPAdmin {
     -string thirdPAdminID
     +ThirdPAdmin()
-    +ThirdPAdmin(u, p, c, id)
     +getThirdPAdminID() string
-    +setThirdPAdminID(id)
   }
 
   class ThirdPInv {
     -string thirdPInvID
     +ThirdPInv()
-    +ThirdPInv(u, p, c, id)
     +generateThirdPReport(extId, assignId, date, notes) bool
     +getThirdPInvID() string
-    +setThirdPInvID(id)
   }
 
   class Assignment {
@@ -263,9 +263,9 @@ classDiagram
     -string thirdPCompanyName
     +Assignment()
     +Assignment(numExt, numInv, id, locs, date, invs)
-    +Assignment(numExt, numInv, id, locs, date, company)
   }
 
+  %% ── Active Qt Widgets application classes ──
   class MainWindow {
     -Ui_MainWindow ui
     -int m_userId
@@ -281,48 +281,139 @@ classDiagram
     -int m_userId
     -QString m_username
     -QString m_role
+    -int m_orgId
     -QSqlDatabase m_db
-    +Dashboard(userId, username, role, db, parent)
-    +setupTabsForRole()
-    +setupExtinguisherToolbar()
-    +setupAssignmentToolbar()
-    +setupReportToolbar()
-    +setupReportExportToolbar()
-    +setupUserToolbar()
-    +loadExtinguishers()
-    +loadAssignments()
-    +loadReports()
-    +loadUsers()
-    +onAddExtinguisher()
-    +onEditExtinguisher()
-    +onDeleteExtinguisher()
-    +onGenerateAssignment()
-    +onGenerateReport()
-    +onAddUser()
-    +onExportReports()
+    +Dashboard(userId, username, role, orgId, db, parent)
+    +~Dashboard()
+    -isAdmin() bool
+    -isInv() bool
+    -isThirdPAdmin() bool
+    -isThirdPInv() bool
+    -isClient() bool
+    -isPlatformAdmin() bool
+    -setupTabsForRole()
+    -setupExtinguisherToolbar()
+    -setupAssignmentToolbar()
+    -setupReportToolbar()
+    -setupReportExportToolbar()
+    -setupUserToolbar()
+    -loadExtinguishers()
+    -loadAssignments()
+    -loadReports()
+    -loadUsers()
+    -updateStats()
+    -onLogoutClicked()
+    -onRefreshClicked()
+    -onAddExtinguisher()
+    -onEditExtinguisher()
+    -onDeleteExtinguisher()
+    -onGenerateAssignment()
+    -onGenerateReport()
+    -onAddUser()
+    -onEditUser()
+    -onDeleteUser()
+    -onExportReports()
     -checkDueDateAlerts()
+    -selectedExtinguisherId() int
+    -selectedUserId() int
+    -fillTable(table, query)
+    -showEmptyMessage(table, message)
   }
 
   class ExtDialog {
-    -QString m_mode "Add or Edit"
+    -QString m_mode
     -QLineEdit m_address
-    -QSpinBox m_floor
-    -QLineEdit m_room
+    -QLineEdit m_buildingNumber
+    -QSpinBox m_floorNumber
+    -QLineEdit m_roomNumber
+    -QLineEdit m_locationDescription
+    -QSpinBox m_inspectionInterval
+    -QDateEdit m_nextDueDate
     -QComboBox m_extType
     -QDoubleSpinBox m_extSize
     -QLineEdit m_serial
     -QLineEdit m_manufacturer
-    -QDateEdit m_dueDate
-    -QLineEdit m_dotCert
+    -QLineEdit m_model
+    -QDateEdit m_manufactureDate
+    -QDateEdit m_lastAnnualDate
+    -QDateEdit m_last6YearDate
+    -QDateEdit m_lastHydroDate
+    -QComboBox m_extStatus
     +ExtDialog(mode, parent)
-    +setAddress(v)
-    +setFloorNumber(v)
-    +setExtType(v)
-    +getAddress() QString
-    +getFloorNumber() int
-    +getExtType() QString
-    +getSerial() QString
-    +getDotCert() QString
+    +setAddress(v) / address() QString
+    +setExtType(v) / extType() QString
+    +setSerialNumber(v) / serialNumber() QString
+    +setExtStatus(v) / extStatus() QString
+  }
+
+  class AssignDialog {
+    -QComboBox m_extinguisher
+    -QComboBox m_inspector
+    -QDateEdit m_dueDate
+    -QLineEdit m_notes
+    +AssignDialog(parent)
+    +setExtinguishers(items)
+    +setInspectors(items)
+    +extinguisherId() int
+    +inspectorId() int
+    +dueDate() QString
+    +notes() QString
+  }
+
+  class ReportDialog {
+    -QComboBox m_assignment
+    -QComboBox m_extinguisher
+    -QComboBox m_serviceType
+    -QComboBox m_result
+    -QDateEdit m_inspectionDate
+    -QTextEdit m_notes
+    +ReportDialog(parent)
+    +setAssignments(items)
+    +setExtinguishers(items)
+    +assignmentId() int
+    +extinguisherId() int
+    +serviceType() QString
+    +result() QString
+    +inspectionDate() QString
+    +notes() QString
+  }
+
+  class AddUserDialog {
+    -QLineEdit m_username
+    -QLineEdit m_password
+    -QLineEdit m_confirm
+    -QComboBox m_role
+    -QLabel m_errorLabel
+    +AddUserDialog(parent)
+    +username() QString
+    +password() QString
+    +role() QString
+  }
+
+  class EditUserDialog {
+    -QLabel m_usernameDisplay
+    -QComboBox m_role
+    -QLineEdit m_firstName
+    -QLineEdit m_lastName
+    -QLineEdit m_email
+    -QLineEdit m_phone
+    -QLineEdit m_certNumber
+    -QLineEdit m_subcontractorCompany
+    -QCheckBox m_resetPassword
+    -QLineEdit m_newPassword
+    -QLineEdit m_confirmPassword
+    -QLabel m_errorLabel
+    +EditUserDialog(parent)
+    +setDisplayUsername(v)
+    +setRole(v) / role() QString
+    +setFirstName(v) / firstName() QString
+    +setLastName(v) / lastName() QString
+    +setEmail(v) / email() QString
+    +setPhone(v) / phone() QString
+    +setCertNumber(v) / certNumber() QString
+    +setSubcontractorCompany(v) / subcontractorCompany() QString
+    +resetPassword() bool
+    +newPassword() QString
   }
 
   class DueDateSummaryDialog {
@@ -342,17 +433,22 @@ classDiagram
     -loadReportPreview()
   }
 
+  %% Legacy hierarchy (Sprint 1 stubs — not linked to Dashboard)
   User <|-- Admin
   User <|-- Inv
   User <|-- ThirdPAdmin
   User <|-- ThirdPInv
   Admin --> Assignment : creates
+
+  %% Active application flow
   MainWindow --> Dashboard : opens on login
-  Dashboard --> ExtDialog : opens for add/edit
-  Dashboard --> DueDateSummaryDialog : shows on startup
-  Dashboard --> ExportDialog : opens for export
-  Dashboard --> Admin : uses
-  Dashboard --> Inv : uses
+  Dashboard --> ExtDialog : add/edit extinguisher
+  Dashboard --> AssignDialog : generate assignment
+  Dashboard --> ReportDialog : submit report
+  Dashboard --> AddUserDialog : add user
+  Dashboard --> EditUserDialog : edit user
+  Dashboard --> DueDateSummaryDialog : shows on login
+  Dashboard --> ExportDialog : export/print reports
 ```
 
 ---
@@ -370,7 +466,7 @@ flowchart TB
   end
 
   subgraph Server["Server Layer"]
-    Flask["Flask REST API\nserver.py\n58+ endpoints"]
+    Flask["Flask REST API\nserver.py\n60+ endpoints"]
     Static["Static File Server\n/ and /app and /uploads"]
   end
 
@@ -390,7 +486,7 @@ flowchart TB
   Landing -->|user navigates to /app| Browser
   Browser -->|fetch REST calls| Flask
   Mobile -->|fetch REST calls| Flask
-  QtApp -->|QSqlQuery direct| SQLite
+  QtApp -->|QSqlQuery direct to DB| SQLite
   Flask -->|sqlite3 read/write| SQLite
   Flask -->|serve and store photos| Uploads
   Static -->|serves| Browser
@@ -437,9 +533,9 @@ flowchart TD
 
   PlatformDash --> ManageOrgs[View / Approve / Suspend / Delete Orgs]
   PlatformDash --> ViewAudit[Activity Audit Log]
-  PlatformDash --> DrillOrg[Drill Into Org Data]
+  PlatformDash --> DrillOrg[Drill Into Org Data — Read-Only]
   PlatformDash --> ComplianceReport[Platform Compliance Report]
-  PlatformDash --> ManageAnnouncements[Create / Edit Announcements]
+  PlatformDash --> ManageAnnouncements[Create / Edit / Expire Announcements]
 
   Dashboard --> RoleCheck{User Role?}
 
@@ -447,20 +543,26 @@ flowchart TD
   RoleCheck -->|Inspector| InvView[My Assignments + Submit Reports]
   RoleCheck -->|3rd_Party_Admin| TPAView[Team Assignments + My Inspectors]
   RoleCheck -->|3rd_Party_Inspector| TPIView[My Assigned Extinguisher]
-  RoleCheck -->|Client| ClientView[Company Read-Only + QR + NFPA Form]
+  RoleCheck -->|Client| ClientView[My Extinguishers — Read-Only + QR + NFPA Form + Service Requests]
 
   AdminView --> DueDateAlert[Due Date Summary Alert on Login]
   AdminView --> DrillDown[Companies to Buildings to Extinguishers]
-  AdminView --> ManageUsers[Add / Edit / Approve / Suspend Users]
-  AdminView --> GenAssign[Generate Assignment]
+  AdminView --> ManageUsers[Add / Edit / Approve / Suspend / Delete Users]
+  AdminView --> GenAssign[Generate Assignment with Notes]
   AdminView --> ViewReports[View Reports + Approve/Void + Export PDF/CSV/Word]
+  AdminView --> PriorityQueue[Priority Queue — Inspection Urgency Scoring]
   AdminView --> Search[Global Search Bar]
   AdminView --> AuditorTokens[Generate Auditor Read-Only Token URL]
+  AdminView --> Messaging[In-App Messaging + Broadcast]
+  AdminView --> Calendar[Monthly Inspection Calendar]
 
   GenAssign --> Inspector[Inspector Receives Assignment]
-  Inspector --> SubmitReport[Submit Report + NFPA Checklist + Photo]
+  Inspector --> SubmitReport[Submit Report + Service Type + Result + NFPA Checklist + Photo]
   InvView --> SubmitReport
-  SubmitReport --> ReportStored[Report Saved - Immutable NFPA Audit Trail]
+  SubmitReport --> ReportStored[Report Saved — Immutable NFPA Audit Trail]
+
+  ClientView --> ServiceRequest[Submit Service Request for Deficiency]
+  ServiceRequest --> AdminReview[Admin Updates Status + Notes]
 
   AuditorURL([Auditor Token URL]) --> ReadOnlyDash[Read-Only Org Dashboard]
 
@@ -516,25 +618,39 @@ flowchart LR
     POST_approve["POST /api/reports/:id/approve"]
     POST_void["POST /api/reports/:id/void"]
     POST_condemn["POST /api/extinguishers/:id/condemn"]
+    POST_bulk_import["POST /api/extinguishers/bulk"]
+    POST_bulk_assign["POST /api/assignments/bulk"]
   end
 
   subgraph Features["Features"]
-    POST_upload["POST /api/upload"]
+    POST_upload["POST /api/upload\nInspection photo"]
     GET_search["GET /api/search"]
     GET_stats["GET /api/stats"]
     GET_notifs["GET /api/notifications"]
     GET_ann["GET /api/announcements"]
+    GET_msgs["GET|POST /api/messages"]
+    GET_priority["GET /api/priority-queue"]
+    GET_qr["GET /api/extinguishers/:id/qr"]
+    GET_nfpa["GET /api/extinguishers/:id/nfpa-form"]
+    GET_calendar["GET /api/assignments/calendar"]
   end
 
-  subgraph Auditor["Auditor - Public Read-Only"]
+  subgraph Auditor["Auditor — Public Read-Only"]
     POST_tok["POST /api/auditor/tokens"]
     GET_tok["GET /api/auditor/:token"]
     GET_toks["GET /api/auditor/tokens"]
     DEL_tok["DELETE /api/auditor/tokens/:id"]
   end
 
+  subgraph ServiceReq["Service Requests"]
+    GET_sr["GET /api/service-requests"]
+    POST_sr["POST /api/service-requests"]
+    PUT_sr["PUT /api/service-requests/:id"]
+  end
+
   subgraph ClientAPI["Client Role"]
     GET_client["GET /api/client/stats"]
+    GET_deficiencies["GET /api/client/deficiencies"]
   end
 
   subgraph PlatformAPI["Platform Admin"]
@@ -555,6 +671,7 @@ flowchart LR
   style Actions fill:#b45309,stroke:#b45309,color:#fff
   style Features fill:#1d4ed8,stroke:#1d4ed8,color:#fff
   style Auditor fill:#1d4ed8,stroke:#1d4ed8,color:#fff
+  style ServiceReq fill:#065f46,stroke:#065f46,color:#fff
   style ClientAPI fill:#065f46,stroke:#065f46,color:#fff
   style PlatformAPI fill:#7c3aed,stroke:#7c3aed,color:#fff
 ```
@@ -570,20 +687,22 @@ flowchart LR
     RInsp["Inspector\nbuilding-scoped"]
     RTPA["3rd_Party_Admin\nteam-scoped"]
     RTPI["3rd_Party_Inspector\nunit-scoped"]
-    RClient["Client\nread-only"]
+    RClient["Client\nread-only + service requests"]
     RPlatform["Platform Admin\ncross-org SaaS owner"]
   end
 
   subgraph Perms["Feature Access"]
-    PExt["Extinguishers\nfull CRUD + condemn"]
-    PAssign["Assignments\ncreate + manage"]
+    PExt["Extinguishers\nfull CRUD + condemn + bulk import"]
+    PAssign["Assignments\ncreate + bulk + calendar view"]
     PReports["Reports\nsubmit + approve + void + export"]
-    PUsers["Users\nadd + approve + suspend"]
+    PUsers["Users\nadd + approve + suspend + delete"]
     PCompanies["Companies + Buildings\nfull CRUD drill-down"]
-    PQR["QR Code Sheets\ngenerate + print"]
+    PQR["QR Code + NFPA Form\ngenerate + print"]
     PSearch["Global Search"]
     PAudit["Auditor Tokens\ngenerate read-only URLs"]
-    PClient["Company Stats\nread-only view"]
+    PMessages["Messaging\ndirect + group + broadcast"]
+    PPriority["Priority Queue\nurgency scoring"]
+    PClient["My Extinguishers\nread-only + service requests"]
     PPlatform["All Orgs + Audit\nAnnouncements + Compliance"]
   end
 
@@ -595,6 +714,8 @@ flowchart LR
   RAdmin --> PQR
   RAdmin --> PSearch
   RAdmin --> PAudit
+  RAdmin --> PMessages
+  RAdmin --> PPriority
 
   RInsp --> PReports
   RInsp --> PAssign
