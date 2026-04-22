@@ -1,0 +1,26 @@
+name: Auto Translate UI
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  translate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install gettext-llm gettext-parser better-sqlite3
+      - run: node i18n/extract.js
+      - run: gettext-llm translate --input i18n/messages.pot --languages es --config i18n/llm.config.yaml --output i18n/
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      - run: node scripts/import-po-to-sqlite.js
+      - run: |
+          git config user.name 'FireWatch Bot'
+          git config user.email 'bot@firewatch.ai'
+          git add i18n firewatch.db
+          git commit -m 'Auto-update translations' || exit 0
+          git push
