@@ -1,0 +1,17 @@
+llm:
+  provider: openai
+  model: gpt-4o
+  temperature: 0.2
+
+style:
+  tone: calm, authoritative, emergency-safe
+  register: formal
+  reading_level: grade-8
+  avoid:
+    - slang
+    - jokes
+    - emojis
+
+domain_context: |
+  FireWatch is a public safety wildfire and emergency alert system.
+  Accuracy, clarity, and calm tone are critical.
