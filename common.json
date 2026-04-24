@@ -1,6 +1,6 @@
 {
   "app_name": "Vigilancia Contra Incendios",
   "dashboard": "Panel de control",
-  "submit": "Enviar",
-  "cancel": "Cancelar"
+  "floor_count": "{count, plural, one {# Piso} other {# Pisos}}",
+  "building_count": "{count, plural, one {# Edificio} other {# Edificios}}"
 }
