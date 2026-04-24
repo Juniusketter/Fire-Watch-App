@@ -1,9 +1,3 @@
-# Fire i18n Package
+# Fire i18n Complete Package
 
-Monorepo-friendly localization package.
-
-## Features
-- Type-safe translation keys
-- Compliance namespace
-- CI drift protection
-- Framework agnostic
+Includes ICU pluralization, ESLint enforcement, codemods, tenant support, and NFPA fire-code versioning.
