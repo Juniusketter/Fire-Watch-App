@@ -1,9 +1,8 @@
-# FireWatch Automated i18n
+# i18n Localization
 
-This bundle enables fully automated UI translations using gettext-llm.
+This folder contains parallel English and Spanish localization files.
 
-Features:
-✅ LLM-powered translations
-✅ Consistent emergency-safe tone
-✅ SQLite-backed localization
-✅ CI/CD automation
+- en.json: English (default)
+- es.json: Spanish (LATAM-neutral, NFPA-compliant terminology)
+
+Keys are identical across files to support React, Vue, and Angular i18n frameworks.
