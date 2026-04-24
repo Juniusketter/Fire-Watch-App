@@ -1,0 +1,10 @@
+
+{
+  "app_name": "VigilanciaContraIncendios",
+  "language_mismatch_alert": "Inconsistencias de idioma detectadas",
+  "nfpa_inspector": "Inspector NFPA",
+  "audit_export": "Exportación solo en español",
+  "dashboard": "Panel de control",
+  "submit": "Enviar",
+  "cancel": "Cancelar"
+}
