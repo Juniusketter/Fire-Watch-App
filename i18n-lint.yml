@@ -1,0 +1,11 @@
+name: i18n Drift Check
+on: [push, pull_request]
+jobs:
+  lint-i18n:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate localization keys
+        run: |
+          diff <(jq -r 'keys[]' locales/en/common.json | sort) <(jq -r 'keys[]' locales/es/common.json | sort)
+          diff <(jq -r 'keys[]' locales/en/compliance.json | sort) <(jq -r 'keys[]' locales/es/compliance.json | sort)

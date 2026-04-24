@@ -1,8 +1,9 @@
-# i18n Localization
+# Fire i18n Package
 
-This folder contains parallel English and Spanish localization files.
+Monorepo-friendly localization package.
 
-- en.json: English (default)
-- es.json: Spanish (LATAM-neutral, NFPA-compliant terminology)
-
-Keys are identical across files to support React, Vue, and Angular i18n frameworks.
+## Features
+- Type-safe translation keys
+- Compliance namespace
+- CI drift protection
+- Framework agnostic
