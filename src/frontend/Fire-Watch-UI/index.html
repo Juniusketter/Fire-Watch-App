@@ -90,22 +90,30 @@
     .notif-badge.hidden{display:none;}
 
     /* ── NOTIFICATIONS ──────────────────────────────────────── */
-    .notif-list{padding:var(--pad-desk);}
-    .notif-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;}
-    .notif-title{font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:0.08em;color:var(--text);}
-    .notif-clear{font-family:'IBM Plex Mono',monospace;font-size:0.7rem;color:var(--muted2);background:none;border:1px solid var(--border);border-radius:3px;padding:4px 10px;cursor:pointer;}
+    .notif-list{padding:var(--pad-desk);max-width:820px;}
+    .notif-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;padding-bottom:0.5rem;border-bottom:1px solid var(--border);}
+    .notif-title{font-family:'IBM Plex Mono',monospace;font-size:0.62rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted);}
+    .notif-actions{display:flex;gap:0.4rem;}
+    .notif-clear{font-family:'IBM Plex Mono',monospace;font-size:0.68rem;color:var(--muted);background:none;border:1px solid var(--border);border-radius:3px;padding:3px 9px;cursor:pointer;transition:color 0.15s,border-color 0.15s;}
     .notif-clear:hover{color:var(--text);border-color:var(--muted);}
-    .notif-item{display:flex;gap:0.85rem;align-items:flex-start;background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:0.85rem 1rem;margin-bottom:0.6rem;transition:border-color 0.15s;position:relative;}
-    .notif-item.unread{border-left:3px solid var(--orange);}
-    .notif-item.unread-complete{border-left:3px solid var(--teal);}
-    .notif-item.unread-report{border-left:3px solid var(--blue);}
-    .notif-item.unread-overdue{border-left:3px solid var(--red);}
-    .notif-icon{font-size:1.25rem;flex-shrink:0;margin-top:1px;}
-    .notif-body{flex:1;min-width:0;}
-    .notif-text{font-family:'IBM Plex Sans',sans-serif;font-size:0.88rem;color:var(--text);font-weight:500;}
-    .notif-time{font-family:'IBM Plex Mono',monospace;font-size:0.68rem;color:var(--muted);margin-top:3px;}
-    .notif-dot{width:8px;height:8px;border-radius:50%;background:var(--orange);flex-shrink:0;margin-top:6px;}
-    .notif-empty{text-align:center;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:0.8rem;padding:3rem;letter-spacing:0.05em;}
+    .notif-clear.danger:hover{color:var(--red);border-color:var(--red);}
+    .notif-item{display:flex;align-items:center;gap:0.6rem;padding:0.45rem 0.6rem;border-left:2px solid transparent;border-bottom:1px solid var(--border);transition:background 0.12s,border-color 0.12s;cursor:pointer;}
+    .notif-item:last-child{border-bottom:none;}
+    .notif-item:hover{background:rgba(255,255,255,0.04);}
+    .notif-item.unread{border-left-color:var(--orange);}
+    .notif-item.unread-complete{border-left-color:var(--teal);}
+    .notif-item.unread-report{border-left-color:var(--blue);}
+    .notif-item.unread-overdue{border-left-color:var(--red);}
+    .notif-item.read{opacity:0.45;border-left-color:transparent;}
+    .notif-icon{font-size:0.95rem;flex-shrink:0;width:20px;text-align:center;}
+    .notif-body{flex:1;min-width:0;display:flex;align-items:baseline;gap:0.6rem;}
+    .notif-text{font-family:'IBM Plex Sans',sans-serif;font-size:0.8rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .notif-time{font-family:'IBM Plex Mono',monospace;font-size:0.63rem;color:var(--muted);flex-shrink:0;}
+    .notif-dot{width:6px;height:6px;border-radius:50%;background:var(--orange);flex-shrink:0;}
+    .notif-dismiss{background:none;border:none;color:var(--muted);font-size:0.85rem;cursor:pointer;padding:0 4px;line-height:1;flex-shrink:0;opacity:0;transition:opacity 0.15s,color 0.15s;}
+    .notif-item:hover .notif-dismiss{opacity:1;}
+    .notif-dismiss:hover{color:var(--red);}
+    .notif-empty{text-align:center;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:0.75rem;padding:2.5rem;letter-spacing:0.05em;}
     .sidebar-footer{padding:0.75rem 1rem;border-top:1px solid var(--border);}
     .sidebar-toggle{display:none;background:none;border:none;color:var(--muted2);font-size:1.2rem;cursor:pointer;padding:4px 8px;}
     .main-content{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;}
@@ -129,11 +137,12 @@
     .settings-saved-msg{font-family:'IBM Plex Mono',monospace;font-size:0.75rem;color:var(--teal);opacity:0;transition:opacity 0.3s;}
     .settings-saved-msg.show{opacity:1;}
 
+    .sidebar-overlay{display:none;}
     @media(max-width:767px){
       .sidebar{position:fixed;left:0;top:var(--topbar-h);bottom:0;z-index:150;transform:translateX(-100%);}
       .sidebar.open{transform:translateX(0);}
       .sidebar-toggle{display:block;}
-      .sidebar-overlay{display:none;position:fixed;inset:0;top:var(--topbar-h);background:rgba(0,0,0,0.5);z-index:140;}
+      .sidebar-overlay{position:fixed;inset:0;top:var(--topbar-h);background:rgba(0,0,0,0.5);z-index:140;}
       /* Push the overlay's left edge to the sidebar's right edge so iOS touch events
          reach sidebar buttons directly instead of being swallowed by the overlay. */
       .sidebar-overlay.show{display:block;left:var(--sidebar-w);}
@@ -639,9 +648,7 @@
     }
 
     /* ── 11. Notification items */
-    .notif-item { transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s; cursor: pointer; }
-    .notif-item:hover { transform: translateX(3px); box-shadow: 0 2px 12px rgba(0,0,0,0.3); }
-    .notif-item.read { opacity: 0.55; }
+    .notif-item { transition: background 0.12s, border-color 0.12s; }
 
     /* ── 12. Notification badge pulse */
     @keyframes pulseBadge {
@@ -1238,7 +1245,7 @@
             <div class="settings-row">
               <div>
                 <div class="settings-label">Version</div>
-                <div class="settings-desc">Sprint 3 · March 2026</div>
+                <div class="settings-desc">Sprint 5 · April 2026</div>
               </div>
             </div>
             <div class="settings-row">
@@ -1250,7 +1257,7 @@
             <div class="settings-row">
               <div>
                 <div class="settings-label">Course</div>
-                <div class="settings-desc">CSC480B — Computer Science Capstone Project II · National University, San Diego</div>
+                <div class="settings-desc">CSC480C — Computer Science Capstone Project III · National University, San Diego</div>
               </div>
             </div>
             <div class="settings-row">
@@ -1904,7 +1911,7 @@
               <div class="settings-row">
                 <div>
                   <div class="settings-label">Version</div>
-                  <div class="settings-desc">Sprint 3  ·  March 2026</div>
+                  <div class="settings-desc">Sprint 5  ·  April 2026</div>
                 </div>
               </div>
               <div class="settings-row">
@@ -1916,7 +1923,7 @@
               <div class="settings-row">
                 <div>
                   <div class="settings-label">Course</div>
-                  <div class="settings-desc">CSC480B — Computer Science Capstone Project II  ·  National University, San Diego</div>
+                  <div class="settings-desc">CSC480C — Computer Science Capstone Project III  ·  National University, San Diego</div>
                 </div>
               </div>
               <div class="settings-row">
@@ -2136,7 +2143,10 @@
         <div class="notif-list">
           <div class="notif-header">
             <div class="notif-title">Notifications</div>
-            <button class="notif-clear" onclick="markAllRead()">Mark all as read</button>
+            <div class="notif-actions">
+              <button class="notif-clear" onclick="markAllRead()">Mark all as read</button>
+              <button class="notif-clear danger" onclick="dismissAllNotifs()">Clear all</button>
+            </div>
           </div>
           <div id="notifFeed">
             <div class="notif-empty">[ NO NOTIFICATIONS ]</div>
@@ -3788,9 +3798,10 @@ let _selectedCompanyId   = null;
 let _selectedBuildingId  = null;
 
 // ── Notification state ─────────────────────────────────────────────────────────
-let _notifications = [];
-let _seenNotifIds  = new Set();
-let _unreadCount   = 0;
+let _notifications      = [];
+let _seenNotifIds       = new Set();
+let _dismissedNotifIds  = new Set(); // survives re-fetches
+let _unreadCount        = 0;
 
 // ── Polling state ──────────────────────────────────────────────────────────────
 let _pollTimer       = null;
@@ -3991,6 +4002,7 @@ function showDashboard() {
   } else {
     orgPill.classList.remove("show");
   }
+  window._currentView = 'dashboard'; // reset view state so loadAllData() always runs on login/session restore
   buildTabs(); loadStats(); loadAllData();
   startInactivityWatch(); // begin 15-min inactivity countdown
   captureBaseline();
@@ -5275,7 +5287,7 @@ function doLogout() {
   stopInactivityWatch(); // cancel auto-logout timers on explicit logout
   _stopMsgPolling();
   clearAllBadges();
-  _notifications = []; _seenNotifIds = new Set(); _unreadCount = 0;
+  _notifications = []; _seenNotifIds = new Set(); _dismissedNotifIds = new Set(); _unreadCount = 0;
   updateNotifBadge();
   applyTheme("dark");
   showView("dashboard");
@@ -7295,7 +7307,6 @@ function showView(view) {
   }
   if (view === "notifications") {
     renderNotifications();
-    markAllRead();
   }
   if (view === "messages") {
     loadMessages("inbox");
@@ -8360,10 +8371,10 @@ async function fetchNotifications() {
     const res = await fetch("/api/notifications?user_id=" + currentUser.user_id + "&role=" + encodeURIComponent(currentUser.role) + "&org_id=" + (orgId()||""));
     if (!res.ok) return;
     const data = await res.json();
-    _notifications = data;
+    _notifications = data.filter(n => !_dismissedNotifIds.has(n.id)); // exclude dismissed
 
     // Count unseen
-    const unseen = data.filter(n => !_seenNotifIds.has(n.id));
+    const unseen = _notifications.filter(n => !_seenNotifIds.has(n.id));
     _unreadCount = unseen.length;
     updateNotifBadge();
   } catch(e) { console.warn("Notification fetch error:", e); }
@@ -8381,20 +8392,42 @@ function updateNotifBadge() {
   }
 }
 
-// Mark all current notifications as read — clears badge
+// Mark all current notifications as read — clears badge and re-renders
 function markAllRead() {
   _notifications.forEach(n => _seenNotifIds.add(n.id));
   _unreadCount = 0;
   updateNotifBadge();
+  renderNotifications();
 }
 
-// Mark a single notification as read on click — removes unread styling and dot
+// Mark a single notification as read on click — updates styling
 function markNotifRead(notifId) {
-  if (_seenNotifIds.has(notifId)) return; // already read
+  if (_seenNotifIds.has(notifId)) return;
   _seenNotifIds.add(notifId);
   if (_unreadCount > 0) _unreadCount--;
   updateNotifBadge();
-  renderNotifications(); // re-render to update visual state
+  renderNotifications();
+}
+
+// Dismiss (remove) a single notification from the list — persists across re-fetches
+function dismissNotif(notifId, evt) {
+  if (evt) evt.stopPropagation(); // don't also trigger markNotifRead
+  _dismissedNotifIds.add(notifId);
+  _notifications = _notifications.filter(n => n.id !== notifId);
+  _seenNotifIds.delete(notifId);
+  _unreadCount = _notifications.filter(n => !_seenNotifIds.has(n.id)).length;
+  updateNotifBadge();
+  renderNotifications();
+}
+
+// Dismiss all notifications — persists across re-fetches
+function dismissAllNotifs() {
+  _notifications.forEach(n => _dismissedNotifIds.add(n.id));
+  _notifications = [];
+  _seenNotifIds = new Set();
+  _unreadCount = 0;
+  updateNotifBadge();
+  renderNotifications();
 }
 
 // Render notifications feed in the view
@@ -8406,31 +8439,32 @@ function renderNotifications() {
     return;
   }
 
+  const icons = {
+    "assignment_created":  "📋",
+    "assignment_complete": "✅",
+    "report_submitted":    "📄",
+    "overdue":             "⚠️"
+  };
+
+  const typeClass = {
+    "assignment_created":  "unread",
+    "assignment_complete": "unread-complete",
+    "report_submitted":    "unread-report",
+    "overdue":             "unread-overdue"
+  };
+
   feed.innerHTML = _notifications.map(n => {
-    const isUnread = !_seenNotifIds.has(n.id) || _unreadCount > 0;
-    const typeClass = {
-      "assignment_created":  "unread",
-      "assignment_complete": "unread-complete",
-      "report_submitted":    "unread-report",
-      "overdue":             "unread-overdue"
-    }[n.type] || "unread";
-
-    const icons = {
-      "assignment_created":  "📋",
-      "assignment_complete": "✅",
-      "report_submitted":    "📄",
-      "overdue":             "⚠️"
-    };
-
-    const readClass = isUnread ? typeClass : 'read';
+    const isUnread = !_seenNotifIds.has(n.id);
+    const cls = isUnread ? (typeClass[n.type] || "unread") : "read";
     return `
-      <div class="notif-item ${readClass}" onclick="markNotifRead('${n.id}')" title="Click to mark as read">
+      <div class="notif-item ${cls}" onclick="markNotifRead('${n.id}')">
         <div class="notif-icon">${icons[n.type] || "🔔"}</div>
         <div class="notif-body">
-          <div class="notif-text">${n.message}</div>
+          <div class="notif-text" title="${n.message}">${n.message}</div>
           <div class="notif-time">${formatNotifTime(n.timestamp)}</div>
         </div>
         ${isUnread ? '<div class="notif-dot"></div>' : ''}
+        <button class="notif-dismiss" onclick="dismissNotif('${n.id}', event)" title="Dismiss">✕</button>
       </div>`;
   }).join("");
 }
@@ -12863,7 +12897,7 @@ const FW_ES = {
   "Create Account": "Crear una Cuenta",
   "Create User": "Crear Usuario",
   "Create your account. Your registration will be reviewed by your organization's administrator before you can log in.": "Crea tu cuenta. Su registro será revisado por el administrador de su organización antes de que pueda iniciar sesión.",
-  "CSC480B — Computer Science Capstone Project II · National University, San Diego": "CSC480B — Proyecto Final de Ciencias de la Computación II · Universidad Nacional de San Diego",
+  "CSC480C — Computer Science Capstone Project III · National University, San Diego": "CSC480C — Proyecto Final de Ciencias de la Computación III · Universidad Nacional de San Diego",
   "CSV File": "Archivo CSV",
   "Current Deficiencies": "Deficiencias Actuales",
   "Current Password": "Contraseña Actual",
