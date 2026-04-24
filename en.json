@@ -1,0 +1,9 @@
+{
+  "app_name": "Fire Surveillance",
+  "language_mismatch_alert": "Language inconsistencies detected",
+  "nfpa_inspector": "NFPA Inspector",
+  "audit_export": "Export available in Spanish only",
+  "dashboard": "Dashboard",
+  "submit": "Submit",
+  "cancel": "Cancel"
+}
