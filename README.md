@@ -1,3 +1,3 @@
-# Fire i18n Complete Package
+# People Helping People Texas App
 
-Includes ICU pluralization, ESLint enforcement, codemods, tenant support, and NFPA fire-code versioning.
+Mobile + Backend app with AI assistant.
